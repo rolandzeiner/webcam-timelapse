@@ -17,3 +17,18 @@ export function safeImageUri(raw: string | undefined): string | undefined {
   if (value.startsWith("https://")) return value;
   return undefined;
 }
+
+/**
+ * Whether the viewer has asked the OS to reduce motion.
+ *
+ * Read at the moment it is needed rather than cached, so toggling the
+ * system setting takes effect without reloading the dashboard.
+ * Defaults to false where matchMedia is unavailable (jsdom).
+ */
+export function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
