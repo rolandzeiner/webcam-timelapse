@@ -47,7 +47,8 @@ export const cardStyles = css`
     height: 100%;
     object-fit: contain;
     opacity: 0;
-    transition: opacity 120ms linear;
+    transition: opacity var(--ha-transition-duration-normal, 160ms)
+      var(--ha-transition-easing-standard, ease-in-out);
   }
 
   .layer.visible {
@@ -62,7 +63,7 @@ export const cardStyles = css`
   }
 
   .empty .detail {
-    font-size: 0.8rem;
+    font-size: var(--ha-font-size-s, 0.8rem);
     opacity: 0.75;
     max-width: 34ch;
   }
@@ -76,7 +77,7 @@ export const cardStyles = css`
     padding: 16px;
     text-align: center;
     color: var(--wtl-muted);
-    font-size: 0.9rem;
+    font-size: var(--ha-font-size-m, 0.9rem);
   }
 
   /* --- overlays ---------------------------------------------------- */
@@ -88,7 +89,7 @@ export const cardStyles = css`
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.55);
     color: #fff;
-    font-size: 0.8rem;
+    font-size: var(--ha-font-size-s, 0.8rem);
     /* Digits must not shift width as the clock ticks. */
     font-variant-numeric: tabular-nums;
     backdrop-filter: blur(2px);
@@ -103,7 +104,7 @@ export const cardStyles = css`
     right: 8px;
     top: 8px;
     letter-spacing: 0.06em;
-    font-weight: 600;
+    font-weight: var(--ha-font-weight-medium, 600);
   }
 
   .badge.live {
@@ -132,7 +133,7 @@ export const cardStyles = css`
     display: flex;
     align-items: baseline;
     gap: 8px;
-    font-size: 0.85rem;
+    font-size: var(--ha-font-size-s, 0.85rem);
   }
 
   .readout-name {
@@ -141,15 +142,26 @@ export const cardStyles = css`
 
   .readout-value {
     margin-left: auto;
-    font-weight: 600;
+    font-weight: var(--ha-font-weight-medium, 600);
   }
 
   .readout-row.stale .readout-value {
     opacity: 0.55;
   }
 
+  .spark-wrap {
+    margin: 2px 0 4px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .spark {
+    display: block;
+    width: 100%;
+    height: 34px;
+  }
+
   .readout-at {
-    font-size: 0.7rem;
+    font-size: var(--ha-font-size-xs, 0.7rem);
     color: rgba(255, 255, 255, 0.6);
   }
 
@@ -275,7 +287,7 @@ export const cardStyles = css`
     position: absolute;
     top: 0;
     transform: translateX(-50%);
-    font-size: 0.7rem;
+    font-size: var(--ha-font-size-xs, 0.7rem);
     color: var(--wtl-muted);
     white-space: nowrap;
   }
@@ -295,6 +307,62 @@ export const cardStyles = css`
     background: var(--wtl-muted);
   }
 
+  /* --- editor ------------------------------------------------------ */
+
+  .ent-section {
+    padding: 8px 0 4px;
+  }
+
+  .ent-section h4 {
+    margin: 8px 0 2px;
+    font-weight: var(--ha-font-weight-medium, 500);
+  }
+
+  .ent-hint {
+    margin: 0 0 12px;
+    color: var(--wtl-muted);
+    font-size: var(--ha-font-size-s, 0.875rem);
+  }
+
+  .ent-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    padding: 12px 0;
+    border-top: 1px solid var(--wtl-divider);
+  }
+
+  .ent-controls {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ent-actions {
+    display: flex;
+    align-items: start;
+  }
+
+  .swatch {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--ha-font-size-s, 0.875rem);
+    color: var(--wtl-muted);
+  }
+
+  .swatch input[type="color"] {
+    width: 44px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--wtl-divider);
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+  }
+
   /* --- version banner ---------------------------------------------- */
 
   .banner {
@@ -304,7 +372,7 @@ export const cardStyles = css`
     padding: 8px 12px;
     background: var(--warning-color, #ffa726);
     color: #000;
-    font-size: 0.85rem;
+    font-size: var(--ha-font-size-s, 0.85rem);
   }
 
   .banner button {
@@ -328,7 +396,18 @@ export const cardStyles = css`
     }
 
     .readout-name,
-    .readout-at {
+    .spark-wrap {
+    margin: 2px 0 4px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .spark {
+    display: block;
+    width: 100%;
+    height: 34px;
+  }
+
+  .readout-at {
       color: var(--wtl-muted);
     }
   }

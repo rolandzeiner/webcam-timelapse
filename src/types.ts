@@ -305,3 +305,41 @@ export interface SkillDemoAustriaCardConfig extends LovelaceCardConfig {
   pick_action?: Record<string, unknown>;
   pick_target?: Record<string, unknown>;
 }
+
+/** One overlay row. Nothing about any particular sensor is assumed. */
+export interface OverlayEntityConfig {
+  entity: string;
+  name?: string;
+  color?: string;
+  unit?: string;
+  decimals?: number;
+  /** Draw a sparkline for this entity as well as the numeric readout. */
+  graph?: boolean;
+  /**
+   * Read the measurement time from this state attribute instead of
+   * `last_changed`. Opt-in per entity — see overlay-history.ts.
+   */
+  time_attribute?: string;
+}
+
+export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
+  camera_entity: string;
+  title?: string;
+  autoplay?: boolean;
+  speed?: number;
+  show_dayticks?: boolean;
+  show_graph?: boolean;
+  /** Hours of history shown behind the playhead. */
+  graph_hours?: number;
+  /** Empty by default — the card is not tied to any domain. */
+  entities?: OverlayEntityConfig[];
+}
+
+/**
+ * Playback multipliers.
+ *
+ * Goes well past 8x because the useful range depends on the capture
+ * interval, which the user controls. At a ten-minute cadence a fortnight
+ * is ~2000 frames and 8x is plenty; at one minute it is ~20,000, and 8x
+ * would take twenty minutes to play through.
+ */

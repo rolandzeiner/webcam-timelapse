@@ -24,5 +24,32 @@
     "no_camera": "Bitte wähle in der Kartenkonfiguration eine Kamera aus."
   },
   "version_update": "Diese Karte wurde auf {v} aktualisiert. Lade neu, um die neue Version zu verwenden.",
-  "version_reload": "Neu laden"
+  "version_reload": "Neu laden",
+  "editor": {
+    "camera_entity": "Kamera",
+    "title": "Titel",
+    "show_dayticks": "Tagesmarkierungen anzeigen",
+    "show_graph": "Diagramme anzeigen",
+    "playback": "Wiedergabe",
+    "autoplay": "Automatisch abspielen",
+    "speed": "Geschwindigkeit",
+    "graph_hours": "Diagramm-Zeitraum",
+    "overlay": "Eingeblendete Messwerte",
+    "overlay_hint": "Die Werte über dem Bild gehören zu dem Zeitpunkt, zu dem du scrollst – nicht zur Gegenwart.",
+    "add_entity": "Entität hinzufügen",
+    "entity": "Entität",
+    "name": "Bezeichnung",
+    "unit": "Einheit",
+    "decimals": "Nachkommastellen",
+    "color": "Farbe",
+    "graph": "Diagramm",
+    "move_up": "Nach oben",
+    "move_down": "Nach unten",
+    "remove": "Entfernen",
+    "helper": {
+      "camera_entity": "Nur Kameras dieser Integration haben ein Archiv zum Durchblättern.",
+      "graph_hours": "Wie viel Verlauf die Sparkline rund um die Position zeigt.",
+      "autoplay": "Wird ignoriert, wenn dein System reduzierte Bewegung anfordert."
+    }
+  }
 }

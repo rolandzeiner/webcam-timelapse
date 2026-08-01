@@ -24,5 +24,32 @@
     "no_camera": "You need to pick a camera in the card configuration."
   },
   "version_update": "This card was updated to {v}. Reload to pick up the new version.",
-  "version_reload": "Reload"
+  "version_reload": "Reload",
+  "editor": {
+    "camera_entity": "Camera",
+    "title": "Title",
+    "show_dayticks": "Show day markers",
+    "show_graph": "Show graphs",
+    "playback": "Playback",
+    "autoplay": "Play automatically",
+    "speed": "Speed",
+    "graph_hours": "Graph window",
+    "overlay": "Overlay readings",
+    "overlay_hint": "Values shown over the image are read at the moment you scrub to, not the current ones.",
+    "add_entity": "Add entity",
+    "entity": "Entity",
+    "name": "Label",
+    "unit": "Unit",
+    "decimals": "Decimals",
+    "color": "Colour",
+    "graph": "Graph",
+    "move_up": "Move up",
+    "move_down": "Move down",
+    "remove": "Remove",
+    "helper": {
+      "camera_entity": "Only cameras created by this integration have an archive to scrub.",
+      "graph_hours": "How much history the sparkline shows around the playhead.",
+      "autoplay": "Ignored when your system asks for reduced motion."
+    }
+  }
 }

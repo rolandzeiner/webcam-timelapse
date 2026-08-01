@@ -1,3 +1,4 @@
+import "./editor";
 /**
  * Webcam Timelapse Card
  *
@@ -9,7 +10,7 @@ import { customElement, property, query, state } from "lit/decorators.js";
 import { cardStyles } from "./card-styles";
 import { CARD_TAG, CARD_VERSION, WS_CARD_VERSION, WS_INDEX } from "./const";
 import { localize } from "./localize/localize";
-import { dayTicks, formatStamp, type DayTick } from "./dayticks";
+import { dayTicks, formatClock, formatStamp, type DayTick } from "./dayticks";
 import {
   EMPTY_INDEX,
   type FrameIndex,
@@ -21,27 +22,24 @@ import {
   urlAt,
 } from "./frames";
 import {
+  fetchOverlayHistory,
+  type HistoryPoint,
+  resolveAt,
+  stalenessThreshold,
+  windowAround,
+} from "./overlay-history";
+import {
   checkCardVersionWS,
   renderVersionBanner,
 } from "./shared-render";
-import type { HomeAssistant, LovelaceCardConfig } from "./types";
+import { sparkline } from "./sparkline";
+import type {
+  HomeAssistant,
+  LovelaceCardEditor,
+  WebcamTimelapseCardConfig,
+} from "./types";
+import { safeImageUri } from "./utils";
 
-export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
-  camera_entity: string;
-  title?: string;
-  autoplay?: boolean;
-  speed?: number;
-  show_dayticks?: boolean;
-}
-
-/**
- * Playback multipliers.
- *
- * Goes well past 8x because the useful range depends on the capture
- * interval, which the user controls. At a ten-minute cadence a fortnight
- * is ~2000 frames and 8x is plenty; at one minute it is ~20,000, and 8x
- * would take twenty minutes to play through.
- */
 const SPEEDS = [1, 2, 4, 8, 16, 32] as const;
 /** Milliseconds per frame at 1x. */
 const BASE_FRAME_MS = 500;
@@ -87,6 +85,7 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private versionMismatch: string | null = null;
   @state() private indexError: string | undefined;
   @state() private frameError: string | undefined;
+  @state() private history = new Map<string, HistoryPoint[]>();
 
   private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
@@ -112,10 +111,29 @@ export class WebcamTimelapseCard extends LitElement {
     if (!config?.camera_entity) {
       throw new Error(localize("error.no_camera", this.hass?.locale?.language));
     }
-    this.config = { autoplay: false, speed: 4, show_dayticks: true, ...config };
+    this.config = {
+      autoplay: false,
+      speed: 4,
+      show_dayticks: true,
+      show_graph: true,
+      graph_hours: 24,
+      ...config,
+      // Drop malformed rows rather than crashing render on a hand-edited
+      // YAML typo: one bad entry should cost that row, not the card.
+      entities: (config.entities ?? []).filter((row) => row?.entity),
+    };
     this.speed = SPEEDS.includes(this.config.speed as never)
       ? (this.config.speed as number)
       : 4;
+  }
+
+  static getConfigElement(): LovelaceCardEditor {
+    // The editor is eagerly imported at the top of this module. Without
+    // that import this returns an unupgraded element and HA silently
+    // falls back to YAML mode with no error anywhere.
+    return document.createElement(
+      "webcam-timelapse-card-editor",
+    ) as LovelaceCardEditor;
   }
 
   static getStubConfig(hass: HomeAssistant): Partial<WebcamTimelapseCardConfig> {
@@ -166,6 +184,7 @@ export class WebcamTimelapseCard extends LitElement {
   protected override willUpdate(changed: PropertyValues): void {
     if (changed.has("hass") && this.hass && this.index === EMPTY_INDEX) {
       void this.refreshIndex();
+      void this.refreshHistory();
     }
     if (changed.has("hass") && this.hass && !this.versionChecked) {
       this.versionChecked = true;
@@ -231,6 +250,27 @@ export class WebcamTimelapseCard extends LitElement {
     }
 
     this.scheduleIndexRefresh();
+  }
+
+  private async refreshHistory(): Promise<void> {
+    const entities = this.config?.entities ?? [];
+    if (!this.hass || entities.length === 0) return;
+
+    const timeAttributes: Record<string, string> = {};
+    for (const row of entities) {
+      if (row.time_attribute) timeAttributes[row.entity] = row.time_attribute;
+    }
+
+    this.history = await fetchOverlayHistory(
+      this.hass,
+      entities.map((row) => row.entity),
+      {
+        // Cover the whole archive so scrubbing to the oldest frame still
+        // resolves a reading; +1 day of slack for the retention boundary.
+        days: (this.index.retention_days || 14) + 1,
+        timeAttributes,
+      },
+    );
   }
 
   private scheduleIndexRefresh(): void {
@@ -351,8 +391,10 @@ export class WebcamTimelapseCard extends LitElement {
    */
   private frameSources(): string[] {
     const sources: string[] = [];
-    const live = this.hass?.states[this.config!.camera_entity]?.attributes
-      .entity_picture as string | undefined;
+    const live = safeImageUri(
+      this.hass?.states[this.config!.camera_entity]?.attributes
+        .entity_picture as string | undefined,
+    );
     if (this.atLive && live) sources.push(live);
     const archived = urlAt(this.index, this.position);
     if (archived) sources.push(archived);
@@ -511,6 +553,7 @@ export class WebcamTimelapseCard extends LitElement {
               </time>
             </div>`
           : nothing}
+        ${slot !== null ? this.renderReadout(slot) : nothing}
         ${this.onGap
           ? html`<div class="badge gap">${this.t("badge.gap")}</div>`
           : this.atLive
@@ -518,6 +561,74 @@ export class WebcamTimelapseCard extends LitElement {
             : nothing}
       </div>
     `;
+  }
+
+  /**
+   * The time-synced overlay.
+   *
+   * Every value is the reading in effect at the scrubbed moment, and each
+   * row shows the time that reading was actually taken. Showing the
+   * reading's own time is not decoration: these gauges report hourly, so
+   * without it a value sitting next to a 12:05 frame silently implies a
+   * 12:05 measurement.
+   */
+  private renderReadout(slot: number): TemplateResult | typeof nothing {
+    const rows = this.config?.entities ?? [];
+    if (rows.length === 0) return nothing;
+
+    const at = slot * 1000;
+    const rendered = rows.map((row) => {
+      const points = this.history.get(row.entity) ?? [];
+      const reading = resolveAt(points, at, stalenessThreshold(points));
+      const name =
+        row.name ??
+        (this.hass?.states[row.entity]?.attributes.friendly_name as
+          | string
+          | undefined) ??
+        row.entity;
+      const unit =
+        row.unit ??
+        (this.hass?.states[row.entity]?.attributes.unit_of_measurement as
+          | string
+          | undefined) ??
+        "";
+      const color = row.color ?? "var(--wtl-accent)";
+
+      const value =
+        reading === null
+          ? "—"
+          : `${reading.value.toFixed(row.decimals ?? 1)}${unit ? ` ${unit}` : ""}`;
+
+      const graph =
+        row.graph && this.config?.show_graph !== false && reading !== null
+          ? sparkline({
+              points: windowAround(points, at, this.config?.graph_hours ?? 24),
+              at,
+              hours: this.config?.graph_hours ?? 24,
+              color,
+              label: `${name} history`,
+            })
+          : null;
+
+      return html`
+        <div class="readout-row ${reading?.stale ? "stale" : ""}">
+          <span class="readout-name" style="color:${color}">${name}</span>
+          <span class="readout-value">${value}</span>
+          ${reading !== null
+            ? html`<span class="readout-at"
+                >${formatClock(
+                  Math.round(reading.at / 1000),
+                  this.timeZone,
+                  this.language,
+                )}</span
+              >`
+            : nothing}
+        </div>
+        ${graph ? html`<div class="spark-wrap">${graph}</div>` : nothing}
+      `;
+    });
+
+    return html`<div class="readout">${rendered}</div>`;
   }
 
   private renderControls(): TemplateResult {
