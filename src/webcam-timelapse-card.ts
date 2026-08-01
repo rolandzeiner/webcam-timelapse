@@ -91,11 +91,13 @@ export class WebcamTimelapseCard extends LitElement {
   private ring = new PrefetchRing(prefetchDepth(1));
   private useLayerA = true;
   private frameGeneration = 0;
+  private swapChain: Promise<void> = Promise.resolve();
   private versionChecked = false;
 
   @query("img.layer.a") private layerA?: HTMLImageElement;
   @query("img.layer.b") private layerB?: HTMLImageElement;
-  private playTimer: number | undefined;
+  private playToken: number | undefined;
+  private playCounter = 0;
   private indexTimer: number | undefined;
   private scrubRaf: number | undefined;
   private lastScrubAt = 0;
@@ -287,29 +289,79 @@ export class WebcamTimelapseCard extends LitElement {
     return Math.max(BASE_FRAME_MS / this.speed, MIN_FRAME_MS);
   }
 
-  private startPlayback(): void {
-    if (this.playTimer) return;
-    const step = (): void => {
-      const next = nextPresent(this.present, this.position + 1);
-      if (next === null) {
-        // Reached the end: settle on the newest frame rather than looping
-        // silently past it.
-        this.playing = false;
-        this.stopPlayback();
-        return;
+  /**
+   * Playback loop.
+   *
+   * Awaits each frame's decode before scheduling the next, rather than
+   * advancing on a bare timer. That gating is not a nicety: both layers
+   * are shared, so an un-awaited loop starts the next `img.src` while the
+   * previous `decode()` is still pending on the same element. Firefox
+   * rejects a decode whose src changed underneath it, so every swap
+   * failed and the scrubber advanced over a frozen picture; Chrome
+   * happens to be more forgiving, which is why this only showed on one
+   * browser.
+   *
+   * A token rather than a timer handle, because the loop can be suspended
+   * at an await that no `clearTimeout` can reach.
+   */
+  private async runPlayback(token: number): Promise<void> {
+    let advance = false;
+    while (this.playToken === token && this.playing) {
+      if (advance) {
+        const next = nextPresent(this.present, this.position + 1);
+        if (next === null) {
+          // Settle on the newest frame rather than looping silently past it.
+          this.playing = false;
+          break;
+        }
+        this.position = next;
       }
-      this.goTo(next);
-      this.playTimer = window.setTimeout(step, this.frameDelay);
-    };
-    this.playTimer = window.setTimeout(step, this.frameDelay);
+      // The first pass renders wherever the playhead already is. Without
+      // it, replaying from the start would skip frame one — and having
+      // togglePlay paint it instead would start a swap the loop then
+      // races on the same <img>.
+      advance = true;
+
+      const started = performance.now();
+      await this.swapInFrame();
+      this.prefetchAhead();
+      if (this.playToken !== token) return;
+
+      // Subtract the decode from the frame budget so playback keeps its
+      // requested rate instead of drifting slower by however long each
+      // image took.
+      const remaining = this.frameDelay - (performance.now() - started);
+      if (remaining > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, remaining));
+      }
+    }
+  }
+
+  private startPlayback(): void {
+    if (this.playToken !== undefined) return;
+    const token = ++this.playCounter;
+    this.playToken = token;
+    void this.runPlayback(token).finally(() => {
+      if (this.playToken === token) this.playToken = undefined;
+    });
   }
 
   private stopPlayback(): void {
-    if (this.playTimer) window.clearTimeout(this.playTimer);
-    this.playTimer = undefined;
+    // Invalidating the token is what stops the loop; it checks after
+    // every await.
+    this.playToken = undefined;
   }
 
   private togglePlay(): void {
+    // Pressing play while parked on the newest frame should replay the
+    // archive, not do nothing. Sitting at the live edge is the default
+    // resting position, so "play" there almost always means "show me what
+    // happened", and there is nothing forward to advance into.
+    if (!this.playing && this.atLive) {
+      const first = nextPresent(this.present, 0);
+      // Position only — the loop paints it on its first pass.
+      if (first !== null) this.position = first;
+    }
     this.playing = !this.playing;
     this.reconcilePlayback();
   }
@@ -342,7 +394,17 @@ export class WebcamTimelapseCard extends LitElement {
    * while this decode was in flight, the result is stale and must not be
    * swapped in over a newer frame.
    */
-  private async swapInFrame(): Promise<void> {
+  private swapInFrame(): Promise<void> {
+    // Queue behind any swap already running. Both <img> layers are shared,
+    // so overlapping swaps write src on an element that is mid-decode —
+    // which Firefox reports as a decode failure and Chrome silently
+    // tolerates. Serialising removes the class of bug rather than the
+    // symptom.
+    this.swapChain = this.swapChain.then(() => this.performSwap());
+    return this.swapChain;
+  }
+
+  private async performSwap(): Promise<void> {
     const candidates = this.frameSources();
     if (candidates.length === 0) return;
 
@@ -360,7 +422,12 @@ export class WebcamTimelapseCard extends LitElement {
       try {
         await incoming.decode();
       } catch {
-        continue;
+        // Firefox rejects decode() in cases where the bitmap is actually
+        // available (notably when src was reassigned during a previous
+        // decode). Trust the element's own view before discarding the
+        // frame: `complete` plus a non-zero intrinsic width means it is
+        // painted and ready.
+        if (!incoming.complete || incoming.naturalWidth === 0) continue;
       }
       // A newer frame was requested while this decode was in flight;
       // swapping now would show an older image over a newer one.

@@ -1,0 +1,32 @@
+# Original /views/0/sections/1/cards/0 on the galaxy-a8 dashboard,
+# captured 2026-08-01 immediately before replacing it with
+# custom:webcam-timelapse-card. Restore with patch_dashboard_config
+# against the same JSON pointer if the new card disappoints.
+type: picture-elements
+image: "https://wieselcam.at/image/live/wieselcam.jpg?{{ (now().timestamp() // 600) * 600 }} }}"
+camera_view: auto
+grid_options:
+  columns: full
+  rows: auto
+elements:
+  - type: custom:mini-graph-card
+    name: Kleine Erlauf
+    entities:
+      - entity: sensor.wasserstand
+        name: Wasserstand
+        color: "#20B2AA"
+        show_state: true
+      - entity: sensor.wassertemperatur
+        name: Wassertemperatur
+        color: "#FFD700"
+        show_state: true
+    show: { icon: false, labels: false, title: false, name: true }
+    style:
+      top: 25%
+      left: 75%
+      width: 40%
+      height: 35%
+      --paper-card-background-color: "rgba(0, 0, 0, 0.2);"
+    font_size: 16px
+    hour24: true
+    points_per_hour: 1
