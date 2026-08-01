@@ -55,6 +55,13 @@ updates:
       pip-security:
         applies-to: security-updates
         patterns: ["*"]
+    ignore:
+      # Hand-synced to homeassistant/components/camera/manifest.json — the
+      # test env must run the same JPEG decoder users do, not the newest one.
+      # Dependabot bumped this to 2.5.0 while HA core was still on 1.8.3, and
+      # rewrote the explanatory comment to match, so the file then documented
+      # a version HA did not require. Raise it only when HA core does.
+      - dependency-name: "PyTurboJPEG"
 
   - package-ecosystem: npm
     directory: /
