@@ -1,13 +1,17 @@
 version: 2
 
-# Monthly + grouped + auto-merge-friendly. Rationale, the companion auto-merge
-# workflow, and the hard-won gotchas: see the ha-integration-platinum reference
-# `references/dependabot-and-automerge.md`.
+# Monthly + grouped. Rationale and the hard-won gotchas live in
+# austria-portfolio-workflow -> references/repo-settings-baseline.md.
 #
-# `target-branch: dev` routes update PRs to the working branch (this scaffold
-# uses the dev -> PR -> main flow — see CONTRIBUTING). The config FILE itself is
-# always read from the repo's DEFAULT branch. Remove every `target-branch: dev`
-# line if the repo has no dev branch (Dependabot then targets the default branch).
+# `target-branch: dev` routes update PRs to the working branch, matching the
+# dev -> PR -> main flow. The config FILE itself is always read from the
+# repo's DEFAULT branch, so this file only takes effect once it lands on
+# `main`.
+#
+# Monthly rather than weekly: weekly generated ~70 PRs/month across the
+# portfolio, nearly all superseded within days. It costs nothing in security
+# coverage — `interval` throttles only *version* updates, while Dependabot
+# security updates fire on advisory publication regardless.
 updates:
   - package-ecosystem: github-actions
     directory: /
@@ -16,7 +20,7 @@ updates:
       interval: monthly
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "chore"          # no prefix-development — unsupported for github-actions
+      prefix: "chore" # no prefix-development — unsupported for github-actions
       include: "scope"
     cooldown:
       default-days: 5
@@ -24,7 +28,9 @@ updates:
       actions:
         applies-to: version-updates
         patterns: ["*"]
-        update-types: ["minor", "patch"]   # majors -> individual PRs (manual review)
+        # Majors get their own PR so a breaking change never rides in with
+        # the safe patches.
+        update-types: ["minor", "patch"]
       actions-security:
         applies-to: security-updates
         patterns: ["*"]
@@ -50,10 +56,6 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
 
-  # Card-side npm deps. Keep this block whenever the integration ships a
-  # `package.json` (i.e. you scaffolded with the `ha-lovelace-card` skill or
-  # copied the optional/lovelace-card subtree). Drop the WHOLE block if the
-  # integration has no card — Dependabot errors on an npm block with no manifest.
   - package-ecosystem: npm
     directory: /
     target-branch: dev
@@ -75,16 +77,12 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
     ignore:
-      # TypeScript 7 (tsgo/native compiler) — hold. TS 7 drops the JS
-      # compiler API, which breaks @rollup/plugin-typescript outright
-      # even though `tsc --noEmit` still passes. Revisit only when the
-      # bundler plugin ships TS 7 support; see ha-lovelace-card gotchas.
+      # TypeScript 7 (tsgo) — hold. TS 7 drops the JS compiler API, so
+      # @rollup/plugin-typescript fails at config load even though
+      # `tsc --noEmit` passes. Revisit when the plugin supports TS 7.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
-  # Without this block the .pre-commit-config.yaml `rev:` pins rot
-  # silently — nothing else tracks them. (Measured 2026-07: four of five
-  # repos were still on a 2024-era ruff hook.)
   - package-ecosystem: pre-commit
     directory: /
     target-branch: dev
@@ -92,7 +90,7 @@ updates:
       interval: monthly
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "chore"          # no prefix-development — unsupported here
+      prefix: "chore" # no prefix-development — unsupported here
       include: "scope"
     cooldown:
       default-days: 5
@@ -105,20 +103,12 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
     ignore:
-      # The ruff and mypy hook revs are hand-kept equal to the `==` pins
-      # in requirements_test.txt. Letting Dependabot float them here
-      # would desync the local gate from CI — exactly what the exact
-      # pins exist to prevent. Bump them by hand, with the pin.
-      # Name format verified against dependabot-core's pre_commit
-      # file_parser: it builds Dependency.new(name: repo_url), so the
-      # full URL exactly as written under `repo:` is correct.
+      # Hand-synced to the `==` pins in requirements_test.txt. If Dependabot
+      # bumped these independently the local hook would lint with a different
+      # ruleset than CI — exactly the drift the pins exist to prevent.
       - dependency-name: "https://github.com/astral-sh/ruff-pre-commit"
       - dependency-name: "https://github.com/pre-commit/mirrors-mypy"
-      # A hook's `additional_dependencies` are parsed as dependencies in
-      # their OWN right — ignoring the hook repo above does not cover
-      # them. These are deliberately unpinned (the hook only needs them
-      # importable for type resolution; the real HA version is governed
-      # by PHACC in requirements_test.txt), so ignore them too rather
-      # than let Dependabot introduce a competing pin here.
+      # A hook's `additional_dependencies` are parsed as dependencies in their
+      # OWN right — the repo-URL ignores above do not cover them.
       - dependency-name: "homeassistant"
       - dependency-name: "voluptuous"
