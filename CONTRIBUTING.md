@@ -16,7 +16,14 @@ Card side:
 npm install
 ```
 
-Optionally `pre-commit install`. The hooks run the same ruff and mypy CI
+Optionally, the local hooks:
+
+```bash
+uv pip install pre-commit
+pre-commit install
+```
+
+They run the same ruff and mypy CI
 does, at the same pinned versions, plus `actionlint` on any workflow file
 you touch.
 
