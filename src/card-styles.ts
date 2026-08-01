@@ -61,6 +61,12 @@ export const cardStyles = css`
     filter: grayscale(0.5);
   }
 
+  .empty .detail {
+    font-size: 0.8rem;
+    opacity: 0.75;
+    max-width: 34ch;
+  }
+
   .empty {
     position: absolute;
     inset: 0;

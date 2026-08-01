@@ -1,78 +1,27 @@
 {
-  "common": {
-    "version": "Version",
-    "invalid_configuration": "Ungültige Konfiguration",
-    "no_entity_picked": "Kein Sensor ausgewählt. Visuellen Editor öffnen und den Plätze-Sensor wählen.",
-    "entity_unavailable": "Der ausgewählte Sensor ist derzeit nicht verfügbar.",
-    "loading": "Lade…",
-    "online": "Online",
-    "offline": "Offline",
-    "debug_dump": "Aktuelle Kartenkonfiguration",
-    "debug_dump_hint": "Dieser Bereich spiegelt die Live-Konfiguration. „Debug anzeigen“ deaktivieren, um ihn auszublenden."
+  "empty": {
+    "no_frames": "Noch keine Bilder gespeichert.",
+    "first_soon": "Das erste erscheint bei der nächsten Aufnahme.",
+    "index_failed": "Die Zeitleiste konnte nicht geladen werden."
   },
-  "editor": {
-    "name": "Kartenname",
-    "entity": "Sensor",
-    "entity_helper": "Den Plätze-Sensor der Integration auswählen.",
-    "status_entity": "Status-Binärsensor",
-    "status_entity_helper": "Optional. Wenn gesetzt, zeigt die Karte einen Online/Offline-Pip.",
-    "show_hero": "Hero-Kopfzeile anzeigen",
-    "show_debug": "Debug anzeigen (Konfiguration unter der Karte ausgeben)",
-
-    "section": {
-      "text": "Texteingaben",
-      "number": "Zahlen",
-      "choice": "Schalter & Auswahl",
-      "registry": "HA-Registry-Auswahl",
-      "datetime": "Datum & Uhrzeit",
-      "visual": "Visuell",
-      "data": "Daten & Templates",
-      "ha": "HA-spezifisch"
-    },
-
-    "txt_single": "Einzeiliger Text",
-    "txt_multi": "Mehrzeiliger Text",
-    "txt_password": "Passwort (maskiert)",
-    "txt_url": "URL",
-    "txt_email": "E-Mail",
-
-    "num_box": "Zahl — Eingabefeld (0–100)",
-    "num_slider": "Zahl — Schieberegler (0–1, Schritt 0,01)",
-
-    "flag_boolean": "Boolean-Schalter",
-    "pick_dropdown": "Auswahl — Dropdown",
-    "pick_list": "Auswahl — Liste (Radio)",
-    "pick_multi": "Auswahl — Mehrfach",
-    "pick_custom": "Auswahl — Dropdown mit eigenem Wert",
-
-    "pick_entity_multi": "Mehrere Entitäten",
-    "pick_device": "Gerät",
-    "pick_area": "Bereich",
-    "pick_floor": "Etage",
-    "pick_label": "Label",
-
-    "pick_time": "Uhrzeit",
-    "pick_date": "Datum",
-    "pick_datetime": "Datum & Uhrzeit",
-    "pick_duration": "Dauer",
-
-    "pick_icon": "MDI-Symbol",
-    "pick_color_rgb": "RGB-Farbe",
-    "pick_ui_color": "UI-Farbtoken",
-    "pick_theme": "Theme",
-
-    "data_template": "Jinja-Template",
-    "data_object": "Objekt (Roh-YAML / JSON)",
-    "data_attribute": "Attribut des gewählten Sensors",
-    "data_attribute_helper": "Die Liste richtet sich nach dem Sensor-Feld oben.",
-    "data_state": "Zustand des gewählten Sensors",
-    "data_state_helper": "Die Liste richtet sich nach dem Sensor-Feld oben.",
-
-    "pick_language": "Sprache",
-    "pick_country": "Land",
-    "pick_action": "UI-Aktion (mehr Info / Navigieren / Dienst aufrufen / …)",
-    "pick_target": "Ziel (Entität / Gerät / Bereich)"
+  "badge": {
+    "live": "LIVE",
+    "gap": "KEIN BILD"
   },
-  "version_update": "Eine neue Version der Karte ist verfügbar ({v}).",
+  "controls": {
+    "play": "Abspielen",
+    "pause": "Pause",
+    "previous": "Vorheriges Bild",
+    "next": "Nächstes Bild",
+    "speed": "Wiedergabegeschwindigkeit {v}x",
+    "now": "Zur Gegenwart springen"
+  },
+  "track": {
+    "label": "Position auf der Zeitleiste"
+  },
+  "error": {
+    "no_camera": "Bitte wähle in der Kartenkonfiguration eine Kamera aus."
+  },
+  "version_update": "Diese Karte wurde auf {v} aktualisiert. Lade neu, um die neue Version zu verwenden.",
   "version_reload": "Neu laden"
 }

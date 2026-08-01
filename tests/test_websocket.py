@@ -103,3 +103,82 @@ async def test_index_for_an_unloaded_entry(
 
     assert not response["success"]
     assert response["error"]["code"] == "not_loaded"
+
+
+# --- entity_id addressing -------------------------------------------------
+#
+# The card holds a camera entity_id and cannot map it to a config entry:
+# the frontend's `hass.entities` is the DISPLAY registry, which carries
+# `platform` but NOT `config_entry_id`. An earlier version of the card
+# assumed otherwise, so the lookup silently returned undefined, the index
+# request was never sent, and the card sat on its empty state forever
+# claiming no frames had been archived. These tests pin the shape the card
+# actually sends.
+
+
+async def test_index_by_entity_id(
+    hass: HomeAssistant, hass_ws_client, mock_fetch: AsyncMock
+) -> None:
+    """The exact call the card makes."""
+    entry = make_entry()
+    assert await setup_entry(hass, entry)
+    coordinator = entry.runtime_data
+    frame_store.write_frame(coordinator.frames_dir, 1_785_585_600, b"x")
+    await coordinator.async_refresh()
+
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": WS_TYPE_INDEX, "entity_id": "camera.test_cam_live_view"}
+    )
+    response = await client.receive_json()
+
+    assert response["success"], response
+    assert response["result"]["count"] == 1
+    assert response["result"]["base"] == f"{FRAMES_URL_BASE}/{entry.entry_id}/"
+
+
+async def test_index_by_entity_id_for_an_unknown_entity(
+    hass: HomeAssistant, hass_ws_client, mock_fetch: AsyncMock
+) -> None:
+    assert await setup_entry(hass, make_entry())
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {"type": WS_TYPE_INDEX, "entity_id": "camera.does_not_exist"}
+    )
+    response = await client.receive_json()
+
+    assert not response["success"]
+    assert response["error"]["code"] == "not_found"
+
+
+async def test_index_requires_one_identifier(
+    hass: HomeAssistant, hass_ws_client, mock_fetch: AsyncMock
+) -> None:
+    assert await setup_entry(hass, make_entry())
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id({"type": WS_TYPE_INDEX})
+    response = await client.receive_json()
+
+    assert not response["success"]
+
+
+async def test_index_rejects_both_identifiers_at_once(
+    hass: HomeAssistant, hass_ws_client, mock_fetch: AsyncMock
+) -> None:
+    """vol.Exclusive — two targets in one request is a caller bug."""
+    entry = make_entry()
+    assert await setup_entry(hass, entry)
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {
+            "type": WS_TYPE_INDEX,
+            "entry_id": entry.entry_id,
+            "entity_id": "camera.test_cam_live_view",
+        }
+    )
+    response = await client.receive_json()
+
+    assert not response["success"]

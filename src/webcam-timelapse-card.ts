@@ -7,8 +7,9 @@ import { LitElement, html, nothing, type PropertyValues, type TemplateResult } f
 import { customElement, property, query, state } from "lit/decorators.js";
 
 import { cardStyles } from "./card-styles";
-import { CARD_TAG, CARD_VERSION, WS_INDEX } from "./const";
-import { dayTicks, formatClock, formatStamp, type DayTick } from "./dayticks";
+import { CARD_TAG, CARD_VERSION, WS_CARD_VERSION, WS_INDEX } from "./const";
+import { localize } from "./localize/localize";
+import { dayTicks, formatStamp, type DayTick } from "./dayticks";
 import {
   EMPTY_INDEX,
   type FrameIndex,
@@ -19,6 +20,10 @@ import {
   presenceBitmap,
   urlAt,
 } from "./frames";
+import {
+  checkCardVersionWS,
+  renderVersionBanner,
+} from "./shared-render";
 import type { HomeAssistant, LovelaceCardConfig } from "./types";
 
 export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
@@ -60,6 +65,10 @@ interface WindowWithCustomCards extends Window {
     description: string;
     preview?: boolean;
     documentationURL?: string;
+    getEntitySuggestion?: (
+      hass: HomeAssistant,
+      entityId: string,
+    ) => { config: Record<string, unknown> } | null;
   }[];
 }
 
@@ -75,12 +84,14 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private playing = false;
   @state() private speed = 1;
   @state() private trackWidth = 600;
-  @state() private staleBundle = false;
+  @state() private versionMismatch: string | null = null;
+  @state() private indexError: string | undefined;
 
   private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
   private useLayerA = true;
   private frameGeneration = 0;
+  private versionChecked = false;
 
   @query("img.layer.a") private layerA?: HTMLImageElement;
   @query("img.layer.b") private layerB?: HTMLImageElement;
@@ -98,7 +109,7 @@ export class WebcamTimelapseCard extends LitElement {
 
   setConfig(config: WebcamTimelapseCardConfig): void {
     if (!config?.camera_entity) {
-      throw new Error("You need to pick a camera in the card configuration.");
+      throw new Error(localize("error.no_camera", this.hass?.locale?.language));
     }
     this.config = { autoplay: false, speed: 4, show_dayticks: true, ...config };
     this.speed = SPEEDS.includes(this.config.speed as never)
@@ -154,7 +165,14 @@ export class WebcamTimelapseCard extends LitElement {
   protected override willUpdate(changed: PropertyValues): void {
     if (changed.has("hass") && this.hass && this.index === EMPTY_INDEX) {
       void this.refreshIndex();
-      void this.checkBundleVersion();
+    }
+    if (changed.has("hass") && this.hass && !this.versionChecked) {
+      this.versionChecked = true;
+      void checkCardVersionWS(this.hass, WS_CARD_VERSION, CARD_VERSION).then(
+        (version) => {
+          this.versionMismatch = version;
+        },
+      );
     }
   }
 
@@ -178,29 +196,17 @@ export class WebcamTimelapseCard extends LitElement {
 
   // --- data --------------------------------------------------------
 
-  /**
-   * The config entry backing the selected camera.
-   *
-   * Read from the entity registry rather than from a state attribute:
-   * HA already publishes `config_entry_id` there, and duplicating it onto
-   * the camera's state would put a value in the recorder on every state
-   * write for no reason.
-   */
-  private get entryId(): string | undefined {
-    if (!this.config) return undefined;
-    return this.hass?.entities?.[this.config.camera_entity]?.config_entry_id;
-  }
-
   private async refreshIndex(): Promise<void> {
     if (!this.hass?.callWS || !this.config) return;
 
-    const entryId = this.entryId;
-    if (!entryId) return;
-
     try {
+      // Addressed by entity_id, resolved to a config entry server-side.
+      // The frontend's `hass.entities` is the DISPLAY registry: it carries
+      // `platform` but not `config_entry_id`, so the card genuinely cannot
+      // do this mapping itself.
       const index = await this.hass.callWS<FrameIndex>({
         type: WS_INDEX,
-        entry_id: entryId,
+        entity_id: this.config.camera_entity,
       });
       const wasAtEnd = this.position >= this.index.count - 1;
       this.index = index;
@@ -214,9 +220,13 @@ export class WebcamTimelapseCard extends LitElement {
       // show, so the first paint has to be kicked after this render.
       await this.updateComplete;
       void this.swapInFrame();
-    } catch {
-      // Backend not ready yet, or the entry was removed. The empty state
-      // already explains it; retrying on the timer is enough.
+      this.indexError = undefined;
+    } catch (error) {
+      // Distinguish "archive is empty" from "could not ask". Reporting a
+      // failed lookup as "no frames yet" sends the user hunting for a
+      // capture problem that does not exist.
+      this.indexError =
+        error instanceof Error ? error.message : "Could not load the timeline.";
     }
 
     this.scheduleIndexRefresh();
@@ -228,18 +238,6 @@ export class WebcamTimelapseCard extends LitElement {
     // do not all ask at the same instant.
     const delay = this.index.step * 1000 + Math.random() * 15000;
     this.indexTimer = window.setTimeout(() => void this.refreshIndex(), delay);
-  }
-
-  private async checkBundleVersion(): Promise<void> {
-    if (!this.hass?.callWS) return;
-    try {
-      const result = await this.hass.callWS<{ version: string }>({
-        type: "webcam_timelapse/card_version",
-      });
-      this.staleBundle = result.version !== CARD_VERSION;
-    } catch {
-      this.staleBundle = false;
-    }
   }
 
   // --- playback ----------------------------------------------------
@@ -398,6 +396,19 @@ export class WebcamTimelapseCard extends LitElement {
     return this.hass?.locale?.language ?? this.hass?.language ?? "en";
   }
 
+  /**
+   * Translate shortcut.
+   *
+   * Keyed off `hass.locale.language`, which is reactive — reading
+   * localStorage directly (HA's pre-2024 source) would leave the card in
+   * the old language until a reload.
+   */
+  private t(key: string, replace?: string): string {
+    return replace === undefined
+      ? localize(key, this.language)
+      : localize(key, this.language, "{v}", replace);
+  }
+
   private get atLive(): boolean {
     return this.position >= this.index.count - 1;
   }
@@ -415,7 +426,8 @@ export class WebcamTimelapseCard extends LitElement {
 
     return html`
       <ha-card .header=${this.config.title ?? nothing}>
-        ${this.renderBanner()} ${this.renderStage(slot)}
+        ${renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
+        ${this.renderStage(slot)}
         ${hasFrames(this.index)
           ? html`
               ${this.renderControls()} ${this.renderTrack(slot)}
@@ -426,23 +438,20 @@ export class WebcamTimelapseCard extends LitElement {
     `;
   }
 
-  private renderBanner(): TemplateResult | typeof nothing {
-    if (!this.staleBundle) return nothing;
-    return html`
-      <div class="banner" role="status">
-        <span>This card was updated. Reload to pick up the new version.</span>
-        <button @click=${() => location.reload()}>Reload</button>
-      </div>
-    `;
-  }
-
   private renderStage(slot: number | null): TemplateResult {
     if (!hasFrames(this.index)) {
       return html`
         <div class="stage">
           <div class="empty">
-            <div>No frames archived yet.</div>
-            <div>The first one appears at the next capture.</div>
+            ${this.indexError
+              ? html`
+                  <div>${this.t("empty.index_failed")}</div>
+                  <div class="detail">${this.indexError}</div>
+                `
+              : html`
+                  <div>${this.t("empty.no_frames")}</div>
+                  <div>${this.t("empty.first_soon")}</div>
+                `}
           </div>
         </div>
       `;
@@ -471,9 +480,9 @@ export class WebcamTimelapseCard extends LitElement {
             </div>`
           : nothing}
         ${this.onGap
-          ? html`<div class="badge gap">NO IMAGE</div>`
+          ? html`<div class="badge gap">${this.t("badge.gap")}</div>`
           : this.atLive
-            ? html`<div class="badge live">LIVE</div>`
+            ? html`<div class="badge live">${this.t("badge.live")}</div>`
             : nothing}
       </div>
     `;
@@ -483,26 +492,26 @@ export class WebcamTimelapseCard extends LitElement {
     return html`
       <div class="controls">
         <ha-icon-button
-          .label=${this.playing ? "Pause" : "Play"}
+          .label=${this.playing ? this.t("controls.pause") : this.t("controls.play")}
           @click=${this.togglePlay}
         >
           <ha-icon .icon=${this.playing ? "mdi:pause" : "mdi:play"}></ha-icon>
         </ha-icon-button>
-        <ha-icon-button .label=${"Previous frame"} @click=${() => this.stepBy(-1)}>
+        <ha-icon-button .label=${this.t("controls.previous")} @click=${() => this.stepBy(-1)}>
           <ha-icon icon="mdi:skip-previous"></ha-icon>
         </ha-icon-button>
-        <ha-icon-button .label=${"Next frame"} @click=${() => this.stepBy(1)}>
+        <ha-icon-button .label=${this.t("controls.next")} @click=${() => this.stepBy(1)}>
           <ha-icon icon="mdi:skip-next"></ha-icon>
         </ha-icon-button>
         <button
           class="speed"
           @click=${this.cycleSpeed}
-          aria-label=${`Playback speed ${this.speed} times`}
+          aria-label=${this.t("controls.speed", String(this.speed))}
         >
           ${this.speed}×
         </button>
         <span class="spacer"></span>
-        <ha-icon-button .label=${"Jump to now"} @click=${this.jumpToNow}>
+        <ha-icon-button .label=${this.t("controls.now")} @click=${this.jumpToNow}>
           <ha-icon icon="mdi:update"></ha-icon>
         </ha-icon-button>
       </div>
@@ -531,7 +540,7 @@ export class WebcamTimelapseCard extends LitElement {
           max=${last}
           step="1"
           .value=${String(this.position)}
-          aria-label="Timeline position"
+          aria-label=${this.t("track.label")}
           aria-valuetext=${slot !== null
             ? formatStamp(slot, this.timeZone, this.language)
             : ""}
@@ -565,9 +574,6 @@ export class WebcamTimelapseCard extends LitElement {
   }
 }
 
-/** Unused for now, but keeps the import honest for the editor step. */
-export const __clockFormatter = formatClock;
-
 const windowWithCards = window as WindowWithCustomCards;
 windowWithCards.customCards = windowWithCards.customCards ?? [];
 windowWithCards.customCards.push({
@@ -576,6 +582,15 @@ windowWithCards.customCards.push({
   description: "Scrub and play back an archived still-image webcam.",
   preview: true,
   documentationURL: "https://github.com/rolandzeiner/webcam-timelapse",
+  // HA 2026.6 entity-first picker. Additive — older HA ignores the key.
+  // Gated on the registry platform so this card only ever suggests itself
+  // for cameras it can actually serve an archive for; suggesting for every
+  // camera entity is the documented anti-pattern.
+  getEntitySuggestion: (hass, entityId) => {
+    if (!entityId.startsWith("camera.")) return null;
+    if (hass.entities?.[entityId]?.platform !== "webcam_timelapse") return null;
+    return { config: { type: `custom:${CARD_TAG}`, camera_entity: entityId } };
+  },
 });
 
 declare global {

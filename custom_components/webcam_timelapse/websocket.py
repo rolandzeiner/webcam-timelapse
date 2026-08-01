@@ -22,6 +22,7 @@ from homeassistant.components.websocket_api.decorators import (
     websocket_command,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 
 from .const import CARD_VERSION, DOMAIN, FRAME_EXTENSION, FRAMES_URL_BASE
 
@@ -47,7 +48,14 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
 @websocket_command(
     {
         vol.Required("type"): WS_TYPE_INDEX,
-        vol.Required("entry_id"): str,
+        # Either identifier works. The card holds a camera entity_id and
+        # cannot turn it into an entry_id on its own: the frontend's
+        # `hass.entities` is the *display* registry, which carries
+        # `platform` but not `config_entry_id`. Resolving it here uses the
+        # real entity registry, and avoids publishing a constant onto the
+        # camera's state where the recorder would store it on every write.
+        vol.Exclusive("entry_id", "target"): str,
+        vol.Exclusive("entity_id", "target"): str,
     }
 )
 @async_response
@@ -65,7 +73,21 @@ async def websocket_index(
         count  — slots from t0 through the newest, inclusive
         gaps   — run-length-encoded [start_slot, length] holes
     """
-    entry_id: str = msg["entry_id"]
+    entry_id: str | None = msg.get("entry_id")
+
+    if entry_id is None:
+        entity_id = msg.get("entity_id")
+        if entity_id is None:
+            connection.send_error(
+                msg["id"], "invalid_format", "Provide entry_id or entity_id"
+            )
+            return
+        registry_entry = er.async_get(hass).async_get(entity_id)
+        if registry_entry is None or registry_entry.config_entry_id is None:
+            connection.send_error(msg["id"], "not_found", f"Unknown entity {entity_id}")
+            return
+        entry_id = registry_entry.config_entry_id
+
     entry = hass.config_entries.async_get_entry(entry_id)
 
     if entry is None or entry.domain != DOMAIN:
