@@ -43,9 +43,9 @@ ruff==0.16.0
 # transitive resolver picks pycares 5.x without intervention.
 # The `camera` platform we ship imports homeassistant.components.camera,
 # which imports turbojpeg at module level. In production HA installs it
-# from camera's own manifest (PyTurboJPEG==1.8.3 as of HA 2026.7); the
+# from camera's own manifest (PyTurboJPEG==2.5.0 as of HA 2026.7); the
 # pytest env has no such resolution step, so it must be declared here or
 # every test that touches the camera platform fails at collection.
 # Pinned exact to match HA core: a mismatch would be a silently different
 # decoder from the one users actually run.
-PyTurboJPEG==1.8.3
+PyTurboJPEG==2.5.0
