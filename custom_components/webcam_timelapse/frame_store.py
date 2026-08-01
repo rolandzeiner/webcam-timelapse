@@ -175,26 +175,6 @@ def build_index(slots: list[int], step: int) -> dict[str, Any]:
     return {"t0": t0, "count": count, "gaps": gaps}
 
 
-def delete_slots(frames_dir: Path, slots: list[int]) -> list[int]:
-    """Delete specific slots regardless of age; return what went.
-
-    Separate from ``prune`` because the reason differs: prune enforces the
-    retention window, this removes frames that are unreachable for a
-    structural reason. Keeping them apart means a bug in one cannot widen
-    the blast radius of the other.
-    """
-    removed: list[int] = []
-    for slot in slots:
-        try:
-            frame_path(frames_dir, slot).unlink()
-        except FileNotFoundError:
-            pass
-        except OSError:
-            continue
-        removed.append(slot)
-    return removed
-
-
 def disk_usage(frames_dir: Path) -> int:
     """Total bytes occupied by stored frames."""
     if not frames_dir.is_dir():

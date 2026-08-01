@@ -314,23 +314,29 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     slots = slots[len(removed) :]
 
             # Frames left behind by a change of capture interval. Only a
-            # coarser interval can strand them (600 is a multiple of 60, so
-            # going finer keeps old frames addressable). They have no
-            # position on the current grid, so the card can never show
-            # them and prune would not reclaim the space until they aged
-            # out — delete them here and say so, rather than let the
-            # counters quietly disagree with what is visible.
+            # coarser interval strands them (600 is a multiple of 60, so
+            # going finer keeps old frames addressable); they have no
+            # position on the current grid, so the timeline cannot show
+            # them.
+            #
+            # They are deliberately NOT deleted. Switching a fortnight of
+            # one-minute captures to five minutes would orphan ~16,000
+            # frames at once, and deleting that much history because a
+            # dropdown changed is not a trade the user agreed to. Left in
+            # place they cost only disk that retention reclaims on the
+            # normal schedule, and the decision stays reversible — going
+            # back to the finer interval makes them addressable again.
             slots, off_grid = frame_store.partition_grid(slots, self.step)
             if off_grid:
-                _LOGGER.warning(
-                    "Discarding %d frame(s) that do not fit the %d-minute "
-                    "capture grid for %s. They were captured at a different "
-                    "interval and cannot be addressed by the timeline.",
+                _LOGGER.info(
+                    "%s: %d stored frame(s) sit off the %d-minute capture "
+                    "grid and are hidden from the timeline. They were taken "
+                    "at a different interval; they stay on disk and expire "
+                    "with the retention window.",
+                    self._entry.title,
                     len(off_grid),
                     self.interval_minutes,
-                    self._entry.title,
                 )
-                frame_store.delete_slots(self.frames_dir, off_grid)
 
             return {
                 "index": frame_store.build_index(slots, self.step),
@@ -338,7 +344,7 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "bytes_used": frame_store.disk_usage(self.frames_dir),
                 "newest_slot": slots[-1] if slots else None,
                 "oldest_slot": slots[0] if slots else None,
-                "off_grid_discarded": len(off_grid),
+                "off_grid_hidden": len(off_grid),
             }
 
         state = await self.hass.async_add_executor_job(_work)

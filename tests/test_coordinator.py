@@ -377,3 +377,60 @@ async def test_interval_drives_the_step(
 
     assert entry.runtime_data.step == 300
     assert entry.runtime_data.data["step"] == 300
+
+
+async def test_off_grid_frames_are_hidden_but_never_deleted(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    """Changing to a coarser interval must not destroy history.
+
+    A fortnight of one-minute captures switched to five minutes orphans
+    ~16,000 frames. They are unreachable by the timeline, but deleting
+    that much history because a dropdown changed is not a trade the user
+    agreed to — and it would be irreversible. They stay on disk, expire
+    with the retention window, and become addressable again if the finer
+    interval comes back.
+    """
+    entry = make_entry(**{CONF_CAPTURE_INTERVAL: 5})
+    assert await setup_entry(hass, entry)
+    coordinator = entry.runtime_data
+
+    base = 1_785_588_600  # a multiple of 300
+    on_grid = [base, base + 300]
+    off_grid = [base + 60, base + 120, base + 360]
+    for slot in on_grid + off_grid:
+        frame_store.write_frame(coordinator.frames_dir, slot, b"x")
+
+    await coordinator.async_refresh()
+
+    # Every file survives...
+    assert frame_store.scan_slots(coordinator.frames_dir) == sorted(on_grid + off_grid)
+    # ...but only the addressable ones are described by the timeline.
+    assert coordinator.data["index"] == {"t0": base, "count": 2, "gaps": []}
+    assert coordinator.data["off_grid_hidden"] == 3
+
+
+async def test_switching_back_to_a_finer_interval_restores_them(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    """The reason not to delete: the change has to be reversible."""
+    entry = make_entry(**{CONF_CAPTURE_INTERVAL: 5})
+    assert await setup_entry(hass, entry)
+    coordinator = entry.runtime_data
+
+    base = 1_785_588_600
+    for slot in (base, base + 60, base + 120, base + 300):
+        frame_store.write_frame(coordinator.frames_dir, slot, b"x")
+
+    await coordinator.async_refresh()
+    assert coordinator.data["index"]["count"] == 2
+    assert coordinator.data["off_grid_hidden"] == 2
+
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.data, CONF_CAPTURE_INTERVAL: 1}
+    )
+    await hass.async_block_till_done()
+
+    # All four frames are back on the timeline at the finer interval.
+    assert entry.runtime_data.data["index"]["count"] == 6
+    assert entry.runtime_data.data["off_grid_hidden"] == 0

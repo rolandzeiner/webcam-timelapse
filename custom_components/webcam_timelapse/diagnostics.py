@@ -78,6 +78,7 @@ async def async_get_config_entry_diagnostics(
             "newest_slot": data.get("newest_slot"),
             "index_count": index.get("count"),
             "gap_count": len(index.get("gaps") or []),
+            "off_grid_hidden": data.get("off_grid_hidden"),
             "online": data.get("online"),
             "frozen_ticks": data.get("frozen_ticks"),
             # Whether frames are being written at all, without disclosing
