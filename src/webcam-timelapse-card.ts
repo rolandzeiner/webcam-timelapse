@@ -29,9 +29,27 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   show_dayticks?: boolean;
 }
 
-const SPEEDS = [1, 2, 4, 8] as const;
+/**
+ * Playback multipliers.
+ *
+ * Goes well past 8x because the useful range depends on the capture
+ * interval, which the user controls. At a ten-minute cadence a fortnight
+ * is ~2000 frames and 8x is plenty; at one minute it is ~20,000, and 8x
+ * would take twenty minutes to play through.
+ */
+const SPEEDS = [1, 2, 4, 8, 16, 32] as const;
 /** Milliseconds per frame at 1x. */
 const BASE_FRAME_MS = 500;
+/**
+ * Floor on the frame interval, ~30 fps.
+ *
+ * Above this the browser cannot decode a ~50 KB WebP per frame anyway, so
+ * asking for more just queues work that arrives late and makes playback
+ * stutter rather than speeding it up. Advancing is gated on decode, so the
+ * floor keeps the request rate matched to what the device can actually
+ * paint.
+ */
+const MIN_FRAME_MS = 33;
 /** Ignore image loads while the thumb has moved within this window. */
 const SCRUB_QUIET_MS = 80;
 
@@ -227,7 +245,7 @@ export class WebcamTimelapseCard extends LitElement {
   // --- playback ----------------------------------------------------
 
   private get frameDelay(): number {
-    return BASE_FRAME_MS / this.speed;
+    return Math.max(BASE_FRAME_MS / this.speed, MIN_FRAME_MS);
   }
 
   private startPlayback(): void {
