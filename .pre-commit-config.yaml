@@ -27,6 +27,28 @@ repos:
           - homeassistant
           - voluptuous
 
+  # Workflow linting lives here rather than in CI, deliberately.
+  #
+  # Nothing else in the portfolio validates workflow files — CodeQL runs
+  # python and javascript-typescript only, and its Actions analysis is
+  # security-focused anyway, so it would not catch an invalid expression
+  # context. actionlint would: it is what identified the job-level
+  # `if: hashFiles(...)` in the scaffold template, which GitHub rejects at
+  # parse time while reporting a bare failure with zero jobs.
+  #
+  # Not added to validate.yml because that workflow runs on a nightly cron.
+  # An unpinned linter shipping a new rule turns every repo red overnight
+  # with no code change — precisely what ruff 0.16.0 did in July. Here it
+  # runs only when a workflow file is staged, costs no CI seconds, and
+  # reports at the moment the file is edited.
+  #
+  # `actionlint-system` uses the Homebrew binary, so no Go toolchain or
+  # Docker pull. Keep `rev` equal to that installed version.
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint-system
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:

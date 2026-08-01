@@ -16,8 +16,16 @@ Card side:
 npm install
 ```
 
-Optionally `pre-commit install` — the hooks run the same ruff and mypy the
-CI does, at the same pinned versions.
+Optionally `pre-commit install`. The hooks run the same ruff and mypy CI
+does, at the same pinned versions, plus `actionlint` on any workflow file
+you touch.
+
+`actionlint` is deliberately **not** in CI. `validate.yml` runs on a nightly
+cron, and an unpinned linter shipping a new rule turns the repo red overnight
+with no code change — which is exactly what ruff 0.16.0 did in July. As a
+hook it costs no CI time and reports while you are still editing the file.
+It uses your system binary (`brew install actionlint`); keep the `rev` in
+`.pre-commit-config.yaml` equal to `actionlint --version`.
 
 ## Verification gate
 
