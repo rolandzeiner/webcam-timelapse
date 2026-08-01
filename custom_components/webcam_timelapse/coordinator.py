@@ -89,8 +89,8 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         username = config.get(CONF_USERNAME)
         password = config.get(CONF_PASSWORD)
-        self._auth: aiohttp.BasicAuth | None = (
-            aiohttp.BasicAuth(username, password or "") if username else None
+        self._auth_header: str | None = (
+            aiohttp.encode_basic_auth(username, password or "") if username else None
         )
 
         custom_path = config.get(CONF_FRAMES_PATH)
@@ -173,6 +173,12 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         boundaries as before rather than starting a fresh, offset series.
         """
         self.paused = paused
+        # Patch the cached snapshot too. Listeners are notified immediately,
+        # but `data` is only rebuilt on a refresh — without this a consumer
+        # that reads `coordinator.data["paused"]` right after pausing gets
+        # the previous value, which is exactly when it matters.
+        if self.data is not None:
+            self.data["paused"] = paused
         self.async_update_listeners()
 
     async def async_purge_frames(self) -> int:
@@ -202,7 +208,7 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._session,
             self.image_url,
             extra_headers=self._extra_headers,
-            auth=self._auth,
+            auth_header=self._auth_header,
             verify_ssl=self.verify_ssl,
         )
         if result.raw is None:
@@ -242,7 +248,7 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 validators=None if force else self._validators,
                 previous_digest=None if force else self._last_digest,
                 extra_headers=self._extra_headers,
-                auth=self._auth,
+                auth_header=self._auth_header,
                 verify_ssl=self.verify_ssl,
             )
             self._validators = result.validators

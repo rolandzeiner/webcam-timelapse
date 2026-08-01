@@ -98,16 +98,14 @@ async def async_probe_url(
     login page or an HTML error with a 200.
     """
     session = async_get_clientsession(hass)
-    auth = aiohttp.BasicAuth(username, password or "") if username else None
+    headers = request_headers(USER_AGENT)
+    if username:
+        headers["Authorization"] = aiohttp.encode_basic_auth(username, password or "")
     timeout = aiohttp.ClientTimeout(total=FETCH_TIMEOUT_SECONDS)
 
     try:
         response = await session.get(
-            url,
-            headers=request_headers(USER_AGENT),
-            timeout=timeout,
-            auth=auth,
-            ssl=verify_ssl,
+            url, headers=headers, timeout=timeout, ssl=verify_ssl
         )
         async with response:
             if response.status in (401, 403):

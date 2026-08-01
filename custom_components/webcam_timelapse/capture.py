@@ -108,7 +108,7 @@ async def fetch_frame(
     validators: CacheValidators | None = None,
     previous_digest: str | None = None,
     extra_headers: dict[str, str] | None = None,
-    auth: aiohttp.BasicAuth | None = None,
+    auth_header: str | None = None,
     verify_ssl: bool = True,
 ) -> FetchResult:
     """Fetch one frame, or report that nothing changed.
@@ -120,12 +120,18 @@ async def fetch_frame(
     validators = validators or CacheValidators()
     headers = request_headers(USER_AGENT, extra_headers)
     headers.update(validators.to_request_headers())
+    if auth_header:
+        # Built with aiohttp.encode_basic_auth rather than passing a
+        # BasicAuth object: that class is deprecated and disappears in
+        # aiohttp 4.0, and inheriting that kind of rot is precisely how the
+        # prior art broke on four separate HA releases.
+        headers["Authorization"] = auth_header
 
     timeout = aiohttp.ClientTimeout(total=FETCH_TIMEOUT_SECONDS)
 
     try:
         response = await session.get(
-            url, headers=headers, timeout=timeout, auth=auth, ssl=verify_ssl
+            url, headers=headers, timeout=timeout, ssl=verify_ssl
         )
         async with response:
             if response.status == 304:
