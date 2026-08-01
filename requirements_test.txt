@@ -42,10 +42,18 @@ ruff==0.16.0
 # natively (no more `ares_query_a_result` reference), so the
 # transitive resolver picks pycares 5.x without intervention.
 # The `camera` platform we ship imports homeassistant.components.camera,
-# which imports turbojpeg at module level. In production HA installs it
-# from camera's own manifest (PyTurboJPEG==1.8.3 as of HA 2026.7); the
-# pytest env has no such resolution step, so it must be declared here or
-# every test that touches the camera platform fails at collection.
-# Pinned exact to match HA core: a mismatch would be a silently different
-# decoder from the one users actually run.
+# which imports turbojpeg at module level. In production HA installs it from
+# camera's own manifest; the pytest env has no such resolution step, so it
+# must be declared here or every test touching the camera platform fails at
+# collection.
+#
+# This pin MUST equal whatever `homeassistant/components/camera/manifest.json`
+# requires — currently PyTurboJPEG==1.8.3 on HA 2026.7. It tracks HA core, not
+# the newest release: testing against a decoder users never run defeats the
+# point of pinning it. Verify with:
+#   python -c "import json;print(json.load(open('.venv/lib/python3.14/site-packages/homeassistant/components/camera/manifest.json'))['requirements'])"
+#
+# Dependabot is told to ignore it (.github/dependabot.yml). It bumped this to
+# 2.5.0 once and rewrote the comment above to claim HA required 2.5.0, which
+# was false — HA core was still on 1.8.3. Raise it only when HA core does.
 PyTurboJPEG==1.8.3
