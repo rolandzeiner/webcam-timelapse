@@ -312,12 +312,33 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 removed = frame_store.prune(self.frames_dir, slots, cutoff)
                 if removed:
                     slots = slots[len(removed) :]
+
+            # Frames left behind by a change of capture interval. Only a
+            # coarser interval can strand them (600 is a multiple of 60, so
+            # going finer keeps old frames addressable). They have no
+            # position on the current grid, so the card can never show
+            # them and prune would not reclaim the space until they aged
+            # out — delete them here and say so, rather than let the
+            # counters quietly disagree with what is visible.
+            slots, off_grid = frame_store.partition_grid(slots, self.step)
+            if off_grid:
+                _LOGGER.warning(
+                    "Discarding %d frame(s) that do not fit the %d-minute "
+                    "capture grid for %s. They were captured at a different "
+                    "interval and cannot be addressed by the timeline.",
+                    len(off_grid),
+                    self.interval_minutes,
+                    self._entry.title,
+                )
+                frame_store.delete_slots(self.frames_dir, off_grid)
+
             return {
                 "index": frame_store.build_index(slots, self.step),
                 "frame_count": len(slots),
                 "bytes_used": frame_store.disk_usage(self.frames_dir),
                 "newest_slot": slots[-1] if slots else None,
                 "oldest_slot": slots[0] if slots else None,
+                "off_grid_discarded": len(off_grid),
             }
 
         state = await self.hass.async_add_executor_job(_work)

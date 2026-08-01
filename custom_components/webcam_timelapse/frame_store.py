@@ -124,6 +124,26 @@ def prune(frames_dir: Path, slots: list[int], cutoff: int) -> list[int]:
     return removed
 
 
+def partition_grid(slots: list[int], step: int) -> tuple[list[int], list[int]]:
+    """Split stored slots into (on-grid, off-grid) for the given step.
+
+    ``slot_for`` always returns a multiple of ``step``, so a frame belongs
+    to the current grid exactly when ``slot % step == 0``.
+
+    Off-grid frames appear when the user changes the capture interval on
+    an existing archive. Going *finer* is harmless — 600 is a multiple of
+    60, so ten-minute frames stay addressable on a one-minute grid, they
+    just show up with gaps between them. Going *coarser* is not: a frame
+    at :01 past the hour has no position on a ten-minute grid, and the
+    dense ``t0 + i * step`` addressing the card relies on cannot reach it.
+    """
+    on_grid: list[int] = []
+    off_grid: list[int] = []
+    for slot in slots:
+        (on_grid if slot % step == 0 else off_grid).append(slot)
+    return on_grid, off_grid
+
+
 def build_index(slots: list[int], step: int) -> dict[str, Any]:
     """Describe the archive as a dense grid plus run-length-encoded gaps.
 
@@ -134,7 +154,12 @@ def build_index(slots: list[int], step: int) -> dict[str, Any]:
 
     Leading and trailing gaps do not exist by construction — ``t0`` is the
     oldest surviving frame and ``count`` ends at the newest.
+
+    Off-grid slots are discarded rather than trusted: including them makes
+    ``count`` too small and silently strands frames at positions the card
+    can never address.
     """
+    slots, _off_grid = partition_grid(slots, step)
     if not slots:
         return {"t0": None, "count": 0, "gaps": []}
 
@@ -148,6 +173,26 @@ def build_index(slots: list[int], step: int) -> dict[str, Any]:
             gaps.append([(previous - t0) // step + 1, distance - 1])
 
     return {"t0": t0, "count": count, "gaps": gaps}
+
+
+def delete_slots(frames_dir: Path, slots: list[int]) -> list[int]:
+    """Delete specific slots regardless of age; return what went.
+
+    Separate from ``prune`` because the reason differs: prune enforces the
+    retention window, this removes frames that are unreachable for a
+    structural reason. Keeping them apart means a bug in one cannot widen
+    the blast radius of the other.
+    """
+    removed: list[int] = []
+    for slot in slots:
+        try:
+            frame_path(frames_dir, slot).unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            continue
+        removed.append(slot)
+    return removed
 
 
 def disk_usage(frames_dir: Path) -> int:

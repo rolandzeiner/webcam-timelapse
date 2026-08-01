@@ -107,3 +107,69 @@ def test_one_minute_step() -> None:
     step = 60
     present = [T0, T0 + 60, T0 + 240]
     assert build_index(present, step) == {"t0": T0, "count": 5, "gaps": [[2, 2]]}
+
+
+# --- capture-interval changes ---------------------------------------------
+#
+# The interval is a user-editable option, so an archive can legitimately
+# contain frames captured on a different grid. Going FINER is harmless:
+# 600 is a multiple of 60, so ten-minute frames keep a position on a
+# one-minute grid. Going COARSER strands them, and the failure is silent —
+# the count comes out too small and the extra frames simply never render.
+
+
+def test_finer_interval_keeps_old_frames_addressable() -> None:
+    """10 min -> 1 min: the old frames stay, separated by a 9-slot gap."""
+    slots = [T0, T0 + 600, T0 + 660, T0 + 720]
+
+    assert build_index(slots, 60) == {"t0": T0, "count": 13, "gaps": [[1, 9]]}
+
+
+def test_coarser_interval_discards_unaddressable_frames() -> None:
+    """1 min -> 10 min: off-grid frames must not corrupt the count.
+
+    Before this was handled, the index reported count=2 for four stored
+    frames, so two of them became permanently invisible with no error
+    anywhere.
+    """
+    slots = [T0, T0 + 600, T0 + 660, T0 + 720]
+
+    index = build_index(slots, 600)
+
+    # Only the two frames that sit on the 10-minute grid are described,
+    # and every position it claims resolves to a real file.
+    assert index == {"t0": T0, "count": 2, "gaps": []}
+    for position in range(index["count"]):
+        assert index["t0"] + position * 600 in slots
+
+
+def test_partition_splits_on_grid_from_off_grid() -> None:
+    from custom_components.webcam_timelapse.frame_store import partition_grid
+
+    slots = [T0, T0 + 60, T0 + 600, T0 + 660]
+
+    on_grid, off_grid = partition_grid(slots, 600)
+    assert on_grid == [T0, T0 + 600]
+    assert off_grid == [T0 + 60, T0 + 660]
+
+    # Every slot is on-grid at the finer interval.
+    on_grid, off_grid = partition_grid(slots, 60)
+    assert on_grid == slots
+    assert off_grid == []
+
+
+def test_every_index_position_resolves_to_a_stored_frame() -> None:
+    """The property that actually matters, over a messy mixed archive."""
+    slots = sorted({T0, T0 + 60, T0 + 120, T0 + 600, T0 + 1200, T0 + 1260})
+
+    for step in (60, 600):
+        index = build_index(slots, step)
+        if index["t0"] is None:
+            continue
+        missing: set[int] = set()
+        for start, length in index["gaps"]:
+            missing.update(range(start, start + length))
+        for position in range(index["count"]):
+            slot = index["t0"] + position * step
+            if position not in missing:
+                assert slot in slots, f"step={step} position={position}"
