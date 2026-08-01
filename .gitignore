@@ -170,3 +170,6 @@ private_*.py
 # if your integration does not use the dev-fixture pattern.
 # ───────────────────────────────────────────────────────────────────
 custom_components/*/_dev_fixture.py
+
+# Card toolchain
+node_modules/

@@ -7,7 +7,7 @@ import json from "@rollup/plugin-json";
 const dev = !!process.env.ROLLUP_WATCH;
 
 const banner =
-  "// Skill Demo Austria Card — bundled by Rollup. Edit sources in src/, then `npm run build`.";
+  "// Webcam Timelapse Card — bundled by Rollup. Edit sources in src/, then `npm run build`.";
 
 // Suppress noisy node_modules `this` warnings from CommonJS internals
 // after Rollup converts them. Real warnings still surface.
@@ -22,9 +22,9 @@ const onwarn = (warning, warn) => {
 };
 
 export default {
-  input: "src/skill-demo-austria-card.ts",
+  input: "src/webcam-timelapse-card.ts",
   output: {
-    file: "custom_components/skill_demo_austria/www/skill-demo-austria-card.js",
+    file: "custom_components/webcam_timelapse/www/webcam-timelapse-card.js",
     format: "es",
     sourcemap: dev,
     banner,
@@ -37,7 +37,7 @@ export default {
     commonjs(),
     typescript(),
     json(),
-    !dev && terser({ format: { comments: /Skill Demo Austria Card/ } }),
+    !dev && terser({ format: { comments: /Webcam Timelapse Card/ } }),
   ].filter(Boolean),
   onwarn,
 };
