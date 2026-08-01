@@ -476,10 +476,13 @@ export const cardStyles = css`
     }
   }
 
-  /* The frame fade is NOT disabled here. Its transition is an inline
-     style, and inline beats a stylesheet rule regardless of the media
-     query, so a rule here would look correct and do nothing. The check
-     lives in prefersReducedMotion(), read at swap time. */
+  /* prefers-reduced-motion is handled entirely in TypeScript, not here.
+
+     The frame fade's transition is an inline style, and inline beats a
+     stylesheet rule regardless of the media query, so a rule in this
+     file would look correct and do nothing. fadeDurationMs() returns 0
+     instead, and startAutoplayIfRequested() refuses to start playback,
+     both via prefersReducedMotion(). */
 
   @media (forced-colors: active) {
     .fill,

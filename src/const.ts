@@ -6,7 +6,7 @@
  * CARD_VERSION to that manifest, and tests/test_versions.py enforces the
  * remaining pair. Bump both in the same commit.
  */
-export const CARD_VERSION = "0.3.4";
+export const CARD_VERSION = "0.3.5";
 
 /** Custom element tag, and the `type:` users put in their card config. */
 export const CARD_TAG = "webcam-timelapse-card";

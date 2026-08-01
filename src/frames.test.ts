@@ -11,6 +11,7 @@ import {
   positionAt,
   prefetchDepth,
   presenceBitmap,
+  shouldAutoplay,
   slotAt,
   timeAt,
   urlAt,
@@ -134,6 +135,29 @@ describe("prefetchDepth", () => {
   it("is bounded at both ends so it cannot starve the current frame", () => {
     expect(prefetchDepth(0.25)).toBe(4);
     expect(prefetchDepth(99)).toBe(16);
+  });
+});
+
+describe("shouldAutoplay", () => {
+  const base = { configured: true, reducedMotion: false, alreadyPlaying: false };
+
+  it("starts when the card asks for it", () => {
+    expect(shouldAutoplay(base)).toBe(true);
+  });
+
+  it("stays put when it does not", () => {
+    expect(shouldAutoplay({ ...base, configured: false })).toBe(false);
+  });
+
+  it("refuses under prefers-reduced-motion, whatever the config says", () => {
+    // The override the option's own help text promises: a card that
+    // begins animating by itself is the exact thing that setting exists
+    // to prevent.
+    expect(shouldAutoplay({ ...base, reducedMotion: true })).toBe(false);
+  });
+
+  it("does not restart something already playing", () => {
+    expect(shouldAutoplay({ ...base, alreadyPlaying: true })).toBe(false);
   });
 });
 
