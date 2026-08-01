@@ -39,6 +39,7 @@ import {
   prefetchDepth,
   PrefetchRing,
   presenceBitmap,
+  shouldAutoplay,
   urlAt,
 } from "./frames";
 import {
@@ -115,6 +116,7 @@ export class WebcamTimelapseCard extends LitElement {
   private gains: Float32Array = new Float32Array(0);
   private versionChecked = false;
   private rulerCache?: { key: string; days: DayTick[]; times: TimeTick[] };
+  private autoplayPending = true;
 
   @query("img.layer.a") private layerA?: HTMLImageElement;
   @query("img.layer.b") private layerB?: HTMLImageElement;
@@ -264,7 +266,10 @@ export class WebcamTimelapseCard extends LitElement {
       // The layers only exist once the index says there is something to
       // show, so the first paint has to be kicked after this render.
       await this.updateComplete;
-      void this.swapInFrame();
+      // Autoplay rewinds to the first frame and paints it itself, so a
+      // swap here as well would show the live edge for one frame before
+      // jumping backwards.
+      if (!this.startAutoplayIfRequested()) void this.swapInFrame();
       void this.refreshLuma();
       this.indexError = undefined;
     } catch (error) {
@@ -412,6 +417,46 @@ export class WebcamTimelapseCard extends LitElement {
     // Invalidating the token is what stops the loop; it checks after
     // every await.
     this.playToken = undefined;
+  }
+
+  /**
+   * Honour `autoplay`, once, and only when it is safe to.
+   *
+   * Returns whether playback was actually started, so the caller can skip
+   * the paint this would otherwise duplicate.
+   *
+   * Deferred until the index reports frames rather than run at connect
+   * time: a freshly added camera has an empty archive, and flipping
+   * `playing` with nothing to play would leave the button showing pause
+   * over a still card.
+   *
+   * One-shot by design. The index refreshes on a timer, and re-evaluating
+   * there would restart playback every few minutes on top of a user who
+   * had deliberately paused. The flag clears as soon as frames exist,
+   * whether or not autoplay was configured, so it can never fire later.
+   *
+   * prefers-reduced-motion overrides the config outright — a card that
+   * begins animating on its own is exactly what that setting exists to
+   * prevent, and the option's own help text promises this.
+   */
+  private startAutoplayIfRequested(): boolean {
+    if (!this.autoplayPending || !hasFrames(this.index)) return false;
+    this.autoplayPending = false;
+
+    if (
+      !shouldAutoplay({
+        configured: this.config?.autoplay === true,
+        reducedMotion: prefersReducedMotion(),
+        alreadyPlaying: this.playing,
+      })
+    ) {
+      return false;
+    }
+    // Via togglePlay so autoplay inherits the rewind rule: the playhead
+    // rests at the live edge, and there is nothing forward to advance
+    // into, so starting there would stop on the first tick.
+    this.togglePlay();
+    return true;
   }
 
   private togglePlay(): void {

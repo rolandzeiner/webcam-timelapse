@@ -162,6 +162,25 @@ export const FADE_MS = 120;
 export const FADE_MAX_SPEED = 4;
 
 /**
+ * Whether a card configured to autoplay may actually start.
+ *
+ * Split out from the card so the one rule with a legal-ish flavour to it
+ * is testable: prefers-reduced-motion overrides the config outright. A
+ * card that begins animating on its own is precisely what that setting
+ * exists to prevent, and the option's help text promises the override.
+ *
+ * The caller owns the one-shot arming and the "are there frames yet"
+ * check; this is only the decision.
+ */
+export function shouldAutoplay(state: {
+  configured: boolean;
+  reducedMotion: boolean;
+  alreadyPlaying: boolean;
+}): boolean {
+  return state.configured && !state.reducedMotion && !state.alreadyPlaying;
+}
+
+/**
  * How long the incoming frame should take to fade in, in milliseconds.
  *
  * Zero means a hard cut.
