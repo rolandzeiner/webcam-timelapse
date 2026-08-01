@@ -22,6 +22,10 @@ export interface HassEntity {
  *  in `getEntitySuggestion`. */
 export interface HassEntityRegistryEntry {
   platform?: string;
+  /** Which config entry owns this entity. HA's frontend already exposes
+   *  this, so the card can resolve an entry_id from an entity_id without
+   *  the integration having to publish a redundant state attribute. */
+  config_entry_id?: string;
   [key: string]: unknown;
 }
 
