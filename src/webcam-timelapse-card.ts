@@ -22,7 +22,14 @@ import {
   radiusForStrength,
 } from "./deflicker";
 import { localize } from "./localize/localize";
-import { dayTicks, formatClock, formatStamp, type DayTick } from "./dayticks";
+import {
+  dayTicks,
+  formatClock,
+  formatStamp,
+  timeTicks,
+  type DayTick,
+  type TimeTick,
+} from "./dayticks";
 import {
   EMPTY_INDEX,
   fadeDurationMs,
@@ -107,6 +114,7 @@ export class WebcamTimelapseCard extends LitElement {
   private swapChain: Promise<void> = Promise.resolve();
   private gains: Float32Array = new Float32Array(0);
   private versionChecked = false;
+  private rulerCache?: { key: string; days: DayTick[]; times: TimeTick[] };
 
   @query("img.layer.a") private layerA?: HTMLImageElement;
   @query("img.layer.b") private layerB?: HTMLImageElement;
@@ -666,7 +674,7 @@ export class WebcamTimelapseCard extends LitElement {
         ${hasFrames(this.index)
           ? html`
               ${this.renderControls()} ${this.renderTrack(slot)}
-              ${this.config.show_dayticks ? this.renderDayTicks() : nothing}
+              ${this.config.show_dayticks ? this.renderRuler() : nothing}
             `
           : nothing}
       </ha-card>
@@ -865,22 +873,60 @@ export class WebcamTimelapseCard extends LitElement {
     `;
   }
 
-  private renderDayTicks(): TemplateResult {
-    const ticks: DayTick[] = dayTicks(
-      this.index,
+  /**
+   * Day and time ticks for the current window, recomputed only when an
+   * input actually changes.
+   *
+   * The day scan is O(frames) — it has to see every slot to notice a date
+   * change — and this runs inside render(), which fires on every frame
+   * swap. At one-minute capture that is a fortnight of slots scanned
+   * fifteen times a second during 8x playback, for a result that changes
+   * only when the archive grows or the card is resized.
+   */
+  private rulerFor(): { days: DayTick[]; times: TimeTick[] } {
+    const key = [
+      this.index.t0,
+      this.index.count,
+      this.index.step,
+      Math.round(this.trackWidth),
       this.timeZone,
       this.language,
-      this.trackWidth,
-    );
+    ].join("|");
+    if (this.rulerCache?.key !== key) {
+      this.rulerCache = {
+        key,
+        days: dayTicks(this.index, this.timeZone, this.language, this.trackWidth),
+        times: timeTicks(this.index, this.timeZone, this.language, this.trackWidth),
+      };
+    }
+    return this.rulerCache;
+  }
+
+  private renderRuler(): TemplateResult {
+    const { days, times } = this.rulerFor();
     return html`
-      <div class="dayticks" aria-hidden="true">
-        ${ticks.map(
+      <div class="ruler" aria-hidden="true">
+        ${times.map(
+          (tick) => html`
+            <span class="tick minor" style="left:${tick.left}%">
+              <span class="mark"></span>
+              ${tick.label
+                ? html`<span class="lab time">${tick.label}</span>`
+                : nothing}
+            </span>
+          `,
+        )}
+        ${days.map(
           (tick) => html`
             <span
-              class="tick ${tick.isMonthStart ? "month" : ""}"
+              class="tick ${tick.isMonthStart ? "month" : "day"}"
               style="left:${tick.left}%"
-              >${tick.label}</span
             >
+              <span class="mark"></span>
+              ${tick.label
+                ? html`<span class="lab date">${tick.label}</span>`
+                : nothing}
+            </span>
           `,
         )}
       </div>

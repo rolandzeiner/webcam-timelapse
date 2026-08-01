@@ -288,36 +288,67 @@ export const cardStyles = css`
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
-  /* --- day ticks --------------------------------------------------- */
+  /* --- ruler ------------------------------------------------------- */
 
-  .dayticks {
+  /* Two label rows, not one. Clock labels sit above date labels so the
+     two families can never collide horizontally, which means each only
+     has to be thinned against its own kind. */
+  .ruler {
     position: relative;
-    height: 20px;
+    height: 34px;
     margin: 0 12px 8px;
   }
 
+  /* Zero-width anchors: the tick carries only a position, and its
+     children do their own centring. Translating the anchor as well would
+     shift every child twice. */
   .tick {
     position: absolute;
     top: 0;
+    width: 0;
+    height: 100%;
+  }
+
+  .mark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 4px;
+    transform: translateX(-50%);
+    background: var(--wtl-divider);
+  }
+
+  .tick.day .mark {
+    height: 7px;
+    background: var(--wtl-muted);
+  }
+
+  .tick.month .mark {
+    height: 10px;
+    width: 2px;
+    background: var(--wtl-muted);
+  }
+
+  .lab {
+    position: absolute;
+    left: 0;
     transform: translateX(-50%);
     font-size: var(--ha-font-size-xs, 0.7rem);
     color: var(--wtl-muted);
     white-space: nowrap;
+    pointer-events: none;
   }
 
-  .tick::before {
-    content: "";
-    display: block;
-    width: 1px;
-    height: 5px;
-    margin: 0 auto 2px;
-    background: var(--wtl-divider);
+  .lab.time {
+    top: 12px;
+    /* Clock digits must not shuffle the label's centre as they change. */
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
   }
 
-  .tick.month::before {
-    height: 8px;
-    width: 2px;
-    background: var(--wtl-muted);
+  .lab.date {
+    top: 23px;
   }
 
   /* --- editor ------------------------------------------------------ */
