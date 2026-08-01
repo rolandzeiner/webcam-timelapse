@@ -124,11 +124,14 @@ jobs:
     # is valid JS. Catches TS errors, missing deps, and high-severity npm
     # advisories before they reach the served www/webcam-timelapse-card.js.
     #
-    # Skipped for Python-only integrations: the job-level `if` checks for
-    # a top-level package.json so scaffolders that didn't apply the
-    # ha-lovelace-card skill don't see a spurious failure on every push.
+    # The scaffold guarded this with `if: hashFiles('package.json') != ''`
+    # so Python-only integrations skip it. That is invalid: hashFiles is
+    # not available in a job-level `if` (only always/success/failure/
+    # cancelled are), and GitHub rejects the whole workflow at parse time
+    # with a startup failure and zero jobs — which reads as "everything
+    # failed" rather than "the file is malformed". This repo always ships
+    # a card, so the guard is unnecessary here.
     runs-on: ubuntu-latest
-    if: hashFiles('package.json') != ''
     steps:
       - uses: actions/checkout@v7
       - name: Guard against backticks inside Lit css/html templates
