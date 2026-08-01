@@ -49,7 +49,9 @@
     "helper": {
       "camera_entity": "Only cameras created by this integration have an archive to scrub.",
       "graph_hours": "How much history the sparkline shows around the playhead.",
-      "autoplay": "Ignored when your system asks for reduced motion."
-    }
+      "autoplay": "Ignored when your system asks for reduced motion.",
+      "deflicker": "Evens out cloud-driven brightness jumps during playback. 0 turns it off."
+    },
+    "deflicker": "Smooth brightness"
   }
 }

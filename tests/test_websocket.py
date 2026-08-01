@@ -182,3 +182,69 @@ async def test_index_rejects_both_identifiers_at_once(
     response = await client.receive_json()
 
     assert not response["success"]
+
+
+# --- luminance ------------------------------------------------------------
+
+
+async def test_luma_returns_a_grid_aligned_array(
+    hass: HomeAssistant, hass_ws_client, mock_fetch: AsyncMock
+) -> None:
+    """The card indexes this exactly like the frame grid, so it must align."""
+    from custom_components.webcam_timelapse.websocket import WS_TYPE_LUMA
+
+    entry = make_entry()
+    assert await setup_entry(hass, entry)
+    coordinator = entry.runtime_data
+
+    t0 = 1_785_585_600
+    # Frames at positions 0 and 2; position 1 is a gap.
+    for position, luma in ((0, 130), (2, 170)):
+        slot = t0 + position * 600
+        frame_store.write_frame(coordinator.frames_dir, slot, b"x")
+        frame_store.append_luma(coordinator.frames_dir, slot, luma)
+    await coordinator.async_refresh()
+
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": WS_TYPE_LUMA, "entity_id": "camera.test_cam_live_view"}
+    )
+    response = await client.receive_json()
+
+    assert response["success"], response
+    # null at the gap, so index i of this array is index i of the timeline.
+    assert response["result"]["luma"] == [130, None, 170]
+    assert response["result"]["t0"] == t0
+    assert response["result"]["step"] == 600
+
+
+async def test_luma_on_an_empty_archive(
+    hass: HomeAssistant, hass_ws_client, mock_fetch: AsyncMock
+) -> None:
+    from custom_components.webcam_timelapse.websocket import WS_TYPE_LUMA
+
+    assert await setup_entry(hass, make_entry())
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {"type": WS_TYPE_LUMA, "entity_id": "camera.test_cam_live_view"}
+    )
+    response = await client.receive_json()
+
+    assert response["success"]
+    assert response["result"]["luma"] == []
+
+
+async def test_luma_for_an_unknown_entity(
+    hass: HomeAssistant, hass_ws_client, mock_fetch: AsyncMock
+) -> None:
+    from custom_components.webcam_timelapse.websocket import WS_TYPE_LUMA
+
+    assert await setup_entry(hass, make_entry())
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id({"type": WS_TYPE_LUMA, "entity_id": "camera.nope"})
+    response = await client.receive_json()
+
+    assert not response["success"]
+    assert response["error"]["code"] == "not_found"

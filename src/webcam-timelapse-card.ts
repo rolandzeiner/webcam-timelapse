@@ -8,7 +8,19 @@ import { LitElement, html, nothing, type PropertyValues, type TemplateResult } f
 import { customElement, property, query, state } from "lit/decorators.js";
 
 import { cardStyles } from "./card-styles";
-import { CARD_TAG, CARD_VERSION, WS_CARD_VERSION, WS_INDEX } from "./const";
+import {
+  CARD_TAG,
+  CARD_VERSION,
+  WS_CARD_VERSION,
+  WS_INDEX,
+  WS_LUMA,
+} from "./const";
+import {
+  DEFAULT_DEFLICKER,
+  deflickerGains,
+  type LumaSeries,
+  radiusForStrength,
+} from "./deflicker";
 import { localize } from "./localize/localize";
 import { dayTicks, formatClock, formatStamp, type DayTick } from "./dayticks";
 import {
@@ -92,6 +104,7 @@ export class WebcamTimelapseCard extends LitElement {
   private useLayerA = true;
   private frameGeneration = 0;
   private swapChain: Promise<void> = Promise.resolve();
+  private gains: Float32Array = new Float32Array(0);
   private versionChecked = false;
 
   @query("img.layer.a") private layerA?: HTMLImageElement;
@@ -119,6 +132,7 @@ export class WebcamTimelapseCard extends LitElement {
       show_dayticks: true,
       show_graph: true,
       graph_hours: 24,
+      deflicker: 50,
       ...config,
       // Drop malformed rows rather than crashing render on a hand-edited
       // YAML typo: one bad entry should cost that row, not the card.
@@ -242,6 +256,7 @@ export class WebcamTimelapseCard extends LitElement {
       // show, so the first paint has to be kicked after this render.
       await this.updateComplete;
       void this.swapInFrame();
+      void this.refreshLuma();
       this.indexError = undefined;
     } catch (error) {
       // Distinguish "archive is empty" from "could not ask". Reporting a
@@ -252,6 +267,37 @@ export class WebcamTimelapseCard extends LitElement {
     }
 
     this.scheduleIndexRefresh();
+  }
+
+  /**
+   * Fetch the luminance curve and precompute per-frame gains.
+   *
+   * Done once per index refresh rather than per frame: the gains only
+   * change when the archive does, and computing them during playback
+   * would put a sort inside the frame budget.
+   */
+  private async refreshLuma(): Promise<void> {
+    const strength = this.config?.deflicker ?? 0;
+    const radius = radiusForStrength(strength);
+    if (!this.hass?.callWS || radius === 0 || !this.config) {
+      this.gains = new Float32Array(0);
+      return;
+    }
+
+    try {
+      const result = await this.hass.callWS<{ luma: LumaSeries }>({
+        type: WS_LUMA,
+        entity_id: this.config.camera_entity,
+      });
+      this.gains = deflickerGains(result.luma, {
+        ...DEFAULT_DEFLICKER,
+        radius,
+      });
+    } catch {
+      // No correction is a fine outcome — the frames are still right.
+      this.gains = new Float32Array(0);
+    }
+    this.requestUpdate();
   }
 
   private async refreshHistory(): Promise<void> {
@@ -593,16 +639,23 @@ export class WebcamTimelapseCard extends LitElement {
     }
 
     const showA = this.useLayerA;
+    // A CSS filter, so the correction costs GPU compositing rather than
+    // any pixel work of ours — and the stored frame is never altered, so
+    // turning deflicker off restores the original exactly.
+    const gain = this.gains[this.position] ?? 1;
+    const filter = gain === 1 ? "none" : `brightness(${gain.toFixed(3)})`;
     return html`
       <div class="stage ${this.onGap ? "stale" : ""}">
         <img
           class="layer a ${showA ? "visible" : ""}"
+          style="filter:${filter}"
           alt=""
           decoding="async"
           fetchpriority="high"
         />
         <img
           class="layer b ${!showA ? "visible" : ""}"
+          style="filter:${filter}"
           alt=""
           decoding="async"
           fetchpriority="high"

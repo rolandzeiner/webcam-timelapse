@@ -434,3 +434,37 @@ async def test_switching_back_to_a_finer_interval_restores_them(
     # All four frames are back on the timeline at the finer interval.
     assert entry.runtime_data.data["index"]["count"] == 6
     assert entry.runtime_data.data["off_grid_hidden"] == 0
+
+
+async def test_capture_records_luminance(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    """The deflicker correction needs a brightness per frame."""
+    entry = make_entry()
+    assert await setup_entry(hass, entry)
+    coordinator = entry.runtime_data
+
+    slot = await coordinator.async_capture_now()
+
+    luma = frame_store.read_luma(coordinator.frames_dir)
+    assert slot in luma
+    assert 0 <= luma[slot] <= 255
+
+
+async def test_prune_compacts_the_luminance_log(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    """Otherwise the log grows without bound while the archive stays flat."""
+    entry = make_entry(**{CONF_RETENTION_DAYS: 1})
+    assert await setup_entry(hass, entry)
+    coordinator = entry.runtime_data
+
+    now_slot = frame_store.slot_for(dt_util.utcnow().timestamp(), coordinator.step)
+    keep, drop = now_slot, now_slot - 3 * 86400
+    for slot in (drop, keep):
+        frame_store.write_frame(coordinator.frames_dir, slot, b"x")
+        frame_store.append_luma(coordinator.frames_dir, slot, 140)
+
+    await coordinator.async_refresh()
+
+    assert set(frame_store.read_luma(coordinator.frames_dir)) == {keep}

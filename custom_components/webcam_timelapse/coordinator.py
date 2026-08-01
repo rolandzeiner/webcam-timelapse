@@ -181,6 +181,12 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.data["paused"] = paused
         self.async_update_listeners()
 
+    async def async_luma_map(self) -> dict[int, int]:
+        """Per-frame luminance, for the card's flicker correction."""
+        return await self.hass.async_add_executor_job(
+            frame_store.read_luma, self.frames_dir
+        )
+
     async def async_purge_frames(self) -> int:
         """Delete every archived frame for this entry."""
         removed = await self.hass.async_add_executor_job(
@@ -214,10 +220,10 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if result.raw is None:
             return
 
-        encoded, _width, _height = await self.hass.async_add_executor_job(
+        frame = await self.hass.async_add_executor_job(
             encode_webp, result.raw, self.max_width, self.quality
         )
-        self.last_frame = encoded
+        self.last_frame = frame.data
 
     async def async_capture_now(self, *, allow_overwrite: bool = False) -> int:
         """Capture immediately, snapping to the nearest grid slot.
@@ -266,7 +272,7 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._clear_offline_issue()
 
             try:
-                encoded, _width, _height = await self.hass.async_add_executor_job(
+                frame = await self.hass.async_add_executor_job(
                     encode_webp, result.raw, self.max_width, self.quality
                 )
             except ImageDecodeError as err:
@@ -276,11 +282,13 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     translation_placeholders={"error": str(err)},
                 ) from err
 
-            await self.hass.async_add_executor_job(
-                frame_store.write_frame, self.frames_dir, slot, encoded
-            )
+            def _persist() -> None:
+                frame_store.write_frame(self.frames_dir, slot, frame.data)
+                frame_store.append_luma(self.frames_dir, slot, frame.luma)
 
-            self.last_frame = encoded
+            await self.hass.async_add_executor_job(_persist)
+
+            self.last_frame = frame.data
             self.last_frame_slot = slot
             return True
 
@@ -312,6 +320,7 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 removed = frame_store.prune(self.frames_dir, slots, cutoff)
                 if removed:
                     slots = slots[len(removed) :]
+                    frame_store.compact_luma(self.frames_dir, set(slots))
 
             # Frames left behind by a change of capture interval. Only a
             # coarser interval strands them (600 is a multiple of 60, so

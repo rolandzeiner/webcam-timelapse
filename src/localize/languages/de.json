@@ -49,7 +49,9 @@
     "helper": {
       "camera_entity": "Nur Kameras dieser Integration haben ein Archiv zum Durchblättern.",
       "graph_hours": "Wie viel Verlauf die Sparkline rund um die Position zeigt.",
-      "autoplay": "Wird ignoriert, wenn dein System reduzierte Bewegung anfordert."
-    }
+      "autoplay": "Wird ignoriert, wenn dein System reduzierte Bewegung anfordert.",
+      "deflicker": "Gleicht wolkenbedingte Helligkeitssprünge bei der Wiedergabe aus. 0 schaltet es ab."
+    },
+    "deflicker": "Helligkeit glätten"
   }
 }

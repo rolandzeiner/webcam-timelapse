@@ -231,3 +231,76 @@ def test_scan_slots_handles_a_large_archive(frames_dir: Path) -> None:
         )
 
     assert frame_store.scan_slots(frames_dir) == slots
+
+
+# --- luminance log --------------------------------------------------------
+#
+# An append-only log rather than a rewritten map: at a one-minute cadence a
+# full rewrite would be a ~100 KB write every minute, several times the
+# volume of the frames themselves.
+
+
+def test_luma_round_trip(frames_dir: Path) -> None:
+    frame_store.append_luma(frames_dir, 1_754_050_200, 137)
+    frame_store.append_luma(frames_dir, 1_754_050_800, 141)
+
+    assert frame_store.read_luma(frames_dir) == {
+        1_754_050_200: 137,
+        1_754_050_800: 141,
+    }
+
+
+def test_luma_later_entries_win(frames_dir: Path) -> None:
+    """capture_now with overwrite re-records the same slot."""
+    frame_store.append_luma(frames_dir, 1_754_050_200, 137)
+    frame_store.append_luma(frames_dir, 1_754_050_200, 99)
+
+    assert frame_store.read_luma(frames_dir)[1_754_050_200] == 99
+
+
+def test_luma_missing_file(frames_dir: Path) -> None:
+    assert frame_store.read_luma(frames_dir) == {}
+
+
+def test_luma_tolerates_a_torn_line(frames_dir: Path) -> None:
+    """A power cut mid-append costs that entry, not the whole correction."""
+    frame_store.append_luma(frames_dir, 1_754_050_200, 137)
+    with (frames_dir / frame_store.LUMA_FILE).open("a", encoding="utf-8") as handle:
+        handle.write("1754050800")  # truncated: no value, no newline
+
+    assert frame_store.read_luma(frames_dir) == {1_754_050_200: 137}
+
+
+def test_luma_ignores_garbage(frames_dir: Path) -> None:
+    (frames_dir / frame_store.LUMA_FILE).write_text(
+        "not a slot\n1754050200 137\nalso bad values here\n", encoding="utf-8"
+    )
+    assert frame_store.read_luma(frames_dir) == {1_754_050_200: 137}
+
+
+def test_compact_luma_drops_pruned_slots(frames_dir: Path) -> None:
+    """Without compaction the log grows forever while the archive stays flat."""
+    slots = [1_754_050_200 + n * STEP for n in range(5)]
+    for n, slot in enumerate(slots):
+        frame_store.append_luma(frames_dir, slot, 100 + n)
+
+    frame_store.compact_luma(frames_dir, set(slots[3:]))
+
+    assert frame_store.read_luma(frames_dir) == {slots[3]: 103, slots[4]: 104}
+
+
+def test_compact_luma_leaves_no_temp_file(frames_dir: Path) -> None:
+    frame_store.append_luma(frames_dir, 1_754_050_200, 137)
+    frame_store.compact_luma(frames_dir, {1_754_050_200})
+
+    assert list(frames_dir.glob("*.tmp")) == []
+
+
+def test_luma_log_is_not_mistaken_for_a_frame(frames_dir: Path) -> None:
+    """scan_slots must ignore it, and prune must never delete it."""
+    seed(frames_dir, [1_754_050_200])
+    frame_store.append_luma(frames_dir, 1_754_050_200, 137)
+
+    assert frame_store.scan_slots(frames_dir) == [1_754_050_200]
+    frame_store.prune(frames_dir, [1_754_050_200], cutoff=1_754_060_000)
+    assert (frames_dir / frame_store.LUMA_FILE).is_file()

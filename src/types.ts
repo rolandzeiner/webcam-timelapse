@@ -333,6 +333,8 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   graph_hours?: number;
   /** Empty by default — the card is not tied to any domain. */
   entities?: OverlayEntityConfig[];
+  /** Smooth cloud-driven brightness jumps during playback. 0 = off. */
+  deflicker?: number;
 }
 
 /**

@@ -34,47 +34,47 @@ def dimensions(data: bytes) -> tuple[int, int]:
 
 
 def test_output_is_webp() -> None:
-    encoded, _, _ = encode_webp(jpeg(320, 240), max_width=1024, quality=78)
+    frame = encode_webp(jpeg(320, 240), max_width=1024, quality=78)
     # RIFF container with a WEBP fourcc — checked at the byte level so the
     # test fails loudly if Pillow ever silently falls back to another codec.
-    assert encoded[:4] == b"RIFF"
-    assert encoded[8:12] == b"WEBP"
+    assert frame.data[:4] == b"RIFF"
+    assert frame.data[8:12] == b"WEBP"
 
 
 def test_downscales_to_max_width() -> None:
-    encoded, width, height = encode_webp(jpeg(1200, 900), max_width=1024, quality=78)
+    frame = encode_webp(jpeg(1200, 900), max_width=1024, quality=78)
 
-    assert width == 1024
-    assert height == 768  # 4:3 preserved
-    assert dimensions(encoded) == (1024, 768)
+    assert frame.width == 1024
+    assert frame.height == 768  # 4:3 preserved
+    assert dimensions(frame.data) == (1024, 768)
 
 
 def test_does_not_upscale_a_smaller_source() -> None:
     """A 640px camera must stay 640px, not be blown up to the target."""
-    encoded, width, height = encode_webp(jpeg(640, 480), max_width=1024, quality=78)
+    frame = encode_webp(jpeg(640, 480), max_width=1024, quality=78)
 
-    assert (width, height) == (640, 480)
-    assert dimensions(encoded) == (640, 480)
+    assert (frame.width, frame.height) == (640, 480)
+    assert dimensions(frame.data) == (640, 480)
 
 
 def test_max_width_zero_keeps_native_size() -> None:
-    encoded, width, height = encode_webp(jpeg(1200, 900), max_width=0, quality=78)
+    frame = encode_webp(jpeg(1200, 900), max_width=0, quality=78)
 
-    assert (width, height) == (1200, 900)
-    assert dimensions(encoded) == (1200, 900)
+    assert (frame.width, frame.height) == (1200, 900)
+    assert dimensions(frame.data) == (1200, 900)
 
 
 def test_preserves_aspect_ratio_for_panoramas() -> None:
     """A very wide source must not be clipped by the height headroom."""
-    _, width, height = encode_webp(jpeg(2000, 200), max_width=1024, quality=78)
-    assert (width, height) == (1024, 102)
+    frame = encode_webp(jpeg(2000, 200), max_width=1024, quality=78)
+    assert (frame.width, frame.height) == (1024, 102)
 
 
 def test_lower_quality_produces_smaller_output() -> None:
     source = jpeg(800, 600)
-    high, _, _ = encode_webp(source, max_width=0, quality=90)
-    low, _, _ = encode_webp(source, max_width=0, quality=45)
-    assert len(low) < len(high)
+    high = encode_webp(source, max_width=0, quality=90)
+    low = encode_webp(source, max_width=0, quality=45)
+    assert len(low.data) < len(high.data)
 
 
 def test_rejects_a_non_image_payload() -> None:
@@ -100,6 +100,29 @@ def test_converts_greyscale_and_palette_sources() -> None:
     for mode in ("L", "P", "RGBA"):
         buffer = io.BytesIO()
         Image.new(mode, (320, 240)).save(buffer, "PNG")
-        encoded, width, height = encode_webp(buffer.getvalue(), 1024, 78)
-        assert encoded[:4] == b"RIFF", mode
-        assert (width, height) == (320, 240), mode
+        frame = encode_webp(buffer.getvalue(), 1024, 78)
+        assert frame.data[:4] == b"RIFF", mode
+        assert (frame.width, frame.height) == (320, 240), mode
+
+
+def test_reports_mean_luminance() -> None:
+    """Measured during encode because the image is already decoded there.
+
+    Recovering it later would mean re-reading and re-decoding every frame
+    on disk, which is precisely what the names-only directory scan exists
+    to avoid.
+    """
+
+    def flat(level: int) -> bytes:
+        buffer = io.BytesIO()
+        Image.new("RGB", (64, 48), (level, level, level)).save(buffer, "JPEG")
+        return buffer.getvalue()
+
+    assert encode_webp(flat(200), 1024, 78).luma == 200
+    assert encode_webp(flat(40), 1024, 78).luma == 40
+    # Monotonic in brightness is all the deflicker maths relies on.
+    assert (
+        encode_webp(flat(30), 1024, 78).luma
+        < encode_webp(flat(120), 1024, 78).luma
+        < encode_webp(flat(220), 1024, 78).luma
+    )

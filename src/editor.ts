@@ -92,6 +92,12 @@ export class WebcamTimelapseCardEditor
             },
           },
           {
+            name: "deflicker",
+            selector: {
+              number: { min: 0, max: 100, step: 5, mode: "slider" },
+            },
+          },
+          {
             name: "graph_hours",
             selector: {
               number: { min: 1, max: 336, mode: "slider", unit_of_measurement: "h" },

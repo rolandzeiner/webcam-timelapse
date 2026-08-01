@@ -21,12 +21,14 @@ from homeassistant.components.websocket_api.decorators import (
     async_response,
     websocket_command,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 
 from .const import CARD_VERSION, DOMAIN, FRAME_EXTENSION, FRAMES_URL_BASE
 
 WS_TYPE_INDEX = f"{DOMAIN}/index"
+WS_TYPE_LUMA = f"{DOMAIN}/luma"
 WS_TYPE_CARD_VERSION = f"{DOMAIN}/card_version"
 
 
@@ -42,7 +44,35 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     every reload.
     """
     async_register_command(hass, websocket_index)
+    async_register_command(hass, websocket_luma)
     async_register_command(hass, websocket_card_version)
+
+
+@callback
+def _resolve_entry(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> ConfigEntry | None:
+    """Resolve entry_id or entity_id to a config entry, replying on failure."""
+    entry_id: str | None = msg.get("entry_id")
+
+    if entry_id is None:
+        entity_id = msg.get("entity_id")
+        if entity_id is None:
+            connection.send_error(
+                msg["id"], "invalid_format", "Provide entry_id or entity_id"
+            )
+            return None
+        registry_entry = er.async_get(hass).async_get(entity_id)
+        if registry_entry is None or registry_entry.config_entry_id is None:
+            connection.send_error(msg["id"], "not_found", f"Unknown entity {entity_id}")
+            return None
+        entry_id = registry_entry.config_entry_id
+
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None or entry.domain != DOMAIN:
+        connection.send_error(msg["id"], "not_found", f"Unknown entry {entry_id}")
+        return None
+    return entry
 
 
 @websocket_command(
@@ -114,6 +144,54 @@ async def websocket_index(
             "newest_slot": coordinator.data["newest_slot"],
         },
     )
+
+
+@websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_LUMA,
+        vol.Exclusive("entry_id", "target"): str,
+        vol.Exclusive("entity_id", "target"): str,
+    }
+)
+@async_response
+async def websocket_luma(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Per-frame luminance, aligned to the grid the index describes.
+
+    Deliberately a separate command from the index rather than another
+    field on it. Only a card with flicker correction switched on needs
+    this, and at a one-minute cadence over a fortnight it is 20,000
+    numbers — not something to put on the wire for every card on every
+    refresh.
+
+    Returned as a dense array with ``null`` for slots that have no
+    recorded luminance (frames captured before this existed, or after a
+    lost log), so the card can index it exactly like the frame grid.
+    """
+    entry = _resolve_entry(hass, connection, msg)
+    if entry is None:
+        return
+
+    coordinator = getattr(entry, "runtime_data", None)
+    if coordinator is None or coordinator.data is None:
+        connection.send_error(msg["id"], "not_loaded", "Entry not loaded")
+        return
+
+    index = coordinator.data["index"]
+    luma_map = await coordinator.async_luma_map()
+
+    t0 = index["t0"]
+    step = coordinator.data["step"]
+    values: list[int | None] = (
+        []
+        if t0 is None
+        else [luma_map.get(t0 + i * step) for i in range(index["count"])]
+    )
+
+    connection.send_result(msg["id"], {"t0": t0, "step": step, "luma": values})
 
 
 @websocket_command({vol.Required("type"): WS_TYPE_CARD_VERSION})

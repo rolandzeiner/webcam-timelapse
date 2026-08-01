@@ -15,8 +15,9 @@ rather than only in a blocking-call warning at runtime.
 from __future__ import annotations
 
 import io
+from typing import NamedTuple
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageStat, UnidentifiedImageError
 
 # `method` trades CPU for compression. 4 (Pillow's default) is the right
 # point on ARM: method=6 costs roughly 3x the CPU for ~3% smaller output.
@@ -32,7 +33,19 @@ class ImageDecodeError(ValueError):
     """Raised when the fetched payload is not a decodable image."""
 
 
-def encode_webp(raw: bytes, max_width: int, quality: int) -> tuple[bytes, int, int]:
+class EncodedFrame(NamedTuple):
+    """The result of encoding one captured image."""
+
+    data: bytes
+    width: int
+    height: int
+    #: Mean perceptual luminance, 0-255. Measured here because the image
+    #: is already decoded — recovering it later would mean re-reading and
+    #: re-decoding every frame on disk.
+    luma: int
+
+
+def encode_webp(raw: bytes, max_width: int, quality: int) -> EncodedFrame:
     """Convert an arbitrary still image to a (optionally downscaled) WebP.
 
     Args:
@@ -42,8 +55,7 @@ def encode_webp(raw: bytes, max_width: int, quality: int) -> tuple[bytes, int, i
         quality: WebP quality, 0-100.
 
     Returns:
-        ``(webp_bytes, width, height)`` where the dimensions describe the
-        encoded result, not the source.
+        An :class:`EncodedFrame`.
 
     Raises:
         ImageDecodeError: The payload could not be identified or decoded
@@ -73,8 +85,14 @@ def encode_webp(raw: bytes, max_width: int, quality: int) -> tuple[bytes, int, i
                     Image.Resampling.LANCZOS,
                 )
 
+            # "L" is ITU-R 601 luma, which weights green far above blue —
+            # closer to how the eye reads brightness than a flat RGB mean,
+            # and it is what makes the correction track *perceived*
+            # flicker rather than raw channel energy.
+            luma = round(ImageStat.Stat(rgb.convert("L")).mean[0])
+
             buffer = io.BytesIO()
             rgb.save(buffer, "WEBP", quality=quality, method=_WEBP_METHOD)
-            return buffer.getvalue(), rgb.width, rgb.height
+            return EncodedFrame(buffer.getvalue(), rgb.width, rgb.height, luma)
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as err:
         raise ImageDecodeError(str(err)) from err

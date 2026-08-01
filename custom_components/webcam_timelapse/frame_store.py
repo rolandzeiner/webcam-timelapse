@@ -175,6 +175,69 @@ def build_index(slots: list[int], step: int) -> dict[str, Any]:
     return {"t0": t0, "count": count, "gaps": gaps}
 
 
+LUMA_FILE: Final = "luma.log"
+
+
+def append_luma(frames_dir: Path, slot: int, luma: int) -> None:
+    """Record one frame's luminance.
+
+    An append-only log rather than a rewritten map: at a one-minute
+    cadence a full rewrite would be a ~100 KB write every minute, several
+    times the volume of the frames themselves. An append is ~20 bytes.
+    Compaction happens during prune, which is rare by comparison.
+
+    The log is a cache in the strict sense — losing it costs nothing but
+    the flicker correction, and it rebuilds as new frames arrive.
+    """
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    with (frames_dir / LUMA_FILE).open("a", encoding="utf-8") as handle:
+        handle.write(f"{slot} {luma}\n")
+
+
+def read_luma(frames_dir: Path) -> dict[int, int]:
+    """Load the luminance log. Later entries win.
+
+    Tolerant by design: a torn final line from a power cut, or a stray
+    edit, costs that one entry rather than the whole correction.
+    """
+    path = frames_dir / LUMA_FILE
+    if not path.is_file():
+        return {}
+
+    out: dict[int, int] = {}
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            parts = line.split()
+            if len(parts) != 2:
+                continue
+            try:
+                out[int(parts[0])] = int(parts[1])
+            except ValueError:
+                continue
+    return out
+
+
+def compact_luma(frames_dir: Path, keep: set[int]) -> None:
+    """Rewrite the log with only the slots still on disk.
+
+    Called from prune. Without it the log grows without bound while the
+    archive stays flat.
+    """
+    entries = {
+        slot: luma for slot, luma in read_luma(frames_dir).items() if slot in keep
+    }
+    path = frames_dir / LUMA_FILE
+    tmp = path.with_suffix(".log.tmp")
+    try:
+        tmp.write_text(
+            "".join(f"{slot} {luma}\n" for slot, luma in sorted(entries.items())),
+            encoding="utf-8",
+        )
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+
+
 def disk_usage(frames_dir: Path) -> int:
     """Total bytes occupied by stored frames."""
     if not frames_dir.is_dir():

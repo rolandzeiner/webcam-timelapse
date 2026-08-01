@@ -28,6 +28,21 @@ Point it at any URL that returns a still image.
   companion app work without the custom card.
 - **Overlays readings** from any sensors you choose, resolved to the scrubbed
   moment from the recorder's history.
+- **Smooths cloud flicker.** Passing cloud makes consecutive frames jump in
+  brightness, which at playback speed reads as a strobe.
+
+### Smoothing cloud flicker
+
+`deflicker` (0-100, default 50) evens out brightness jumps between frames.
+
+Each frame's luminance is measured once at capture — the image is already
+decoded there, so it costs nothing — and the card scales each frame toward a
+rolling average of the surrounding frames' brightness. Slow changes survive:
+a sunset moves the rolling average with it, so dusk still looks like dusk.
+Only excursions faster than the window get pulled back.
+
+Nothing is written to the stored frames. The correction is a CSS filter at
+playback, so setting `deflicker: 0` restores the originals exactly.
 
 ## Installation
 
@@ -88,6 +103,7 @@ speed: 4                 # 1 | 2 | 4 | 8 | 16 | 32
 show_dayticks: true
 show_graph: true
 graph_hours: 24
+deflicker: 50           # 0-100; 0 turns it off
 entities:
   - entity: sensor.wasserstand
     name: Pegel
