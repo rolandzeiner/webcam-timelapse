@@ -1,9 +1,10 @@
 # Webcam Timelapse
 
-[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Frolandzeiner%2Fwebcam-timelapse%2Fmain%2Fcustom_components%2Fwebcam_timelapse%2Fmanifest.json&query=%24.version&label=version)](https://github.com/rolandzeiner/webcam-timelapse/releases)
-[![HA min version](https://img.shields.io/badge/Home%20Assistant-2025.5.0%2B-41BDF5.svg)](https://www.home-assistant.io)
-[![hacs](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://hacs.xyz)
-[![Quality scale](https://img.shields.io/badge/quality%20scale-platinum-e5e4e2.svg)](https://developers.home-assistant.io/docs/core/integration-quality-scale/)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![HA min version](https://img.shields.io/badge/Home%20Assistant-%3E%3D2025.5-blue.svg)](https://www.home-assistant.io/)
+[![Version](https://img.shields.io/github/v/release/rolandzeiner/webcam-timelapse?include_prereleases&label=version&color=blue)](https://github.com/rolandzeiner/webcam-timelapse/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![vibe-coded](https://img.shields.io/badge/vibe-coded-ff69b4?logo=musicbrainz&logoColor=white)](https://en.wikipedia.org/wiki/Vibe_coding)
 
 **Keep a webcam's history and scroll back through it.**
 
@@ -63,9 +64,13 @@ work.
    **Integration**.
 3. Install it, then restart Home Assistant.
 
+[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rolandzeiner&repository=webcam-timelapse&category=integration)
+
 Needs Home Assistant **2025.5.0** or newer.
 
 ## Set up a camera
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=webcam_timelapse)
 
 1. Go to **Settings → Devices & Services → Add Integration**.
 2. Search for **Webcam Timelapse**.
