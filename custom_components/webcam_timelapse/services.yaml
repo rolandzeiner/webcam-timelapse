@@ -1,0 +1,31 @@
+capture_now:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: webcam_timelapse
+
+purge_frames:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: webcam_timelapse
+
+pause_capture:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: webcam_timelapse
+
+resume_capture:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: webcam_timelapse

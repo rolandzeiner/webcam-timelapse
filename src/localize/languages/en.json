@@ -1,0 +1,78 @@
+{
+  "common": {
+    "version": "Version",
+    "invalid_configuration": "Invalid configuration",
+    "no_entity_picked": "No sensor selected. Open the visual editor and pick the Available slots sensor.",
+    "entity_unavailable": "The selected sensor is not available right now.",
+    "loading": "Loading…",
+    "online": "Online",
+    "offline": "Offline",
+    "debug_dump": "Current card config",
+    "debug_dump_hint": "This panel mirrors the live config dictionary. Toggle Show debug off to hide it."
+  },
+  "editor": {
+    "name": "Card name",
+    "entity": "Sensor",
+    "entity_helper": "Pick the integration's slot-availability sensor.",
+    "status_entity": "Status binary sensor",
+    "status_entity_helper": "Optional. When set, the card shows an Online/Offline pip.",
+    "show_hero": "Show hero header",
+    "show_debug": "Show debug (dump resolved config under the card body)",
+
+    "section": {
+      "text": "Text inputs",
+      "number": "Numbers",
+      "choice": "Toggles & choosers",
+      "registry": "HA registry pickers",
+      "datetime": "Date & time",
+      "visual": "Visual",
+      "data": "Data & templating",
+      "ha": "HA-specific"
+    },
+
+    "txt_single": "Single-line text",
+    "txt_multi": "Multi-line text",
+    "txt_password": "Password (masked input)",
+    "txt_url": "URL",
+    "txt_email": "Email",
+
+    "num_box": "Number — box mode (0–100)",
+    "num_slider": "Number — slider (0–1, step 0.01)",
+
+    "flag_boolean": "Boolean toggle",
+    "pick_dropdown": "Select — dropdown",
+    "pick_list": "Select — list (radio)",
+    "pick_multi": "Select — multiple",
+    "pick_custom": "Select — dropdown with custom value",
+
+    "pick_entity_multi": "Multi-entity picker",
+    "pick_device": "Device picker",
+    "pick_area": "Area picker",
+    "pick_floor": "Floor picker",
+    "pick_label": "Label picker",
+
+    "pick_time": "Time picker",
+    "pick_date": "Date picker",
+    "pick_datetime": "Datetime picker",
+    "pick_duration": "Duration picker",
+
+    "pick_icon": "MDI icon picker",
+    "pick_color_rgb": "RGB colour picker",
+    "pick_ui_color": "UI colour token picker",
+    "pick_theme": "Theme picker",
+
+    "data_template": "Jinja template",
+    "data_object": "Object (raw YAML / JSON)",
+    "data_attribute": "Attribute of the selected sensor",
+    "data_attribute_helper": "The list reflects the Sensor field above.",
+    "data_state": "State of the selected sensor",
+    "data_state_helper": "The list reflects the Sensor field above.",
+
+    "pick_language": "Language picker",
+    "pick_country": "Country picker",
+    "pick_action": "UI action (more-info / navigate / call-service / …)",
+    "pick_target": "Target picker (entity / device / area)"
+  },
+  "version_update": "A new version of the card is available ({v}).",
+  "version_reload": "Reload"
+}

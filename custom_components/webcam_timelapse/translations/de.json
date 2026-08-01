@@ -1,0 +1,259 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Webcam hinzufügen",
+        "description": "Gib eine URL an, die ein einzelnes Standbild liefert. Home Assistant ruft es regelmäßig ab und bewahrt die Bilder auf, damit du später durch sie zurückscrollen kannst.",
+        "data": {
+          "name": "Name",
+          "url": "Bild-URL",
+          "capture_interval": "Aufnahme alle",
+          "retention_days": "Bilder aufbewahren für"
+        },
+        "data_description": {
+          "url": "Der direkte Link zum Bild selbst, nicht zur Seite, auf der es eingebettet ist. Endet meist auf .jpg oder .png.",
+          "capture_interval": "Wie oft ein Bild gespeichert wird. Kürzere Abstände brauchen mehr Speicher und belasten den Server der Kamera stärker.",
+          "retention_days": "Ältere Bilder werden automatisch gelöscht. Bei 10 Minuten und 1024 px sind das rund 10 MB pro Tag."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Erweitert",
+            "data": {
+              "max_width": "Verkleinern auf",
+              "quality": "Bildqualität",
+              "live_refresh": "Aktualisierung der Live-Ansicht",
+              "frames_path": "Speicherordner",
+              "verify_ssl": "SSL-Zertifikat prüfen",
+              "username": "Benutzer:in",
+              "password": "Passwort"
+            },
+            "data_description": {
+              "max_width": "Bilder werden auf diese Breite verkleinert. Schmalere Bilder bleiben unverändert.",
+              "quality": "Höhere Werte behalten mehr Details und brauchen mehr Speicher.",
+              "live_refresh": "Wie oft die Kamera-Entität ein frisches Bild holt. 0 zeigt immer nur das zuletzt aufgenommene Bild.",
+              "frames_path": "Leer lassen, um die Bilder im Konfigurationsordner von Home Assistant zu speichern, wo Backups sie überspringen.",
+              "username": "Nur nötig, wenn die Kamera per HTTP-Basisauthentifizierung geschützt ist."
+            }
+          }
+        }
+      },
+      "reconfigure": {
+        "title": "Webcam neu konfigurieren",
+        "description": "Ändere Einstellungen, ohne die bereits aufgenommenen Bilder zu verlieren.",
+        "data": {
+          "name": "Name",
+          "url": "Bild-URL",
+          "capture_interval": "Aufnahme alle",
+          "retention_days": "Bilder aufbewahren für"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Erweitert",
+            "data": {
+              "max_width": "Verkleinern auf",
+              "quality": "Bildqualität",
+              "live_refresh": "Aktualisierung der Live-Ansicht",
+              "frames_path": "Speicherordner",
+              "verify_ssl": "SSL-Zertifikat prüfen",
+              "username": "Benutzer:in",
+              "password": "Passwort"
+            }
+          }
+        }
+      },
+      "reauth_confirm": {
+        "title": "Zugangsdaten der Kamera nötig",
+        "description": "{url} hat die letzte Anfrage abgelehnt. Gib die Zugangsdaten ein, die ab jetzt verwendet werden sollen.",
+        "data": {
+          "username": "Benutzer:in",
+          "password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Die URL war nicht erreichbar. Prüfe die Adresse und ob Home Assistant die Kamera sehen kann.",
+      "invalid_auth": "Die Kamera hat diese Zugangsdaten abgelehnt.",
+      "invalid_url": "Das sieht nicht nach einer vollständigen URL aus.",
+      "invalid_scheme": "Es werden nur http:// und https:// unterstützt.",
+      "invalid_interval": "Wähle eines der angebotenen Aufnahmeintervalle.",
+      "not_an_image": "Diese URL hat eine Seite geliefert, kein Bild. Verwende den direkten Link zur Bilddatei.",
+      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet."
+    },
+    "abort": {
+      "already_configured": "Diese Bild-URL ist bereits eingerichtet.",
+      "reauth_successful": "Zugangsdaten aktualisiert.",
+      "reconfigure_successful": "Einstellungen aktualisiert.",
+      "unique_id_mismatch": "Diese URL gehört zu einer anderen Kamera als der, die du gerade neu konfigurierst."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Webcam-Einstellungen",
+        "data": {
+          "name": "Name",
+          "capture_interval": "Aufnahme alle",
+          "retention_days": "Bilder aufbewahren für"
+        },
+        "data_description": {
+          "retention_days": "Ein niedrigerer Wert löscht ältere Bilder bei der nächsten Aufnahme. Sie lassen sich nicht wiederherstellen."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Erweitert",
+            "data": {
+              "max_width": "Verkleinern auf",
+              "quality": "Bildqualität",
+              "live_refresh": "Aktualisierung der Live-Ansicht",
+              "frames_path": "Speicherordner",
+              "verify_ssl": "SSL-Zertifikat prüfen",
+              "username": "Benutzer:in",
+              "password": "Passwort"
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Die URL war nicht erreichbar. Prüfe die Adresse und ob Home Assistant die Kamera sehen kann.",
+      "invalid_auth": "Die Kamera hat diese Zugangsdaten abgelehnt.",
+      "invalid_url": "Das sieht nicht nach einer vollständigen URL aus.",
+      "invalid_scheme": "Es werden nur http:// und https:// unterstützt.",
+      "invalid_interval": "Wähle eines der angebotenen Aufnahmeintervalle.",
+      "not_an_image": "Diese URL hat eine Seite geliefert, kein Bild. Verwende den direkten Link zur Bilddatei.",
+      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet."
+    }
+  },
+  "selector": {
+    "capture_interval": {
+      "options": {
+        "1": "Jede Minute",
+        "2": "Alle 2 Minuten",
+        "3": "Alle 3 Minuten",
+        "5": "Alle 5 Minuten",
+        "10": "Alle 10 Minuten",
+        "15": "Alle 15 Minuten",
+        "20": "Alle 20 Minuten",
+        "30": "Alle 30 Minuten",
+        "60": "Jede Stunde"
+      }
+    },
+    "max_width": {
+      "options": {
+        "0": "Originalgröße",
+        "640": "640 px",
+        "800": "800 px",
+        "1024": "1024 px",
+        "1280": "1280 px",
+        "1600": "1600 px",
+        "1920": "1920 px"
+      }
+    }
+  },
+  "entity": {
+    "camera": {
+      "camera": {
+        "name": "Live-Ansicht"
+      }
+    },
+    "sensor": {
+      "last_capture": {
+        "name": "Letzte Aufnahme"
+      },
+      "frame_count": {
+        "name": "Gespeicherte Bilder"
+      },
+      "storage_used": {
+        "name": "Belegter Speicher"
+      }
+    },
+    "binary_sensor": {
+      "camera_online": {
+        "name": "Kamera online"
+      }
+    }
+  },
+  "services": {
+    "capture_now": {
+      "name": "Jetzt aufnehmen",
+      "description": "Speichert sofort ein Bild, statt auf die nächste geplante Aufnahme zu warten.",
+      "fields": {
+        "entry_id": {
+          "name": "Kamera",
+          "description": "Von welcher eingerichteten Webcam aufgenommen wird."
+        }
+      }
+    },
+    "purge_frames": {
+      "name": "Alle Bilder löschen",
+      "description": "Löscht dauerhaft alle gespeicherten Bilder dieser Kamera. Der Zeitraffer beginnt mit der nächsten Aufnahme von vorn.",
+      "fields": {
+        "entry_id": {
+          "name": "Kamera",
+          "description": "Welche eingerichtete Webcam geleert wird."
+        }
+      }
+    },
+    "pause_capture": {
+      "name": "Aufnahme pausieren",
+      "description": "Speichert keine Bilder mehr, bis die Aufnahme fortgesetzt wird. Bereits gespeicherte Bilder bleiben erhalten.",
+      "fields": {
+        "entry_id": {
+          "name": "Kamera",
+          "description": "Welche eingerichtete Webcam pausiert wird."
+        }
+      }
+    },
+    "resume_capture": {
+      "name": "Aufnahme fortsetzen",
+      "description": "Speichert wieder Bilder im gewohnten Rhythmus.",
+      "fields": {
+        "entry_id": {
+          "name": "Kamera",
+          "description": "Welche eingerichtete Webcam fortgesetzt wird."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_entry": {
+      "message": "Es ist keine Webcam mit der ID {entry_id} eingerichtet."
+    },
+    "entry_not_loaded": {
+      "message": "Die Webcam {entry_id} ist gerade nicht geladen. Versuche es erneut, sobald sie gestartet ist."
+    },
+    "slot_occupied": {
+      "message": "Für diesen Zeitpunkt gibt es bereits ein Bild, es wurde nicht überschrieben. Warte auf den nächsten Aufnahmezeitpunkt."
+    },
+    "not_an_image": {
+      "message": "Die Kamera hat {content_type} statt eines Bildes geliefert."
+    },
+    "image_too_large": {
+      "message": "Die Kamera hat {size} Bytes geliefert, mehr als das Limit von {limit} Bytes."
+    },
+    "fetch_timeout": {
+      "message": "Die Kamera hat nicht innerhalb von {seconds} Sekunden geantwortet."
+    },
+    "http_error": {
+      "message": "Die Kamera hat HTTP {status} geliefert: {reason}."
+    },
+    "auth_error": {
+      "message": "Die Kamera hat die Anfrage mit HTTP {status} abgelehnt."
+    },
+    "connection_error": {
+      "message": "Die Kamera war nicht erreichbar: {error_type} ({error})."
+    },
+    "empty_response": {
+      "message": "Die Kamera hat eine leere Antwort geliefert."
+    },
+    "decode_error": {
+      "message": "Die Antwort der Kamera ließ sich nicht als Bild lesen: {error}."
+    }
+  },
+  "issues": {
+    "camera_offline": {
+      "title": "{entry_title} sendet keine neuen Bilder mehr",
+      "description": "Die letzten {ticks} Aufnahmen haben exakt dasselbe Bild geliefert. Meist heißt das, dass die Kamera oder die Software dahinter steht. Bis sie sich erholt, werden keine Bilder gespeichert, im Zeitraffer entsteht also eine Lücke.\n\nPrüfe, ob die Kamera eingeschaltet ist und ob sich ihre Bild-URL noch im Browser öffnen lässt."
+    }
+  }
+}

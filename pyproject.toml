@@ -1,0 +1,33 @@
+# Source of truth for ruff, mypy, and coverage. Pytest config stays in pytest.ini.
+# Pre-commit and CI may still pass equivalent CLI flags — they are now
+# redundant with this file but harmless. Trim them as confidence grows.
+
+[tool.ruff]
+# MUST equal the OLDEST Python we support, NOT the interpreter CI runs.
+# `hacs.json` promises Home Assistant >= 2025.5.0, which runs on
+# Python 3.13. Pointing this at the CI pin (3.14) authorises ruff to
+# rewrite code into syntax those users cannot parse, and then leaves it
+# unflagged — that is how wiener-linien-austria v1.7.1 shipped PEP 758
+# `except A, B:` and failed to import below 3.14. The `compile-floor-python`
+# CI job is the independent backstop. Raise this only together with the
+# `homeassistant` floor in `hacs.json` and that job's `python-version`.
+target-version = "py313"
+line-length = 88
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+files = ["custom_components/webcam_timelapse"]
+
+[tool.coverage.run]
+source = ["custom_components/webcam_timelapse"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]
+show_missing = true
+skip_empty = true

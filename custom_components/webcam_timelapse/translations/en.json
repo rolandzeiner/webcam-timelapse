@@ -1,0 +1,259 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a webcam",
+        "description": "Point this at a URL that returns a single still image. Home Assistant fetches it on a schedule and keeps the frames so you can scrub back through them.",
+        "data": {
+          "name": "Name",
+          "url": "Image URL",
+          "capture_interval": "Capture every",
+          "retention_days": "Keep frames for"
+        },
+        "data_description": {
+          "url": "The direct link to the image itself, not the page it sits on. It usually ends in .jpg or .png.",
+          "capture_interval": "How often to save a frame. Shorter intervals use more disk and put more load on the camera's server.",
+          "retention_days": "Older frames are deleted automatically. At 10 minutes and 1024 px, one day is roughly 10 MB."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced",
+            "data": {
+              "max_width": "Resize to",
+              "quality": "Image quality",
+              "live_refresh": "Live view refresh",
+              "frames_path": "Storage folder",
+              "verify_ssl": "Verify SSL certificate",
+              "username": "Username",
+              "password": "Password"
+            },
+            "data_description": {
+              "max_width": "Frames are scaled down to this width. Images already narrower are left alone.",
+              "quality": "Higher keeps more detail and uses more disk.",
+              "live_refresh": "How often the camera entity fetches a fresh image. Set to 0 to only ever show the last captured frame.",
+              "frames_path": "Leave empty to store frames inside Home Assistant's config folder, where backups skip them.",
+              "username": "Only needed if the camera is behind HTTP basic authentication."
+            }
+          }
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure webcam",
+        "description": "Change any setting without losing the frames already captured.",
+        "data": {
+          "name": "Name",
+          "url": "Image URL",
+          "capture_interval": "Capture every",
+          "retention_days": "Keep frames for"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced",
+            "data": {
+              "max_width": "Resize to",
+              "quality": "Image quality",
+              "live_refresh": "Live view refresh",
+              "frames_path": "Storage folder",
+              "verify_ssl": "Verify SSL certificate",
+              "username": "Username",
+              "password": "Password"
+            }
+          }
+        }
+      },
+      "reauth_confirm": {
+        "title": "Camera credentials needed",
+        "description": "{url} refused the last request. Enter the credentials to use from now on.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach that URL. Check the address, and that Home Assistant can see the camera.",
+      "invalid_auth": "The camera rejected those credentials.",
+      "invalid_url": "That does not look like a complete URL.",
+      "invalid_scheme": "Only http:// and https:// addresses are supported.",
+      "invalid_interval": "Choose one of the listed capture intervals.",
+      "not_an_image": "That URL returned a page, not an image. Use the direct link to the image file.",
+      "timeout": "The camera did not respond in time."
+    },
+    "abort": {
+      "already_configured": "This image URL is already set up.",
+      "reauth_successful": "Credentials updated.",
+      "reconfigure_successful": "Settings updated.",
+      "unique_id_mismatch": "That URL belongs to a different camera than the one you are reconfiguring."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Webcam settings",
+        "data": {
+          "name": "Name",
+          "capture_interval": "Capture every",
+          "retention_days": "Keep frames for"
+        },
+        "data_description": {
+          "retention_days": "Lowering this deletes older frames on the next capture. They cannot be recovered."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced",
+            "data": {
+              "max_width": "Resize to",
+              "quality": "Image quality",
+              "live_refresh": "Live view refresh",
+              "frames_path": "Storage folder",
+              "verify_ssl": "Verify SSL certificate",
+              "username": "Username",
+              "password": "Password"
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach that URL. Check the address, and that Home Assistant can see the camera.",
+      "invalid_auth": "The camera rejected those credentials.",
+      "invalid_url": "That does not look like a complete URL.",
+      "invalid_scheme": "Only http:// and https:// addresses are supported.",
+      "invalid_interval": "Choose one of the listed capture intervals.",
+      "not_an_image": "That URL returned a page, not an image. Use the direct link to the image file.",
+      "timeout": "The camera did not respond in time."
+    }
+  },
+  "selector": {
+    "capture_interval": {
+      "options": {
+        "1": "Every minute",
+        "2": "Every 2 minutes",
+        "3": "Every 3 minutes",
+        "5": "Every 5 minutes",
+        "10": "Every 10 minutes",
+        "15": "Every 15 minutes",
+        "20": "Every 20 minutes",
+        "30": "Every 30 minutes",
+        "60": "Every hour"
+      }
+    },
+    "max_width": {
+      "options": {
+        "0": "Original size",
+        "640": "640 px",
+        "800": "800 px",
+        "1024": "1024 px",
+        "1280": "1280 px",
+        "1600": "1600 px",
+        "1920": "1920 px"
+      }
+    }
+  },
+  "entity": {
+    "camera": {
+      "camera": {
+        "name": "Live view"
+      }
+    },
+    "sensor": {
+      "last_capture": {
+        "name": "Last capture"
+      },
+      "frame_count": {
+        "name": "Stored frames"
+      },
+      "storage_used": {
+        "name": "Storage used"
+      }
+    },
+    "binary_sensor": {
+      "camera_online": {
+        "name": "Camera online"
+      }
+    }
+  },
+  "services": {
+    "capture_now": {
+      "name": "Capture now",
+      "description": "Saves a frame straight away instead of waiting for the next scheduled capture.",
+      "fields": {
+        "entry_id": {
+          "name": "Camera",
+          "description": "Which configured webcam to capture from."
+        }
+      }
+    },
+    "purge_frames": {
+      "name": "Delete all frames",
+      "description": "Permanently deletes every stored frame for this camera. The timelapse starts over from the next capture.",
+      "fields": {
+        "entry_id": {
+          "name": "Camera",
+          "description": "Which configured webcam to clear."
+        }
+      }
+    },
+    "pause_capture": {
+      "name": "Pause capturing",
+      "description": "Stops saving frames until capturing is resumed. Frames already stored are kept.",
+      "fields": {
+        "entry_id": {
+          "name": "Camera",
+          "description": "Which configured webcam to pause."
+        }
+      }
+    },
+    "resume_capture": {
+      "name": "Resume capturing",
+      "description": "Starts saving frames again on the usual schedule.",
+      "fields": {
+        "entry_id": {
+          "name": "Camera",
+          "description": "Which configured webcam to resume."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_entry": {
+      "message": "No webcam is configured with id {entry_id}."
+    },
+    "entry_not_loaded": {
+      "message": "The webcam {entry_id} is not loaded right now. Try again once it has started."
+    },
+    "slot_occupied": {
+      "message": "A frame for this moment already exists, so it was left alone. Wait for the next capture slot."
+    },
+    "not_an_image": {
+      "message": "The camera returned {content_type} instead of an image."
+    },
+    "image_too_large": {
+      "message": "The camera returned {size} bytes, over the {limit} byte limit."
+    },
+    "fetch_timeout": {
+      "message": "The camera did not respond within {seconds} seconds."
+    },
+    "http_error": {
+      "message": "The camera returned HTTP {status}: {reason}."
+    },
+    "auth_error": {
+      "message": "The camera rejected the request with HTTP {status}."
+    },
+    "connection_error": {
+      "message": "Could not reach the camera: {error_type} ({error})."
+    },
+    "empty_response": {
+      "message": "The camera returned an empty response."
+    },
+    "decode_error": {
+      "message": "The camera's response could not be read as an image: {error}."
+    }
+  },
+  "issues": {
+    "camera_offline": {
+      "title": "{entry_title} has stopped sending new images",
+      "description": "The last {ticks} captures returned exactly the same image, which usually means the camera, or the software feeding it, has stopped. Frames are not being saved until it recovers, so the timelapse will show a gap for this period.\n\nCheck that the camera is powered on and that its image URL still opens in a browser."
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "entity": {
+    "camera": {
+      "camera": {
+        "default": "mdi:webcam"
+      }
+    },
+    "sensor": {
+      "last_capture": {
+        "default": "mdi:camera-timer"
+      },
+      "frame_count": {
+        "default": "mdi:image-multiple-outline"
+      },
+      "storage_used": {
+        "default": "mdi:harddisk"
+      }
+    },
+    "binary_sensor": {
+      "camera_online": {
+        "default": "mdi:webcam",
+        "state": {
+          "off": "mdi:webcam-off",
+          "on": "mdi:webcam"
+        }
+      }
+    }
+  },
+  "services": {
+    "capture_now": "mdi:camera-plus-outline",
+    "purge_frames": "mdi:delete-sweep-outline",
+    "pause_capture": "mdi:pause-circle-outline",
+    "resume_capture": "mdi:play-circle-outline"
+  }
+}

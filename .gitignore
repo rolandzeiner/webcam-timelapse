@@ -1,0 +1,172 @@
+# Scaffold .gitignore for a HACS custom integration that ships:
+#   - a Python integration under custom_components/<domain>/
+#   - a Lit 3 + TypeScript Lovelace card built by Rollup
+# This is the unified portfolio baseline — verified byte-identical
+# across the user's six *-austria repos as of 2026-05-08.
+#
+# IMPORTANT: review before committing. Loosen only with intention.
+#
+# Two load-bearing rules:
+#   1. `.claude/` ignores any per-integration project-level Claude
+#      skill (under .claude/skills/) so it never lands in git.
+#      Portfolio-wide rules live in the user-level skill at
+#      ~/.claude/skills/austria-portfolio-workflow/. If you ever want
+#      to track a specific project-level skill in this repo, override
+#      with `!.claude/skills/<name>/` AFTER the .claude/ line — but
+#      think twice.
+#   2. `package-lock.json` is intentionally NOT here. It MUST stay
+#      committed so reproducible card builds work in CI.
+
+# ───────────────────────────────────────────────────────────────────
+# Python
+# ───────────────────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyc
+*$py.class
+*.so
+.Python
+
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+
+# Build / dist / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.HA_VERSION
+# uv lockfile — local-dev artifact only. We pin via requirements_test.txt
+# (a pip-style requirements file), not uv.lock; CI installs it with
+# `uv pip install`. Committing uv.lock would tie all contributors to one
+# resolved graph and produce a noisy diff on every dep sync.
+uv.lock
+
+# ───────────────────────────────────────────────────────────────────
+# Node / JS / TypeScript
+# ───────────────────────────────────────────────────────────────────
+node_modules/
+.npm/
+*.js.map
+
+# Bundler caches
+.rollup.cache/
+.vite-cache/
+.parcel-cache/
+
+# ───────────────────────────────────────────────────────────────────
+# OS metadata
+# ───────────────────────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+Desktop.ini
+*.swp
+*.swo
+*~
+*.bak
+
+# ───────────────────────────────────────────────────────────────────
+# IDE / editor state
+# ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+.cursor/
+.cursorrules.local
+.continue/
+.windsurf/
+
+# ───────────────────────────────────────────────────────────────────
+# AI assistants — local state, transcripts, plans, project-level skills
+# ───────────────────────────────────────────────────────────────────
+.claude/
+# Defensive: re-ignore project-level skills explicitly so they stay
+# out of git even if someone later adds a !.claude/<something>
+# exception that would un-ignore the parent dir. Portfolio-wide rules
+# belong in the user-level austria-portfolio-workflow skill, not here.
+.claude/skills/
+.claude-cache/
+.claude-*
+.aider*
+
+# ───────────────────────────────────────────────────────────────────
+# Static analysis tooling
+# ───────────────────────────────────────────────────────────────────
+.fallow/
+.fallowrc.json
+.fallowrc.jsonc
+fallow.toml
+
+# ───────────────────────────────────────────────────────────────────
+# Secrets / credentials — NEVER commit
+# ───────────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+.secrets
+*.secret
+secrets.json
+secrets.yaml
+auth.json
+credentials.json
+token.json
+*.pem
+*.key
+*.p12
+*.pfx
+tests/fixtures/secrets/
+
+# ───────────────────────────────────────────────────────────────────
+# HA local state — logs, config copies
+# ───────────────────────────────────────────────────────────────────
+.storage/
+home-assistant.log*
+home-assistant_*.log*
+*.log
+config/
+
+# ───────────────────────────────────────────────────────────────────
+# Personal dev tooling — push/sync scripts targeting a dev box, scratch
+# Each contributor wires these up locally; nothing under scripts/ is
+# shared via git.
+# ───────────────────────────────────────────────────────────────────
+scripts/
+dev-push.sh
+dev/
+test/
+target/
+
+# Personal notes / scratch — *.local.md is the convention
+CLAUDE.local.md
+*.local.md
+local_*.py
+private_*.py
+
+# ───────────────────────────────────────────────────────────────────
+# Dev-only test-fixture hook — a local-only Python module some
+# integrations use to inject recorded payloads during development.
+# MUST NEVER ship. CI's `no-dev-fixture` job (validate.yml) catches
+# `git add -f` bypasses. Delete this line (and the matching CI job)
+# if your integration does not use the dev-fixture pattern.
+# ───────────────────────────────────────────────────────────────────
+custom_components/*/_dev_fixture.py
