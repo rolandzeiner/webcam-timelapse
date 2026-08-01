@@ -43,7 +43,7 @@ from .const import (
     DOMAIN,
     STORAGE_SUBDIR,
 )
-from .encode import ImageDecodeError, encode_webp
+from .encode import ImageDecodeError, encode_webp, measure_luma
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,6 +146,15 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
         )
 
+        # Frames captured before luminance was recorded have none, so the
+        # flicker correction would do nothing for them — for a full
+        # retention window, on an archive the user already has. Backfill
+        # once, in the background, so enabling the feature applies to
+        # existing footage rather than only to the next fortnight.
+        self.config_entry.async_create_background_task(
+            self.hass, self._async_backfill_luma(), f"{DOMAIN}_luma_backfill"
+        )
+
     @callback
     def async_teardown(self) -> None:
         """Cancel the capture schedule on unload."""
@@ -180,6 +189,54 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.data is not None:
             self.data["paused"] = paused
         self.async_update_listeners()
+
+    async def _async_backfill_luma(self) -> None:
+        """Measure luminance for frames that predate the luma log.
+
+        Decoding is the expensive path — the capture path gets luminance
+        free because the image is already decoded — so this runs in
+        bounded chunks with a yield between them. A fortnight at one
+        minute is 20,000 frames; done in one executor call that is a
+        minute of a blocked worker on a Raspberry Pi.
+        """
+        chunk = 200
+        total = 0
+
+        while True:
+
+            def _work() -> int:
+                slots = frame_store.scan_slots(self.frames_dir)
+                missing = frame_store.slots_missing_luma(self.frames_dir, slots)[:chunk]
+                for slot in missing:
+                    data = frame_store.read_frame(self.frames_dir, slot)
+                    if data is None:
+                        continue
+                    try:
+                        frame_store.append_luma(
+                            self.frames_dir, slot, measure_luma(data)
+                        )
+                    except ImageDecodeError:
+                        # A frame we cannot read is one the card cannot
+                        # show either; skip it rather than retry forever.
+                        frame_store.append_luma(self.frames_dir, slot, 0)
+                return len(missing)
+
+            done = await self.hass.async_add_executor_job(_work)
+            total += done
+            if done < chunk:
+                break
+            # Yield between chunks so a long backfill cannot monopolise
+            # the executor during startup.
+            await asyncio.sleep(0)
+
+        if total:
+            _LOGGER.info(
+                "%s: measured brightness for %d existing frame(s) so the "
+                "flicker correction applies to footage captured before it "
+                "was enabled",
+                self._entry.title,
+                total,
+            )
 
     async def async_luma_map(self) -> dict[int, int]:
         """Per-frame luminance, for the card's flicker correction."""

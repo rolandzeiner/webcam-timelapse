@@ -96,3 +96,18 @@ def encode_webp(raw: bytes, max_width: int, quality: int) -> EncodedFrame:
             return EncodedFrame(buffer.getvalue(), rgb.width, rgb.height, luma)
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as err:
         raise ImageDecodeError(str(err)) from err
+
+
+def measure_luma(data: bytes) -> int:
+    """Mean perceptual luminance of an already-encoded frame.
+
+    Only for backfilling frames captured before luminance was recorded —
+    the capture path gets this free from `encode_webp`, which already has
+    the image decoded. Decoding purely to measure is the expensive path
+    and should never be on the hot one.
+    """
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            return round(ImageStat.Stat(image.convert("L")).mean[0])
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as err:
+        raise ImageDecodeError(str(err)) from err

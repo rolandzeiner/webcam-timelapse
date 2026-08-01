@@ -238,6 +238,20 @@ def compact_luma(frames_dir: Path, keep: set[int]) -> None:
         tmp.unlink(missing_ok=True)
 
 
+def slots_missing_luma(frames_dir: Path, slots: list[int]) -> list[int]:
+    """Stored slots with no recorded luminance, oldest first."""
+    known = read_luma(frames_dir)
+    return [slot for slot in slots if slot not in known]
+
+
+def read_frame(frames_dir: Path, slot: int) -> bytes | None:
+    """Raw bytes of one stored frame, or None if it is gone."""
+    try:
+        return frame_path(frames_dir, slot).read_bytes()
+    except OSError:
+        return None
+
+
 def disk_usage(frames_dir: Path) -> int:
     """Total bytes occupied by stored frames."""
     if not frames_dir.is_dir():

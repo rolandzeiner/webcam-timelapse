@@ -468,3 +468,76 @@ async def test_prune_compacts_the_luminance_log(
     await coordinator.async_refresh()
 
     assert set(frame_store.read_luma(coordinator.frames_dir)) == {keep}
+
+
+async def test_backfills_luminance_for_pre_existing_frames(
+    hass: HomeAssistant, mock_fetch: AsyncMock, tmp_path
+) -> None:
+    """Enabling deflicker must apply to footage already on disk.
+
+    Without this, the correction would do nothing for a full retention
+    window on an archive the user already has — which is exactly the
+    footage they enabled it for.
+    """
+    from custom_components.webcam_timelapse.const import CONF_FRAMES_PATH
+    from custom_components.webcam_timelapse.encode import encode_webp
+
+    from .conftest import make_jpeg
+
+    frames = tmp_path / "pre-existing"
+    frames.mkdir()
+    encoded = encode_webp(make_jpeg(), 1024, 78)
+    slots = [1_785_585_600 + n * 600 for n in range(3)]
+    for slot in slots:
+        frame_store.write_frame(frames, slot, encoded.data)
+    assert frame_store.read_luma(frames) == {}
+
+    entry = make_entry(**{CONF_FRAMES_PATH: str(frames)})
+    assert await setup_entry(hass, entry)
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    measured = frame_store.read_luma(frames)
+    assert set(measured) == set(slots)
+    assert all(0 <= value <= 255 for value in measured.values())
+
+
+async def test_backfill_does_not_redo_known_frames(
+    hass: HomeAssistant, mock_fetch: AsyncMock, tmp_path
+) -> None:
+    """It is one-time work; a restart must not re-decode the whole archive."""
+    from custom_components.webcam_timelapse.const import CONF_FRAMES_PATH
+    from custom_components.webcam_timelapse.encode import encode_webp
+
+    from .conftest import make_jpeg
+
+    frames = tmp_path / "already-known"
+    frames.mkdir()
+    encoded = encode_webp(make_jpeg(), 1024, 78)
+    slot = 1_785_585_600
+    frame_store.write_frame(frames, slot, encoded.data)
+    # A deliberately wrong value: if the backfill overwrote it, it would change.
+    frame_store.append_luma(frames, slot, 7)
+
+    entry = make_entry(**{CONF_FRAMES_PATH: str(frames)})
+    assert await setup_entry(hass, entry)
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert frame_store.read_luma(frames)[slot] == 7
+
+
+async def test_backfill_survives_an_unreadable_frame(
+    hass: HomeAssistant, mock_fetch: AsyncMock, tmp_path
+) -> None:
+    """One corrupt file must not stall the backfill in a retry loop."""
+    from custom_components.webcam_timelapse.const import CONF_FRAMES_PATH
+
+    frames = tmp_path / "corrupt"
+    frames.mkdir()
+    frame_store.write_frame(frames, 1_785_585_600, b"not an image at all")
+
+    entry = make_entry(**{CONF_FRAMES_PATH: str(frames)})
+    assert await setup_entry(hass, entry)
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    # Recorded (as unusable) rather than left missing, so it is not retried.
+    assert frame_store.read_luma(frames) == {1_785_585_600: 0}
