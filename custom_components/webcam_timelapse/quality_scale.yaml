@@ -1,33 +1,48 @@
 rules:
   # Bronze
   action-setup:
-    status: exempt
-    comment: This integration does not provide any service actions.
+    status: done
+    comment: >-
+      Four actions (capture_now, purge_frames, pause_capture, resume_capture)
+      registered in async_setup via services.async_setup_services, not in
+      async_setup_entry.
   appropriate-polling:
     status: done
+    comment: >-
+      Captures run on a wall-clock grid via async_track_time_change rather than
+      a coordinator update_interval, so frame timestamps are deterministic. The
+      interval is user-selected from divisors of 60 minutes; the default of 10
+      is deliberately conservative because the polled URL belongs to a third
+      party.
   brands:
     status: done
-    comment: Icons shipped in custom_components/webcam_timelapse/brand/ (icon.png 256x256, icon@2x.png 512x512). HA 2026.3+ reads this locally; the home-assistant/brands repo no longer accepts custom-integration PRs.
+    comment: >-
+      Assets in custom_components/webcam_timelapse/brand/ (icon, icon@2x, logo,
+      logo@2x plus dark_ variants). HA 2026.3+ prefers local files; the
+      home-assistant/brands repo does not accept custom-integration PRs.
   common-modules:
     status: done
   config-flow:
     status: done
   config-flow-test-coverage:
     status: done
+    comment: tests/test_config_flow.py covers user, reconfigure, options and reauth.
   dependency-transparency:
     status: done
+    comment: Pillow only, declared in manifest requirements with a loose lower bound.
   docs-actions:
-    status: exempt
-    comment: No service actions.
+    status: done
+    comment: README "Actions" documents all four, including the capture_now overwrite refusal.
   docs-high-level-description:
-    status: todo
+    status: done
   docs-installation-instructions:
-    status: todo
+    status: done
   docs-removal-instructions:
-    status: todo
+    status: done
+    comment: README "Remove the integration" covers per-entry frame deletion and HACS removal.
   entity-event-setup:
     status: exempt
-    comment: Coordinator pattern; entities don't subscribe to events directly.
+    comment: Coordinator pattern; no entity subscribes to events directly.
   entity-unique-id:
     status: done
   has-entity-name:
@@ -36,88 +51,131 @@ rules:
     status: done
   test-before-configure:
     status: done
+    comment: async_probe_url performs a trial GET and checks the Content-Type.
   test-before-setup:
     status: done
   unique-config-entry:
     status: done
+    comment: unique_id is sha256(image_url)[:16], so the same camera cannot be added twice.
 
   # Silver
   action-exceptions:
-    status: exempt
-    comment: No service actions.
+    status: done
+    comment: >-
+      Actions raise ServiceValidationError with translation_domain and
+      translation_key (unknown_entry, entry_not_loaded, slot_occupied).
   config-entry-unloading:
     status: done
+    comment: async_teardown cancels the capture schedule.
   docs-configuration-parameters:
-    status: todo
+    status: done
+    comment: README "Settings" documents every config-flow field.
   docs-installation-parameters:
-    status: todo
+    status: done
+    comment: README "Set up a camera" walks the flow step by step.
   entity-unavailable:
     status: done
-    comment: CoordinatorEntity marks entities unavailable on coordinator failure.
   integration-owner:
     status: done
   log-when-unavailable:
-    status: todo
-    comment: Add once/info-on-recovery logging in the coordinator's first successful update path.
+    status: done
+    comment: >-
+      DataUpdateCoordinator logs the first failure at warning and recovery at
+      info. A frozen camera is reported separately via camera_online plus a
+      repair issue, because it returns healthy responses and would otherwise
+      never be logged at all.
   parallel-updates:
     status: done
+    comment: PARALLEL_UPDATES = 0 in camera.py, sensor.py and binary_sensor.py.
   reauthentication-flow:
     status: done
-    comment: async_step_reauth + async_step_reauth_confirm implemented; the coordinator raises ConfigEntryAuthFailed on HTTP 401/403 which HA translates into this flow. If your integration has no credentials at all, flip to `exempt` and remove the auth branch from the coordinator.
+    comment: >-
+      async_step_reauth + async_step_reauth_confirm. capture.py raises
+      ConfigEntryAuthFailed on 401/403, which HA turns into this flow. Relevant
+      for cameras behind basic auth.
   test-coverage:
-    status: todo
-    comment: Expand tests as you add features. Silver requires >95%.
+    status: done
+    comment: 96%+, gate enforced at 90% via pytest.ini --cov-fail-under.
 
   # Gold
   devices:
     status: done
-    comment: DeviceInfo on entities + explicit dr.async_get_or_create in __init__.py.
+    comment: >-
+      One device per entry, registered explicitly in __init__.py so it appears
+      before any entity reports state. configuration_url points at the camera's
+      own origin rather than this repo.
   diagnostics:
     status: done
+    comment: >-
+      Counts and status only. Credentials and the frames path are redacted; the
+      image URL deliberately is not, since it is the key triage field and a
+      public webcam address is not a secret.
   discovery:
     status: exempt
-    comment: Cloud/HTTP integration with no local discoverable component.
+    comment: The image URL is user-supplied; there is nothing on the network to discover.
   discovery-update-info:
     status: exempt
     comment: No discovery.
   docs-data-update:
-    status: todo
+    status: done
+    comment: README "How data updates" covers the wall-clock grid, freeze detection and pruning.
   docs-examples:
-    status: todo
+    status: done
+    comment: README shows minimal and full card YAML plus an automation calling capture_now.
   docs-known-limitations:
-    status: todo
+    status: done
+    comment: >-
+      README "Known limitations" states the no-backfill property, unauthenticated
+      frame serving, absence of a stream, and the coarser-interval behaviour.
   docs-supported-devices:
-    status: exempt
-    comment: Cloud API; no physical devices. Flip to `todo` for device integrations.
+    status: done
+    comment: >-
+      Any camera publishing a still image over http(s). Stated in the README
+      intro and the "Set up a camera" note about using the direct image link.
   docs-supported-functions:
-    status: todo
+    status: done
+    comment: README "Entities" and "Actions" list everything exposed.
   docs-troubleshooting:
-    status: todo
+    status: done
+    comment: README "Troubleshooting" covers the failure modes seen in practice.
   docs-use-cases:
-    status: todo
+    status: done
+    comment: README "What you can do with it".
   dynamic-devices:
     status: exempt
-    comment: Single device per config entry; no runtime device discovery.
+    comment: One device per entry, fixed at setup; nothing appears at runtime.
   entity-category:
-    status: exempt
-    comment: All entities are primary data. Flip if you add diagnostic/config entities.
+    status: done
+    comment: >-
+      storage_used and camera_online are EntityCategory.DIAGNOSTIC; the camera,
+      last_capture and stored_frames are primary.
   entity-device-class:
-    status: todo
-    comment: Set appropriate SensorDeviceClass per sensor.
+    status: done
+    comment: >-
+      SensorDeviceClass.TIMESTAMP, SensorDeviceClass.DATA_SIZE and
+      BinarySensorDeviceClass.CONNECTIVITY. stored_frames has no fitting device
+      class and correctly declares none.
   entity-disabled-by-default:
     status: exempt
-    comment: No non-essential entities. Flip if you add rarely-used ones.
+    comment: Five entities, all useful; none noisy enough to warrant hiding.
   entity-translations:
     status: done
   exception-translations:
     status: done
+    comment: Every UpdateFailed and ServiceValidationError carries a translation_key.
   icon-translations:
     status: done
+    comment: >-
+      icons.json only; no _attr_icon anywhere, including the binary sensor's
+      on/off state icons.
   reconfiguration-flow:
     status: done
   repair-issues:
     status: done
-    comment: Coordinator has raise/clear helpers; raise real issues when degraded conditions occur.
+    comment: >-
+      camera_offline is raised once when consecutive captures come back
+      identical and cleared on recovery. It is the only repair issue — the
+      condition is genuinely user-actionable.
   stale-devices:
     status: exempt
     comment: See dynamic-devices.
@@ -125,14 +183,15 @@ rules:
   # Platinum
   async-dependency:
     status: done
-    comment: Only aiohttp (async) used.
+    comment: >-
+      aiohttp is the API-communication library and is async. Pillow is
+      synchronous but is a CPU-only codec, called exclusively through
+      hass.async_add_executor_job — never from the event loop. encode.py and
+      frame_store.py import nothing from homeassistant, which makes an
+      accidental direct call visible on review.
   inject-websession:
     status: done
-    comment: |
-      async_get_clientsession(hass) in coordinator and config flow. Per the
-      rule, this only applies to integrations making HTTP requests — if yours
-      does not (static/local data), change status to `exempt` with a "no HTTP"
-      comment instead of leaving `done`.
+    comment: async_get_clientsession(hass) in both capture.py and config_flow.py.
   strict-typing:
     status: done
-    comment: py.typed marker present; CI runs mypy --strict.
+    comment: py.typed present; CI runs mypy --strict.

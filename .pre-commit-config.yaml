@@ -1,0 +1,40 @@
+# Local gate, run before the commit lands.
+#
+# The `rev:` values below are hand-synced to the EXACT `==` pins in
+# requirements_test.txt. If they drift, the local hook lints with a different
+# ruleset than CI and "passes locally" stops meaning anything — which is
+# precisely why Dependabot is told to ignore these two repos (see
+# .github/dependabot.yml). Bump them together with requirements_test.txt or
+# not at all.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.0 # == requirements_test.txt
+    hooks:
+      - id: ruff
+        args: [--fix]
+      # `ruff check` says NOTHING about formatting. Without this hook the
+      # formatter drifts silently until someone finally runs it and the
+      # catch-up lands as one unreviewable diff.
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.3.0 # == requirements_test.txt
+    hooks:
+      - id: mypy
+        args: [--strict, --ignore-missing-imports]
+        files: ^custom_components/webcam_timelapse/
+        additional_dependencies:
+          - homeassistant
+          - voluptuous
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-json
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      # The frame archive is binary and large; nothing that size belongs in
+      # git history.
+      - id: check-added-large-files
+        args: [--maxkb=600]

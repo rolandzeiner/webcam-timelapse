@@ -1,63 +1,144 @@
-# Contributing to Skill Demo Austria
+# Contributing
 
-This is a **showcase** integration — its primary purpose is to exercise
-the scaffolding patterns used across the author's portfolio of
-`*-austria` HACS integrations. PRs are welcome, but the scope is
-deliberately narrow:
+## Setup
 
-- **In scope**: bug fixes, dependency bumps, tightening the Quality
-  Scale annotations, improvements that make the showcase faithfully
-  represent current best practice.
-- **Out of scope**: new domains, real upstream APIs, anything that turns
-  this into a production-grade integration rather than a demonstration
-  of patterns. If you need a real API, fork this repo as a starting
-  point.
-
-## Local setup
+Python side, using [`uv`](https://docs.astral.sh/uv/):
 
 ```bash
-git clone git@github.com:rolandzeiner/skill-demo-austria.git
-cd skill-demo-austria
+uv venv --python 3.14
+source .venv/bin/activate
+uv pip install -r requirements_test.txt
+```
 
-# Python — requires Python 3.14+ (HA core 2026.5 floor).
-python3.14 -m venv .venv
-.venv/bin/pip install -r requirements_test.txt
+Card side:
 
-# Card bundle.
+```bash
 npm install
-npm run build
 ```
 
-## The verification gate
+Optionally `pre-commit install` — the hooks run the same ruff and mypy the
+CI does, at the same pinned versions.
 
-Every PR must pass:
+## Verification gate
+
+Everything below must pass before a commit. CI runs the same set, so failing
+locally only costs you a push.
 
 ```bash
-.venv/bin/ruff check .
-.venv/bin/mypy --strict --ignore-missing-imports custom_components/skill_demo_austria
-.venv/bin/pytest tests/ -v
-npm run build
-node -c custom_components/skill_demo_austria/www/skill-demo-austria-card.js
+pytest tests/                                     # 90% coverage floor, enforced
+mypy --strict --ignore-missing-imports custom_components/webcam_timelapse
+ruff check .
+ruff format --check .                             # `ruff check` ignores formatting
+npx tsc --noEmit                                  # card type-check, stricter than Rollup's
+npm test                                          # vitest: the pure card logic
+npm run build                                     # Rollup bundle
 ```
 
-CI runs these (plus hassfest and HACS validate) on every push.
+Plus one check on the **oldest** Python this integration supports:
 
-## Version bumps
-
-The Python and TypeScript card versions must stay in lockstep:
-
-1. Bump `custom_components/skill_demo_austria/manifest.json` `version`.
-2. Bump `src/const.ts` `CARD_VERSION` to the same string.
-3. `tests/test_card_version.py` enforces the parity — run it locally
-   before pushing.
-
-## Commit style
-
-Match the existing log shape: `chore:` / `feat:` / `fix:` / `docs:` /
-`ci:` prefixes, imperative mood, no period.
-
-```
-feat(card): add status pip backed by the online binary sensor
+```bash
+uv run --python 3.13 --no-project python -m compileall -q custom_components/webcam_timelapse
 ```
 
-Co-Authored-By trailers are fine. Squash-merge from PR.
+That last one is not redundant. Everything else runs 3.14, so a construct that
+parses there but not on the floor leaves ruff, mypy, pytest and hassfest all
+green while the integration fails to import for every user below HA 2026.3.
+
+## Two Python versions, deliberately different
+
+| | Version | Where |
+|---|---|---|
+| **Runtime** — what we develop and test on | 3.14 | `validate.yml` `tests` job, the local venv |
+| **Floor** — what the code must still parse on | 3.13 | `pyproject.toml` `target-version`, `compile-floor-python` job |
+
+The floor follows `hacs.json`'s `homeassistant` value (2025.5.0 → Python 3.13).
+Raise all three together or none of them.
+
+Do **not** set `target-version` to the CI interpreter. A sibling project did,
+and a routine `ruff format` then rewrote `except (A, B):` into 3.14-only
+syntax — a hard `SyntaxError` for everyone on an older HA, with fully green CI,
+because every check ran 3.14.
+
+## Linter pins
+
+`ruff` and `mypy` are pinned **exact** in `requirements_test.txt`; the
+`.pre-commit-config.yaml` revs are hand-synced to match. A floating range lets
+an upstream release turn CI red with no code change on your side, which is
+vicious on the nightly scheduled run. Pinned, upgrades arrive as a Dependabot
+PR whose CI shows the new findings, and you adopt them deliberately.
+
+`pytest-homeassistant-custom-component` stays ranged on purpose — it tracks
+HA core, and pinning it would freeze the HA version we test against.
+
+`PyTurboJPEG` is pinned to the exact version HA's `camera` component
+requires. It is not a runtime dependency of this integration; it is here
+because `homeassistant.components.camera` imports `turbojpeg` at module level,
+and the test environment has no manifest-resolution step to install it.
+
+## Architecture notes worth knowing before you edit
+
+**`encode.py` and `frame_store.py` import nothing from `homeassistant`.** That
+is structural, not stylistic: everything in them does blocking work (a WebP
+encode, `os.scandir`, `unlink`), so every call must go through
+`hass.async_add_executor_job`. Keeping the modules HA-free makes an
+`await`-less call from async code visible on review rather than only as a
+blocking-call warning at runtime.
+
+**Frame filenames are wall-clock grid slots, never derived from upstream
+headers.** The card addresses frames densely as `t0 + i * step`, so a frame
+must sit exactly on the grid. Naming files after a response's `Last-Modified`
+looks equivalent and silently overwrites one file forever against any camera
+whose header freezes.
+
+**`unique_id` formulas are frozen.** Changing the entry-level or entity-level
+formula wipes every existing install.
+
+**The card bundle is generated.** `custom_components/webcam_timelapse/www/*.js`
+comes from `src/` via Rollup — never hand-edit it. Commit the rebuilt bundle
+alongside the source change; HACS users never run `npm`.
+
+**Version sync is byte-identical.** `manifest.json` `version` and
+`src/const.ts` `CARD_VERSION` must match; `const.py` derives its value from the
+manifest at import. `tests/test_versions.py` enforces the pair. Drift means the
+card's version probe sees a mismatch, shows a reload banner, the reload serves
+the same JS, and the banner returns — a loop.
+
+## Quality scale
+
+This integration targets **Platinum**. Every change must leave
+`custom_components/webcam_timelapse/quality_scale.yaml` at `done` or `exempt`
+with a written reason. Four things that break rules silently:
+
+- A bare-string `UpdateFailed` — every raise needs `translation_domain`,
+  `translation_key` and placeholders.
+- A new entity type without matching entries in `strings.json`,
+  `translations/en.json`, `translations/de.json` **and** `icons.json`. All four,
+  same commit.
+- `_attr_icon = "mdi:..."` anywhere — icons belong in `icons.json`.
+- A platform module without `PARALLEL_UPDATES = 0`.
+
+## Branches and releases
+
+Work happens on `dev`. `main` is protected and takes changes only through a
+PR from `dev`, with all CI checks green.
+
+Releases: bump `manifest.json` and `src/const.ts` together, rebuild the
+bundle, open the PR, merge, then tag from `main`.
+
+## Testing against a live Home Assistant
+
+`scripts/dev-push.sh` rsyncs the integration to a running HA container. After
+a push: a card-JS change needs a browser hard-refresh, a Python change needs
+an HA restart.
+
+Two harness details that will otherwise cost you an afternoon:
+
+- `pytest-homeassistant-custom-component`'s `hass.config.config_dir` is a
+  **fixed directory inside site-packages**, shared across tests and runs. The
+  `isolate_frames_dir` fixture redirects the archive to `tmp_path`; without it,
+  frames accumulate between tests and retention assertions fail on counts from
+  some earlier test.
+- The capture tick is dispatched as a **background** task. The default
+  `async_block_till_done()` does not await those, so assertions run while the
+  encode is still in the executor. Use
+  `async_block_till_done(wait_background_tasks=True)`.
