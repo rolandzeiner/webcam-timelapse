@@ -23,9 +23,8 @@ uv pip install pre-commit
 pre-commit install
 ```
 
-They run the same ruff and mypy CI
-does, at the same pinned versions, plus `actionlint` on any workflow file
-you touch.
+They run the same ruff and mypy that CI does, at the same pinned versions,
+plus `actionlint` on any workflow file you touch.
 
 `actionlint` is deliberately **not** in CI. `validate.yml` runs on a nightly
 cron, and an unpinned linter shipping a new rule turns the repo red overnight
