@@ -86,6 +86,7 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private trackWidth = 600;
   @state() private versionMismatch: string | null = null;
   @state() private indexError: string | undefined;
+  @state() private frameError: string | undefined;
 
   private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
@@ -302,35 +303,60 @@ export class WebcamTimelapseCard extends LitElement {
    * swapped in over a newer frame.
    */
   private async swapInFrame(): Promise<void> {
-    const url = this.currentSrc();
-    if (!url) return;
+    const candidates = this.frameSources();
+    if (candidates.length === 0) return;
 
     const generation = ++this.frameGeneration;
     const incoming = this.useLayerA ? this.layerB : this.layerA;
     if (!incoming) return;
 
-    incoming.src = url;
-    try {
-      await incoming.decode();
-    } catch {
-      // Decode rejects on a 404 (a pruned frame, or a gap the index has
-      // not caught up with yet). Leave the current layer showing rather
-      // than flipping to a broken image.
+    // Try each source in turn. A decode rejects on a 404 (a pruned frame,
+    // or a camera proxy that has nothing cached yet) — falling through to
+    // the next candidate matters because the archived frame is reliably
+    // on disk even when the live proxy is not yet warm. Giving up after
+    // the first failure is what renders as an unexplained black card.
+    for (const url of candidates) {
+      incoming.src = url;
+      try {
+        await incoming.decode();
+      } catch {
+        continue;
+      }
+      // A newer frame was requested while this decode was in flight;
+      // swapping now would show an older image over a newer one.
+      if (generation !== this.frameGeneration) return;
+
+      this.useLayerA = !this.useLayerA;
+      this.frameError = undefined;
+      this.requestUpdate();
       return;
     }
-    if (generation !== this.frameGeneration) return;
 
-    this.useLayerA = !this.useLayerA;
+    if (generation !== this.frameGeneration) return;
+    // Every source failed. Say so — a silently black stage gives the user
+    // nothing to act on and looks identical to a camera that is simply
+    // dark at night.
+    this.frameError = candidates[0];
     this.requestUpdate();
   }
 
-  private currentSrc(): string | undefined {
+  /**
+   * Image sources for the current playhead, best first.
+   *
+   * At the live edge the camera's own proxy is preferred: it is
+   * authenticated, same-origin and token-rotated, so the browser never
+   * talks to the third-party camera host. The archived frame is always
+   * included as a fallback because it is the source this card actually
+   * guarantees — it is on disk by definition.
+   */
+  private frameSources(): string[] {
+    const sources: string[] = [];
     const live = this.hass?.states[this.config!.camera_entity]?.attributes
       .entity_picture as string | undefined;
-    // At the live edge prefer the camera's authenticated, same-origin
-    // proxy: the browser never talks to the third-party camera host.
-    if (this.atLive && live) return live;
-    return urlAt(this.index, this.position) ?? undefined;
+    if (this.atLive && live) sources.push(live);
+    const archived = urlAt(this.index, this.position);
+    if (archived) sources.push(archived);
+    return sources;
   }
 
   private prefetchAhead(): void {
@@ -472,6 +498,12 @@ export class WebcamTimelapseCard extends LitElement {
           decoding="async"
           fetchpriority="high"
         />
+        ${this.frameError
+          ? html`<div class="empty">
+              <div>${this.t("empty.frame_failed")}</div>
+              <div class="detail">${this.frameError}</div>
+            </div>`
+          : nothing}
         ${slot !== null
           ? html`<div class="stamp">
               <time datetime=${new Date(slot * 1000).toISOString()}>

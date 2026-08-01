@@ -2,6 +2,7 @@
   "empty": {
     "no_frames": "No frames archived yet.",
     "first_soon": "The first one appears at the next capture.",
+    "frame_failed": "This frame could not be loaded.",
     "index_failed": "Could not load the timeline."
   },
   "badge": {

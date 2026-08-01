@@ -2,6 +2,7 @@
   "empty": {
     "no_frames": "Noch keine Bilder gespeichert.",
     "first_soon": "Das erste erscheint bei der nächsten Aufnahme.",
+    "frame_failed": "Dieses Bild konnte nicht geladen werden.",
     "index_failed": "Die Zeitleiste konnte nicht geladen werden."
   },
   "badge": {
