@@ -40,6 +40,26 @@ export const cardStyles = css`
     overflow: hidden;
   }
 
+  /* Wrapper whose only job is to be a stacking context.
+
+     revealFrame() writes z-index onto the two layers so the incoming
+     frame paints over the outgoing one. Without this wrapper that
+     z-index competes with every other child of .stage — the timestamp,
+     the live/gap badge, the sensor readout, the error panel — all of
+     which are positioned at z-index auto and had been relying on DOM
+     order to paint on top. Adding z-index to the images silently pushed
+     the whole overlay underneath an opaque photo.
+
+     position + a numeric z-index makes this element a stacking context,
+     so the layers' z-index is scoped to this subtree and can only ever
+     rank the two images against each other. */
+  .layers {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+  }
+
   /* opacity, z-index and transition are set imperatively by
      revealFrame() and are deliberately absent here.
 

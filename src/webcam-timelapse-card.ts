@@ -717,8 +717,10 @@ export class WebcamTimelapseCard extends LitElement {
     // and transition that revealFrame() writes there.
     return html`
       <div class="stage" style="--wtl-frame-filter:${filter}">
-        <img class="layer a" alt="" decoding="async" fetchpriority="high" />
-        <img class="layer b" alt="" decoding="async" fetchpriority="high" />
+        <div class="layers">
+          <img class="layer a" alt="" decoding="async" fetchpriority="high" />
+          <img class="layer b" alt="" decoding="async" fetchpriority="high" />
+        </div>
         ${this.frameError
           ? html`<div class="empty">
               <div>${this.t("empty.frame_failed")}</div>
