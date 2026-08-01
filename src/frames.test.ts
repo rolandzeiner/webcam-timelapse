@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   EMPTY_INDEX,
+  FADE_MAX_SPEED,
+  FADE_MS,
+  fadeDurationMs,
   type FrameIndex,
   hasFrames,
   nextPresent,
@@ -131,5 +134,50 @@ describe("prefetchDepth", () => {
   it("is bounded at both ends so it cannot starve the current frame", () => {
     expect(prefetchDepth(0.25)).toBe(4);
     expect(prefetchDepth(99)).toBe(16);
+  });
+});
+
+describe("fadeDurationMs", () => {
+  const playing = { playing: true, reducedMotion: false };
+  const idle = { playing: false, reducedMotion: false };
+  /** The card's own budget: 500 ms at 1x, floored at ~30 fps. */
+  const budget = (speed: number): number => Math.max(500 / speed, 33);
+
+  it("never lets a fade outlast the frame budget", () => {
+    // The whole point. A fade longer than the budget is cut off by the
+    // next swap, so both layers stay part-opaque and the stage ghosts
+    // permanently — the bug a fixed 160 ms transition had from 4x up.
+    for (const speed of [1, 2, 4, 8, 16, 32]) {
+      expect(fadeDurationMs(speed, budget(speed), playing)).toBeLessThanOrEqual(
+        budget(speed),
+      );
+    }
+  });
+
+  it("cuts rather than blends once playback approaches video rates", () => {
+    expect(fadeDurationMs(FADE_MAX_SPEED + 1, budget(8), playing)).toBe(0);
+    expect(fadeDurationMs(32, budget(32), playing)).toBe(0);
+  });
+
+  it("blends at the speeds a human actually watches", () => {
+    expect(fadeDurationMs(1, budget(1), playing)).toBeGreaterThan(0);
+    expect(fadeDurationMs(4, budget(4), playing)).toBeGreaterThan(0);
+  });
+
+  it("gives stepping and scrubbing the full blend", () => {
+    // Nothing competes for the budget when playback is stopped, so the
+    // speed selector must not shorten a single deliberate step.
+    expect(fadeDurationMs(32, budget(32), idle)).toBe(FADE_MS);
+    expect(fadeDurationMs(1, budget(1), idle)).toBe(FADE_MS);
+  });
+
+  it("is off entirely under prefers-reduced-motion", () => {
+    // Checked here rather than in CSS: the transition is an inline style,
+    // so a media query in the stylesheet could never override it.
+    for (const state of [playing, idle]) {
+      expect(
+        fadeDurationMs(1, budget(1), { ...state, reducedMotion: true }),
+      ).toBe(0);
+    }
   });
 });

@@ -22,9 +22,17 @@ import {
   radiusForStrength,
 } from "./deflicker";
 import { localize } from "./localize/localize";
-import { dayTicks, formatClock, formatStamp, type DayTick } from "./dayticks";
+import {
+  dayTicks,
+  formatClock,
+  formatStamp,
+  timeTicks,
+  type DayTick,
+  type TimeTick,
+} from "./dayticks";
 import {
   EMPTY_INDEX,
+  fadeDurationMs,
   type FrameIndex,
   hasFrames,
   nextPresent,
@@ -50,7 +58,7 @@ import type {
   LovelaceCardEditor,
   WebcamTimelapseCardConfig,
 } from "./types";
-import { safeImageUri } from "./utils";
+import { prefersReducedMotion, safeImageUri } from "./utils";
 
 const SPEEDS = [1, 2, 4, 8, 16, 32] as const;
 /** Milliseconds per frame at 1x. */
@@ -106,6 +114,7 @@ export class WebcamTimelapseCard extends LitElement {
   private swapChain: Promise<void> = Promise.resolve();
   private gains: Float32Array = new Float32Array(0);
   private versionChecked = false;
+  private rulerCache?: { key: string; days: DayTick[]; times: TimeTick[] };
 
   @query("img.layer.a") private layerA?: HTMLImageElement;
   @query("img.layer.b") private layerB?: HTMLImageElement;
@@ -335,6 +344,13 @@ export class WebcamTimelapseCard extends LitElement {
     return Math.max(BASE_FRAME_MS / this.speed, MIN_FRAME_MS);
   }
 
+  private get fadeDuration(): number {
+    return fadeDurationMs(this.speed, this.frameDelay, {
+      playing: this.playing,
+      reducedMotion: prefersReducedMotion(),
+    });
+  }
+
   /**
    * Playback loop.
    *
@@ -479,6 +495,7 @@ export class WebcamTimelapseCard extends LitElement {
       // swapping now would show an older image over a newer one.
       if (generation !== this.frameGeneration) return;
 
+      this.revealFrame(incoming, this.useLayerA ? this.layerA : this.layerB);
       this.useLayerA = !this.useLayerA;
       this.frameError = undefined;
       this.requestUpdate();
@@ -491,6 +508,51 @@ export class WebcamTimelapseCard extends LitElement {
     // dark at night.
     this.frameError = candidates[0];
     this.requestUpdate();
+  }
+
+  /**
+   * Bring the decoded frame on screen over the one already there.
+   *
+   * The outgoing layer is pinned opaque and pushed underneath; only the
+   * incoming layer animates, from transparent to opaque, on top. The
+   * two therefore always composite to a full-coverage image and the
+   * stage background never shows through. See the .layer comment in
+   * card-styles.ts for why the obvious symmetric version pulses black.
+   *
+   * Leaving the outgoing layer at opacity 1 afterwards is intentional:
+   * it is hidden beneath an opaque layer, and it becomes the next
+   * incoming layer, which resets it. Nothing to clean up.
+   */
+  private revealFrame(
+    incoming: HTMLImageElement,
+    outgoing: HTMLImageElement | undefined,
+  ): void {
+    const duration = this.fadeDuration;
+
+    if (outgoing) {
+      outgoing.style.transition = "none";
+      outgoing.style.opacity = "1";
+      outgoing.style.zIndex = "1";
+    }
+    incoming.style.zIndex = "2";
+
+    if (duration === 0) {
+      incoming.style.transition = "none";
+      incoming.style.opacity = "1";
+      return;
+    }
+
+    incoming.style.transition = "none";
+    incoming.style.opacity = "0";
+    // Commit the 0 before animating. Without a forced reflow the browser
+    // coalesces both writes into one style recalculation, sees only the
+    // final value, and runs no transition at all.
+    void incoming.offsetWidth;
+    // Linear, not ease-in-out: with an opaque backdrop the opacity IS the
+    // blend ratio between two images, and easing it makes the midpoint
+    // linger on a half-and-half double exposure.
+    incoming.style.transition = `opacity ${duration}ms linear`;
+    incoming.style.opacity = "1";
   }
 
   /**
@@ -612,7 +674,7 @@ export class WebcamTimelapseCard extends LitElement {
         ${hasFrames(this.index)
           ? html`
               ${this.renderControls()} ${this.renderTrack(slot)}
-              ${this.config.show_dayticks ? this.renderDayTicks() : nothing}
+              ${this.config.show_dayticks ? this.renderRuler() : nothing}
             `
           : nothing}
       </ha-card>
@@ -638,28 +700,27 @@ export class WebcamTimelapseCard extends LitElement {
       `;
     }
 
-    const showA = this.useLayerA;
     // A CSS filter, so the correction costs GPU compositing rather than
     // any pixel work of ours — and the stored frame is never altered, so
     // turning deflicker off restores the original exactly.
     const gain = this.gains[this.position] ?? 1;
-    const filter = gain === 1 ? "none" : `brightness(${gain.toFixed(3)})`;
+    const effects: string[] = [];
+    if (gain !== 1) effects.push(`brightness(${gain.toFixed(3)})`);
+    // Playhead is on a gap: keep the last real frame on screen but make
+    // it visibly not-current rather than silently lying. This dims via
+    // filter rather than opacity so it cannot fight the fade, which owns
+    // opacity outright.
+    if (this.onGap) effects.push("grayscale(0.5)", "brightness(0.5)");
+    const filter = effects.length > 0 ? effects.join(" ") : "none";
+    // Bound on the stage, not on the layers: Lit sets the whole style
+    // attribute, so a binding on a layer would wipe the opacity, z-index
+    // and transition that revealFrame() writes there.
     return html`
-      <div class="stage ${this.onGap ? "stale" : ""}">
-        <img
-          class="layer a ${showA ? "visible" : ""}"
-          style="filter:${filter}"
-          alt=""
-          decoding="async"
-          fetchpriority="high"
-        />
-        <img
-          class="layer b ${!showA ? "visible" : ""}"
-          style="filter:${filter}"
-          alt=""
-          decoding="async"
-          fetchpriority="high"
-        />
+      <div class="stage" style="--wtl-frame-filter:${filter}">
+        <div class="layers">
+          <img class="layer a" alt="" decoding="async" fetchpriority="high" />
+          <img class="layer b" alt="" decoding="async" fetchpriority="high" />
+        </div>
         ${this.frameError
           ? html`<div class="empty">
               <div>${this.t("empty.frame_failed")}</div>
@@ -814,22 +875,60 @@ export class WebcamTimelapseCard extends LitElement {
     `;
   }
 
-  private renderDayTicks(): TemplateResult {
-    const ticks: DayTick[] = dayTicks(
-      this.index,
+  /**
+   * Day and time ticks for the current window, recomputed only when an
+   * input actually changes.
+   *
+   * The day scan is O(frames) — it has to see every slot to notice a date
+   * change — and this runs inside render(), which fires on every frame
+   * swap. At one-minute capture that is a fortnight of slots scanned
+   * fifteen times a second during 8x playback, for a result that changes
+   * only when the archive grows or the card is resized.
+   */
+  private rulerFor(): { days: DayTick[]; times: TimeTick[] } {
+    const key = [
+      this.index.t0,
+      this.index.count,
+      this.index.step,
+      Math.round(this.trackWidth),
       this.timeZone,
       this.language,
-      this.trackWidth,
-    );
+    ].join("|");
+    if (this.rulerCache?.key !== key) {
+      this.rulerCache = {
+        key,
+        days: dayTicks(this.index, this.timeZone, this.language, this.trackWidth),
+        times: timeTicks(this.index, this.timeZone, this.language, this.trackWidth),
+      };
+    }
+    return this.rulerCache;
+  }
+
+  private renderRuler(): TemplateResult {
+    const { days, times } = this.rulerFor();
     return html`
-      <div class="dayticks" aria-hidden="true">
-        ${ticks.map(
+      <div class="ruler" aria-hidden="true">
+        ${times.map(
+          (tick) => html`
+            <span class="tick minor" style="left:${tick.left}%">
+              <span class="mark"></span>
+              ${tick.label
+                ? html`<span class="lab time">${tick.label}</span>`
+                : nothing}
+            </span>
+          `,
+        )}
+        ${days.map(
           (tick) => html`
             <span
-              class="tick ${tick.isMonthStart ? "month" : ""}"
+              class="tick ${tick.isMonthStart ? "month" : "day"}"
               style="left:${tick.left}%"
-              >${tick.label}</span
             >
+              <span class="mark"></span>
+              ${tick.label
+                ? html`<span class="lab date">${tick.label}</span>`
+                : nothing}
+            </span>
           `,
         )}
       </div>

@@ -40,6 +40,51 @@ export const cardStyles = css`
     overflow: hidden;
   }
 
+  /* Wrapper whose only job is to be a stacking context.
+
+     revealFrame() writes z-index onto the two layers so the incoming
+     frame paints over the outgoing one. Without this wrapper that
+     z-index competes with every other child of .stage — the timestamp,
+     the live/gap badge, the sensor readout, the error panel — all of
+     which are positioned at z-index auto and had been relying on DOM
+     order to paint on top. Adding z-index to the images silently pushed
+     the whole overlay underneath an opaque photo.
+
+     position + a numeric z-index makes this element a stacking context,
+     so the layers' z-index is scoped to this subtree and can only ever
+     rank the two images against each other. */
+  .layers {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  /* opacity, z-index and transition are set imperatively by
+     revealFrame() and are deliberately absent here.
+
+     They used to live in this block as a symmetric crossfade: outgoing
+     1 -> 0 while incoming 0 -> 1. That is not a crossfade. Two stacked
+     elements with independent opacities do not composite to an opaque
+     result — at the midpoint the stage renders
+
+         0.5*new + 0.25*old + 0.25*background
+
+     and this background is #000, so every frame transition dipped ~25%
+     toward black. A per-frame luminance pulse is exactly the artifact
+     the deflicker pass exists to remove.
+
+     The fix holds the outgoing frame fully opaque underneath and fades
+     only the incoming one in on top of it, compositing to
+
+         b*new + (1-b)*old
+
+     with no background term. That needs z-order to follow which layer
+     is incoming, and DOM order cannot express it: layer b always paints
+     over layer a. Hence z-index, hence inline.
+
+     Gap dimming is folded into --wtl-frame-filter rather than opacity,
+     so it cannot collide with the fade. */
   .layer {
     position: absolute;
     inset: 0;
@@ -47,19 +92,7 @@ export const cardStyles = css`
     height: 100%;
     object-fit: contain;
     opacity: 0;
-    transition: opacity var(--ha-transition-duration-normal, 160ms)
-      var(--ha-transition-easing-standard, ease-in-out);
-  }
-
-  .layer.visible {
-    opacity: 1;
-  }
-
-  .stage.stale .layer.visible {
-    /* Playhead is on a gap: keep the last real frame on screen but make
-       it visibly not-current rather than silently lying. */
-    opacity: 0.45;
-    filter: grayscale(0.5);
+    filter: var(--wtl-frame-filter, none);
   }
 
   .empty .detail {
@@ -275,36 +308,67 @@ export const cardStyles = css`
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
-  /* --- day ticks --------------------------------------------------- */
+  /* --- ruler ------------------------------------------------------- */
 
-  .dayticks {
+  /* Two label rows, not one. Clock labels sit above date labels so the
+     two families can never collide horizontally, which means each only
+     has to be thinned against its own kind. */
+  .ruler {
     position: relative;
-    height: 20px;
+    height: 34px;
     margin: 0 12px 8px;
   }
 
+  /* Zero-width anchors: the tick carries only a position, and its
+     children do their own centring. Translating the anchor as well would
+     shift every child twice. */
   .tick {
     position: absolute;
     top: 0;
+    width: 0;
+    height: 100%;
+  }
+
+  .mark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 4px;
+    transform: translateX(-50%);
+    background: var(--wtl-divider);
+  }
+
+  .tick.day .mark {
+    height: 7px;
+    background: var(--wtl-muted);
+  }
+
+  .tick.month .mark {
+    height: 10px;
+    width: 2px;
+    background: var(--wtl-muted);
+  }
+
+  .lab {
+    position: absolute;
+    left: 0;
     transform: translateX(-50%);
     font-size: var(--ha-font-size-xs, 0.7rem);
     color: var(--wtl-muted);
     white-space: nowrap;
+    pointer-events: none;
   }
 
-  .tick::before {
-    content: "";
-    display: block;
-    width: 1px;
-    height: 5px;
-    margin: 0 auto 2px;
-    background: var(--wtl-divider);
+  .lab.time {
+    top: 12px;
+    /* Clock digits must not shuffle the label's centre as they change. */
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
   }
 
-  .tick.month::before {
-    height: 8px;
-    width: 2px;
-    background: var(--wtl-muted);
+  .lab.date {
+    top: 23px;
   }
 
   /* --- editor ------------------------------------------------------ */
@@ -412,14 +476,10 @@ export const cardStyles = css`
     }
   }
 
-  /* Honour the OS setting. autoplay is also forced off in code — a card
-     that starts animating by itself is the exact thing this preference
-     exists to prevent. */
-  @media (prefers-reduced-motion: reduce) {
-    .layer {
-      transition: none;
-    }
-  }
+  /* The frame fade is NOT disabled here. Its transition is an inline
+     style, and inline beats a stylesheet rule regardless of the media
+     query, so a rule here would look correct and do nothing. The check
+     lives in prefersReducedMotion(), read at swap time. */
 
   @media (forced-colors: active) {
     .fill,

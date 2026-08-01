@@ -149,3 +149,40 @@ export class PrefetchRing {
 export function prefetchDepth(speed: number): number {
   return Math.min(Math.max(Math.round(4 * speed), 4), 16);
 }
+
+/** Longest frame-to-frame blend, used when stepping or scrubbing. */
+export const FADE_MS = 120;
+
+/**
+ * Fastest playback that still blends frames.
+ *
+ * Above 4x the frame budget is 63 ms or less, which is near enough to
+ * video that a hard cut reads as motion rather than as a jump.
+ */
+export const FADE_MAX_SPEED = 4;
+
+/**
+ * How long the incoming frame should take to fade in, in milliseconds.
+ *
+ * Zero means a hard cut.
+ *
+ * The invariant that matters: during playback the fade must always fit
+ * inside the frame budget. A fade longer than the budget is interrupted
+ * by the next swap, so neither layer ever reaches 0 or 1 and the stage
+ * shows a permanent double exposure. A fixed 160 ms transition did
+ * exactly this at every speed from 4x up, which is why the duration is
+ * derived from the budget rather than chosen once.
+ *
+ * Stepping and scrubbing take the full blend: no next frame is competing
+ * for the budget, and a hard cut between two stills reads as a flinch.
+ */
+export function fadeDurationMs(
+  speed: number,
+  frameDelay: number,
+  options: { playing: boolean; reducedMotion: boolean },
+): number {
+  if (options.reducedMotion) return 0;
+  if (!options.playing) return FADE_MS;
+  if (speed > FADE_MAX_SPEED) return 0;
+  return Math.min(FADE_MS, Math.round(frameDelay / 2));
+}
