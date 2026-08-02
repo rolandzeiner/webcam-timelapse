@@ -58,6 +58,15 @@ export const cardStyles = css`
     inset: 0;
     z-index: 0;
     overflow: hidden;
+    cursor: pointer;
+  }
+
+  /* Inset, because the layers fill the stage — an outset ring would be
+     clipped away by the stage's own overflow and the focus state would
+     be invisible exactly where it matters most. */
+  .layers:focus-visible {
+    outline: 2px solid var(--wtl-accent);
+    outline-offset: -2px;
   }
 
   /* opacity, z-index and transition are set imperatively by
@@ -115,8 +124,12 @@ export const cardStyles = css`
 
   /* --- overlays ---------------------------------------------------- */
 
+  /* Passive labels, so they must not eat the click that opens the
+     camera's more-info dialog — they sit over the picture and would
+     otherwise punch two dead rectangles into it. */
   .stamp,
   .badge {
+    pointer-events: none;
     position: absolute;
     padding: 4px 8px;
     border-radius: 6px;
@@ -183,6 +196,8 @@ export const cardStyles = css`
     display: flex;
     align-items: baseline;
     gap: 8px;
+    cursor: pointer;
+    border-radius: 4px;
     font-size: var(--ha-font-size-s, 0.85rem);
     /* Pinned so the icon has a known box to be centred against. With an
        inherited line-height the row's height varies with the theme, and
@@ -227,6 +242,18 @@ export const cardStyles = css`
 
   .readout-row.stale .readout-value {
     opacity: 0.55;
+  }
+
+  /* Outset here, unlike the layers: the readout sits inside the stage
+     with room around it, so the ring reads better outside the text than
+     cutting through it. */
+  .readout-row:focus-visible {
+    outline: 2px solid var(--wtl-accent);
+    outline-offset: 1px;
+  }
+
+  .readout-row:hover .readout-name {
+    color: #fff;
   }
 
   .spark-wrap {

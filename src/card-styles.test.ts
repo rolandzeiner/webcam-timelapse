@@ -400,3 +400,52 @@ describe("ruler visibility", () => {
     expect(clearance).toBeGreaterThanOrEqual(5);
   });
 });
+
+describe("more-info targets", () => {
+  it("lets the event out of the shadow root", () => {
+    // The bug that makes this feature silently do nothing: without
+    // composed:true the event stops at the card's shadow boundary and
+    // never reaches the Lovelace view listening for it. bubbles alone is
+    // not enough.
+    const event = /new CustomEvent\(\s*"hass-more-info",[\s\S]{0,240}?\}\)/.exec(
+      cardSource,
+    )?.[0];
+
+    expect(event).toBeDefined();
+    expect(event).toMatch(/bubbles:\s*true/);
+    expect(event).toMatch(/composed:\s*true/);
+  });
+
+  it("gives both click targets a keyboard path", () => {
+    // A div with role="button" does not activate on a keypress by
+    // itself, so WCAG 2.1.1 is only met because the handler is written.
+    expect(cardSource).toMatch(/onActivateKey/);
+    expect(cardSource).toMatch(/event\.key !== "Enter" && event\.key !== " "/);
+
+    const keydowns = cardSource.match(/@keydown=/g);
+    expect(keydowns?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("exposes both targets to assistive technology", () => {
+    const roles = cardSource.match(/role="button"/g);
+    const tabstops = cardSource.match(/tabindex="0"/g);
+
+    expect(roles?.length).toBeGreaterThanOrEqual(2);
+    expect(tabstops?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows focus on both targets", () => {
+    // Keyboard users need to see where they are; the targets are a bare
+    // div and a flex row, neither of which has a default focus ring worth
+    // anything against a photo.
+    expect(declarationsFor(".layers:focus-visible")).toMatch(/outline:/);
+    expect(declarationsFor(".readout-row:focus-visible")).toMatch(/outline:/);
+  });
+
+  it("keeps the passive labels out of the way of the click", () => {
+    // The timestamp and the badge sit over the picture. Left clickable
+    // they punch two dead rectangles into the camera's click target.
+    const body = declarationsFor(".stamp");
+    expect(body).toMatch(/pointer-events:\s*none/);
+  });
+});

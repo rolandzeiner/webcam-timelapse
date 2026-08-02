@@ -160,6 +160,9 @@ reader treat it as one.
 second, so faster speeds cover more ground per frame instead of painting every
 one. The motion stays smooth; the steps get bigger.
 
+**Tap the picture for the camera, a reading for its sensor.** Both open the
+usual Home Assistant details dialog, and both work from the keyboard.
+
 **Playing from the newest frame replays the archive from the start**, since
 there is nothing newer to move into.
 

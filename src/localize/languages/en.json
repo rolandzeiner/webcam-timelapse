@@ -57,5 +57,9 @@
     "deflicker": "Smooth brightness",
     "show_icon": "Show icon",
     "overlay_title": "Heading"
+  },
+  "actions": {
+    "show_camera": "Show camera details",
+    "show_entity": "Show details for {v}"
   }
 }

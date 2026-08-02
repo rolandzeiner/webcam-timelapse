@@ -826,7 +826,15 @@ export class WebcamTimelapseCard extends LitElement {
     // and transition that revealFrame() writes there.
     return html`
       <div class="stage" style="--wtl-frame-filter:${filter}">
-        <div class="layers">
+        <div
+          class="layers"
+          role="button"
+          tabindex="0"
+          aria-label=${this.t("actions.show_camera")}
+          @click=${() => this.fireMoreInfo(this.config!.camera_entity)}
+          @keydown=${(event: KeyboardEvent) =>
+            this.onActivateKey(event, this.config!.camera_entity)}
+        >
           <img class="layer a" alt="" decoding="async" fetchpriority="high" />
           <img class="layer b" alt="" decoding="async" fetchpriority="high" />
         </div>
@@ -917,7 +925,15 @@ export class WebcamTimelapseCard extends LitElement {
           : nothing;
 
       return html`
-        <div class="readout-row ${reading?.stale ? "stale" : ""}">
+        <div
+          class="readout-row ${reading?.stale ? "stale" : ""}"
+          role="button"
+          tabindex="0"
+          aria-label=${this.t("actions.show_entity", name)}
+          @click=${() => this.fireMoreInfo(row.entity)}
+          @keydown=${(event: KeyboardEvent) =>
+            this.onActivateKey(event, row.entity)}
+        >
           ${icon}
           <span class="readout-name" style="color:${color}">${name}</span>
           <span class="readout-value">${value}</span>
@@ -959,6 +975,38 @@ export class WebcamTimelapseCard extends LitElement {
    * transport unit. Speed is nearer because it modifies playback; the
    * jump is terminal.
    */
+  /**
+   * Open Home Assistant's more-info dialog for an entity.
+   *
+   * `composed` is what carries the event out of this card's shadow root;
+   * without it the event stops at the boundary and the dialog never
+   * opens. `bubbles` gets it up to the Lovelace view that listens.
+   */
+  private fireMoreInfo(entityId: string): void {
+    if (!entityId) return;
+    this.dispatchEvent(
+      new CustomEvent("hass-more-info", {
+        detail: { entityId },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  /**
+   * Keyboard equivalent for the click targets.
+   *
+   * These are `div`s with `role="button"`, and a div does not activate on
+   * a keypress by itself — WCAG 2.1.1 is only satisfied if the handler is
+   * written. Space is preventDefault-ed because its default action on a
+   * focused element is to scroll the page.
+   */
+  private onActivateKey(event: KeyboardEvent, entityId: string): void {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    this.fireMoreInfo(entityId);
+  }
+
   private renderControls(): TemplateResult {
     return html`
       <div class="controls">

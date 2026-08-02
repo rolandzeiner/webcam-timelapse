@@ -57,5 +57,9 @@
     "deflicker": "Helligkeit glätten",
     "show_icon": "Symbol anzeigen",
     "overlay_title": "Überschrift"
+  },
+  "actions": {
+    "show_camera": "Kameradetails anzeigen",
+    "show_entity": "Details für {v} anzeigen"
   }
 }
