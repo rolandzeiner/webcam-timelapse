@@ -310,12 +310,15 @@ export const cardStyles = css`
 
   /* --- ruler ------------------------------------------------------- */
 
-  /* Two label rows, not one. Clock labels sit above date labels so the
-     two families can never collide horizontally, which means each only
-     has to be thinned against its own kind. */
+  /* Three bands: dates on top, the marks they belong to in the middle,
+     clock labels underneath. Keeping the two label families in separate
+     rows means neither has to be thinned against the other — each only
+     collides with its own kind. Dates sit above because a day boundary
+     is the coarser unit: the eye reads the date band as headings and the
+     clock band as the scale beneath them. */
   .ruler {
     position: relative;
-    height: 34px;
+    height: 40px;
     margin: 0 12px 8px;
   }
 
@@ -329,9 +332,12 @@ export const cardStyles = css`
     height: 100%;
   }
 
+  /* Marks hang below the date band; all three heights share a top edge so
+     day and month ticks read as taller versions of the same mark rather
+     than as differently-aligned ones. */
   .mark {
     position: absolute;
-    top: 0;
+    top: 15px;
     left: 0;
     width: 1px;
     height: 4px;
@@ -361,14 +367,19 @@ export const cardStyles = css`
   }
 
   .lab.time {
-    top: 12px;
+    top: 27px;
     /* Clock digits must not shuffle the label's centre as they change. */
     font-variant-numeric: tabular-nums;
     opacity: 0.7;
   }
 
+  /* The date band. Slightly stronger than the clock row: it is the
+     heading, and it appears far less often, so it can afford the weight
+     without turning the ruler into noise. */
   .lab.date {
-    top: 23px;
+    top: 0;
+    font-weight: 500;
+    color: var(--wtl-text);
   }
 
   /* --- editor ------------------------------------------------------ */

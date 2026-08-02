@@ -300,12 +300,15 @@ function t(t,e,i,s){var n,r=arguments.length,o=r<3?e:null===s?s=Object.getOwnPro
 
   /* --- ruler ------------------------------------------------------- */
 
-  /* Two label rows, not one. Clock labels sit above date labels so the
-     two families can never collide horizontally, which means each only
-     has to be thinned against its own kind. */
+  /* Three bands: dates on top, the marks they belong to in the middle,
+     clock labels underneath. Keeping the two label families in separate
+     rows means neither has to be thinned against the other — each only
+     collides with its own kind. Dates sit above because a day boundary
+     is the coarser unit: the eye reads the date band as headings and the
+     clock band as the scale beneath them. */
   .ruler {
     position: relative;
-    height: 34px;
+    height: 40px;
     margin: 0 12px 8px;
   }
 
@@ -319,9 +322,12 @@ function t(t,e,i,s){var n,r=arguments.length,o=r<3?e:null===s?s=Object.getOwnPro
     height: 100%;
   }
 
+  /* Marks hang below the date band; all three heights share a top edge so
+     day and month ticks read as taller versions of the same mark rather
+     than as differently-aligned ones. */
   .mark {
     position: absolute;
-    top: 0;
+    top: 15px;
     left: 0;
     width: 1px;
     height: 4px;
@@ -351,14 +357,19 @@ function t(t,e,i,s){var n,r=arguments.length,o=r<3?e:null===s?s=Object.getOwnPro
   }
 
   .lab.time {
-    top: 12px;
+    top: 27px;
     /* Clock digits must not shuffle the label's centre as they change. */
     font-variant-numeric: tabular-nums;
     opacity: 0.7;
   }
 
+  /* The date band. Slightly stronger than the clock row: it is the
+     heading, and it appears far less often, so it can afford the weight
+     without turning the ruler into noise. */
   .lab.date {
-    top: 23px;
+    top: 0;
+    font-weight: 500;
+    color: var(--wtl-text);
   }
 
   /* --- editor ------------------------------------------------------ */
@@ -575,7 +586,7 @@ function t(t,e,i,s){var n,r=arguments.length,o=r<3?e:null===s?s=Object.getOwnPro
           ${this.t("editor.add_entity")}
         </ha-button>
       </div>
-    `:F`${Z}`}};t([pt({attribute:!1})],It.prototype,"hass",void 0),t([mt()],It.prototype,"config",void 0),It=t([ct("webcam-timelapse-card-editor")],It);const Lt="webcam-timelapse-card",jt={radius:6,maxGain:1.5};function Wt(t,e=.15){if(0===t.length)return 0;const i=[...t].sort((t,e)=>t-e),s=Math.floor(i.length*e),n=i.length-2*s>=3?i.slice(s,i.length-s):i;return n.reduce((t,e)=>t+e,0)/n.length}const Ft={base:"",ext:".webp",step:600,t0:null,count:0,gaps:[],retention_days:0,online:!0,newest_slot:null};function Bt(t,e){return null===t.t0||e<0||e>=t.count?null:t.t0+e*t.step}function qt(t,e){const i=Bt(t,e);return null===i?null:`${t.base}${i}${t.ext}`}function Zt(t,e,i=1){for(let s=e;s>=0&&s<t.length;s+=i)if(t[s])return s;return null}function Gt(t){return null!==t.t0&&t.count>0}class Vt{constructor(t){this.size=t,this.cursor=0,this.slots=new Array(t).fill(null)}prefetch(t){const e=new Image;e.decoding="async",e.fetchPriority="low",e.src=t,this.slots[this.cursor]=e,this.cursor=(this.cursor+1)%this.size}clear(){this.slots.fill(null),this.cursor=0}}function Kt(t){return Math.min(Math.max(Math.round(4*t),4),16)}const Jt=1e3/33;function Xt(t,e,i){const s=Zt(t,e+Math.max(1,i));if(null!==s)return s;const n=Zt(t,t.length-1,-1);return null!==n&&n>e?n:null}const Yt=new Map;function Qt(t,e){const i=`${t}|${JSON.stringify(e)}`;let s=Yt.get(i);return void 0===s&&(s=new Intl.DateTimeFormat(t,e),Yt.set(i,s)),s}function te(t,e){return Qt("en-CA",{timeZone:e,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(1e3*t))}function ee(t,e){const i=Qt("en-GB",{timeZone:e,hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:!1}).formatToParts(new Date(1e3*t));let s=0,n=0,r=0;for(const t of i)"hour"===t.type?s=Number(t.value):"minute"===t.type?n=Number(t.value):"second"===t.type&&(r=Number(t.value));return 24===s&&(s=0),3600*s+60*n+r}function ie(t,e,i,s){const n={timeZone:e,day:"2-digit",month:"2-digit"};return"long"===s&&(n.weekday="long"),"short"===s&&(n.weekday="short"),Qt(i,n).format(new Date(1e3*t))}function se(t,e,i,s){if(null===t.t0||0===t.count)return[];const n=function(t){return t>=560?"long":t>=380?"short":"date"}(s),r="long"===n?110:"short"===n?78:58,o=[];let a=te(t.t0,e);for(let i=1;i<t.count;i++){const s=Bt(t,i);if(null===s)continue;const n=te(s,e);n!==a&&(o.push({position:i,slot:s,date:n}),a=n)}const h=function(t,e,i){const s=Math.max(1,Math.floor(e/i));return Math.max(1,Math.ceil(t/s))}(o.length,s,r),l=Math.max(1,t.count-1);return o.map((t,s)=>{const r=t.date.endsWith("-01"),o=r||s%h===0;return{position:t.position,left:t.position/l*100,label:o?ie(t.slot,e,i,n):"",isMonthStart:r}})}const ne=[600,900,1800,3600,7200,10800,21600,43200];function re(t,e,i,s){if(null===t.t0||0===t.count)return[];const n=t.t0,r=Math.max(1,t.count-1),o=n+r*t.step,a=function(t,e,i){if(t<=0)return null;const s=t/Math.max(2,Math.floor(i/9));for(const t of ne)if(t>=s&&t>=e)return t;return null}(o-n,t.step,s);if(null===a)return[];const h=a/(o-n)*s,l=Math.max(1,Math.ceil(46/h)),c=Math.min(43200,a*l),d=[],u=ee(n,e)%a;let p=0===u?n:n+(a-u),m=-1/0;for(let h=0;p<=o&&h<4096;h++){const o=ee(p,e),h=o%a;if(0===h&&0!==o){const a=Math.round((p-n)/t.step),h=a/r*100,l=h/100*s;let u="";o%c===0&&l-m>=46&&(u=ae(p,e,i),m=l),d.push({position:a,left:h,label:u})}p+=a-h}return d}function oe(t,e,i){return Qt(i,{timeZone:e,weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(1e3*t))}function ae(t,e,i){return Qt(i,{timeZone:e,hour:"2-digit",minute:"2-digit"}).format(new Date(1e3*t))}const he=new Set(["unknown","unavailable","none",""]),le=new Map,ce=new Map;function de(t){if("number"==typeof t.lu)return Math.round(1e3*t.lu);const e=t.lu??t.last_updated??t.last_changed;return e?new Date(e).getTime():0}function ue(t,e){const i=t.a??t.attributes,s=i?.[e];if("string"!=typeof s&&"number"!=typeof s)return null;const n=new Date(s).getTime();return Number.isFinite(n)&&n>0?n:null}function pe(t,e,i){const s=36e5*i/2;return t.filter(t=>t.at>=e-s&&t.at<=e+s)}function me(){try{window.caches?.keys?.().then(t=>{t.forEach(t=>window.caches?.delete?.(t))})}catch{}window.location.reload()}function ge(t,e){if(!t)return Z;const i=e("version_update").replace("{v}",t),s=e("version_reload");return F`
+    `:F`${Z}`}};t([pt({attribute:!1})],It.prototype,"hass",void 0),t([mt()],It.prototype,"config",void 0),It=t([ct("webcam-timelapse-card-editor")],It);const Lt="webcam-timelapse-card",jt={radius:6,maxGain:1.5};function Wt(t,e=.15){if(0===t.length)return 0;const i=[...t].sort((t,e)=>t-e),s=Math.floor(i.length*e),n=i.length-2*s>=3?i.slice(s,i.length-s):i;return n.reduce((t,e)=>t+e,0)/n.length}const Ft={base:"",ext:".webp",step:600,t0:null,count:0,gaps:[],retention_days:0,online:!0,newest_slot:null};function Bt(t,e){return null===t.t0||e<0||e>=t.count?null:t.t0+e*t.step}function qt(t,e){const i=Bt(t,e);return null===i?null:`${t.base}${i}${t.ext}`}function Zt(t,e,i=1){for(let s=e;s>=0&&s<t.length;s+=i)if(t[s])return s;return null}function Gt(t){return null!==t.t0&&t.count>0}class Vt{constructor(t){this.size=t,this.cursor=0,this.slots=new Array(t).fill(null)}prefetch(t){const e=new Image;e.decoding="async",e.fetchPriority="low",e.src=t,this.slots[this.cursor]=e,this.cursor=(this.cursor+1)%this.size}clear(){this.slots.fill(null),this.cursor=0}}function Kt(t){return Math.min(Math.max(Math.round(4*t),4),16)}const Jt=1e3/33;function Xt(t,e,i){const s=Zt(t,e+Math.max(1,i));if(null!==s)return s;const n=Zt(t,t.length-1,-1);return null!==n&&n>e?n:null}const Yt=new Map;function Qt(t,e){const i=`${t}|${JSON.stringify(e)}`;let s=Yt.get(i);return void 0===s&&(s=new Intl.DateTimeFormat(t,e),Yt.set(i,s)),s}function te(t,e){return Qt("en-CA",{timeZone:e,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(1e3*t))}function ee(t,e){const i=Qt("en-GB",{timeZone:e,hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:!1}).formatToParts(new Date(1e3*t));let s=0,n=0,r=0;for(const t of i)"hour"===t.type?s=Number(t.value):"minute"===t.type?n=Number(t.value):"second"===t.type&&(r=Number(t.value));return 24===s&&(s=0),3600*s+60*n+r}function ie(t,e,i,s){const n={timeZone:e,day:"2-digit",month:"2-digit"};return"long"===s&&(n.weekday="long"),"short"===s&&(n.weekday="short"),Qt(i,n).format(new Date(1e3*t))}function se(t,e,i,s){if(null===t.t0||0===t.count)return[];const n=function(t){return t>=560?"long":t>=380?"short":"date"}(s),r="long"===n?110:"short"===n?78:58,o=[];let a=te(t.t0,e);for(let i=1;i<t.count;i++){const s=Bt(t,i);if(null===s)continue;const n=te(s,e);n!==a&&(o.push({position:i,slot:s,date:n}),a=n)}const h=function(t,e,i){const s=Math.max(1,Math.floor(e/i));return Math.max(1,Math.ceil(t/s))}(o.length,s,r),l=Math.max(1,t.count-1);return o.map((t,s)=>{const r=t.date.endsWith("-01"),o=r||s%h===0;return{position:t.position,left:t.position/l*100,label:o?ie(t.slot,e,i,n):"",isMonthStart:r}})}const ne=[600,900,1800,3600,7200,10800,21600,43200];function re(t,e,i,s){if(null===t.t0||0===t.count)return[];const n=t.t0,r=Math.max(1,t.count-1),o=n+r*t.step,a=function(t,e,i){if(t<=0)return null;const s=t/Math.max(2,Math.floor(i/9));for(const t of ne)if(t>=s&&t>=e)return t;return null}(o-n,t.step,s);if(null===a)return[];const h=a/(o-n)*s,l=Math.max(1,Math.ceil(46/h)),c=Math.min(43200,a*l),d=[],u=ee(n,e)%a;let p=0===u?n:n+(a-u),m=-1/0;for(let h=0;p<=o&&h<4096;h++){const o=ee(p,e),h=o%a;if(0===h){const a=Math.round((p-n)/t.step),h=a/r*100,l=h/100*s;let u="";o%c===0&&l-m>=46&&(u=ae(p,e,i),m=l),d.push({position:a,left:h,label:u})}p+=a-h}return d}function oe(t,e,i){return Qt(i,{timeZone:e,weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(1e3*t))}function ae(t,e,i){return Qt(i,{timeZone:e,hour:"2-digit",minute:"2-digit"}).format(new Date(1e3*t))}const he=new Set(["unknown","unavailable","none",""]),le=new Map,ce=new Map;function de(t){if("number"==typeof t.lu)return Math.round(1e3*t.lu);const e=t.lu??t.last_updated??t.last_changed;return e?new Date(e).getTime():0}function ue(t,e){const i=t.a??t.attributes,s=i?.[e];if("string"!=typeof s&&"number"!=typeof s)return null;const n=new Date(s).getTime();return Number.isFinite(n)&&n>0?n:null}function pe(t,e,i){const s=36e5*i/2;return t.filter(t=>t.at>=e-s&&t.at<=e+s)}function me(){try{window.caches?.keys?.().then(t=>{t.forEach(t=>window.caches?.delete?.(t))})}catch{}window.location.reload()}function ge(t,e){if(!t)return Z;const i=e("version_update").replace("{v}",t),s=e("version_reload");return F`
     <div class="banner" role="alert" aria-live="assertive">
       <span>${i}</span>
       <button
