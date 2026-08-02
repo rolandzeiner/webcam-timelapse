@@ -915,21 +915,39 @@ export class WebcamTimelapseCard extends LitElement {
     </div>`;
   }
 
+  /**
+   * Transport first, then the controls that are not transport.
+   *
+   * Play sits between previous and next because that is where every media
+   * player has put it for forty years — VLC, QuickTime, Spotify, phone
+   * lock screens, car head units. Reaching for the middle button is
+   * muscle memory, and a card that breaks it makes people look.
+   *
+   * Speed and jump-to-now are deliberately outside that group and behind
+   * a divider: one changes how playback runs and the other jumps
+   * somewhere, so neither belongs in a row the eye reads as a single
+   * transport unit. Speed is nearer because it modifies playback; the
+   * jump is terminal.
+   */
   private renderControls(): TemplateResult {
     return html`
       <div class="controls">
+        <ha-icon-button .label=${this.t("controls.previous")} @click=${() => this.stepBy(-1)}>
+          <ha-icon icon="mdi:skip-previous"></ha-icon>
+        </ha-icon-button>
         <ha-icon-button
+          class="play"
           .label=${this.playing ? this.t("controls.pause") : this.t("controls.play")}
           @click=${this.togglePlay}
         >
           <ha-icon .icon=${this.playing ? "mdi:pause" : "mdi:play"}></ha-icon>
         </ha-icon-button>
-        <ha-icon-button .label=${this.t("controls.previous")} @click=${() => this.stepBy(-1)}>
-          <ha-icon icon="mdi:skip-previous"></ha-icon>
-        </ha-icon-button>
         <ha-icon-button .label=${this.t("controls.next")} @click=${() => this.stepBy(1)}>
           <ha-icon icon="mdi:skip-next"></ha-icon>
         </ha-icon-button>
+
+        <span class="sep" aria-hidden="true"></span>
+
         <button
           class="speed"
           @click=${this.cycleSpeed}

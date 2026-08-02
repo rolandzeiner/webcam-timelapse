@@ -270,6 +270,24 @@ export const cardStyles = css`
     --mdc-icon-size: 20px;
   }
 
+  /* The one control people reach for without looking, so it carries the
+     extra weight. Size is the whole signal — no accent colour, which
+     would compete with the LIVE badge for the eye. */
+  .controls .play {
+    --mdc-icon-button-size: 46px;
+    --mdc-icon-size: 26px;
+  }
+
+  /* Divides transport from the controls that are not transport. A hairline
+     rather than a gap: the gap alone reads as a rendering accident at this
+     size, and the eye needs the group boundary to be deliberate. */
+  .sep {
+    width: 1px;
+    height: 18px;
+    margin: 0 5px;
+    background: rgba(255, 255, 255, 0.28);
+  }
+
   .speed {
     min-width: 40px;
     padding: 6px 8px;

@@ -321,3 +321,42 @@ describe("timeline markup order", () => {
     expect(controls).toBeGreaterThan(stage);
   });
 });
+
+describe("transport control order", () => {
+  const at = (needle: string): number => cardSource.indexOf(needle);
+
+  it("puts play between previous and next", () => {
+    // The strongest convention in media UI: every player from VLC to a car
+    // head unit centres play/pause between the two step buttons, so the
+    // middle button is muscle memory. Breaking it makes people look.
+    const previous = at("mdi:skip-previous");
+    const play = at('class="play"');
+    const next = at("mdi:skip-next");
+
+    expect(previous).toBeGreaterThan(-1);
+    expect(play).toBeGreaterThan(previous);
+    expect(next).toBeGreaterThan(play);
+  });
+
+  it("keeps speed and the jump outside the transport group", () => {
+    // Neither is transport: one changes how playback runs, the other
+    // jumps somewhere. The divider is what says so.
+    const next = at("mdi:skip-next");
+    const separator = at('class="sep"');
+    const speed = at('class="speed"');
+    const now = at("mdi:update");
+
+    expect(separator).toBeGreaterThan(next);
+    expect(speed).toBeGreaterThan(separator);
+    expect(now).toBeGreaterThan(speed);
+  });
+
+  it("gives play more weight than the buttons beside it", () => {
+    const size = (body: string): number =>
+      Number(/--mdc-icon-button-size:\s*(\d+)px/.exec(body)?.[1] ?? 0);
+
+    expect(size(declarationsFor(".controls .play"))).toBeGreaterThan(
+      size(declarationsFor(".controls")),
+    );
+  });
+});
