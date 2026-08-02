@@ -233,6 +233,16 @@ export class WebcamTimelapseCardEditor
             />
           </label>
 
+          <ha-formfield .label=${this.t("editor.show_icon")}>
+            <ha-switch
+              .checked=${row.show_icon ?? false}
+              @change=${(e: Event) =>
+                this.patchRow(index, {
+                  show_icon: (e.target as HTMLInputElement).checked,
+                })}
+            ></ha-switch>
+          </ha-formfield>
+
           <ha-formfield .label=${this.t("editor.graph")}>
             <ha-switch
               .checked=${row.graph ?? false}
@@ -286,6 +296,20 @@ export class WebcamTimelapseCardEditor
       <div class="ent-section">
         <h4>${this.t("editor.overlay")}</h4>
         <p class="ent-hint">${this.t("editor.overlay_hint")}</p>
+
+        <ha-textfield
+          class="ent-title"
+          .label=${this.t("editor.overlay_title")}
+          .helper=${this.t("editor.helper.overlay_title")}
+          helperPersistent
+          .value=${this.config.overlay_title ?? ""}
+          @change=${(e: Event) =>
+            this.emit({
+              ...this.config!,
+              overlay_title: (e.target as HTMLInputElement).value,
+            })}
+        ></ha-textfield>
+
         ${this.rows.map((row, index) => this.renderRow(row, index))}
         <ha-button @click=${this.addRow}>
           <ha-icon icon="mdi:plus" slot="icon"></ha-icon>

@@ -166,6 +166,7 @@ rather than sitting on blank time.
 Add any sensors you want shown over the picture:
 
 ```yaml
+overlay_title: Kleine Erlauf      # optional; omit for no heading
 entities:
   - entity: sensor.wasserstand
     name: Level
@@ -173,6 +174,7 @@ entities:
     decimals: 0
     color: "#3d7ea6"
     graph: true
+    show_icon: true
     time_attribute: timestamp
   - entity: sensor.wassertemperatur
     name: Temperature
@@ -197,7 +199,15 @@ smooth line between two hourly readings would invent a number nobody measured.
 | `decimals` | Decimal places. Default 1 |
 | `color` | Any CSS colour |
 | `graph` | Draw a sparkline behind the playhead |
+| `show_icon` | Show the entity's own icon before its label |
 | `time_attribute` | Read the measurement time from this attribute instead of the state's last-changed time |
+
+`show_icon` uses whatever icon the entity has in Home Assistant, including the
+device-class default when none is set explicitly — so it follows the entity
+rather than duplicating an icon name in the card config.
+
+`overlay_title` sits above the readings as a heading for the block. Leaving it
+empty or omitting it renders nothing, which is the default look.
 
 Use `time_attribute` for sensors whose real measurement time lives in an
 attribute. It is off by default because asking for attributes makes the

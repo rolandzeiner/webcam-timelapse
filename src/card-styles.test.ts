@@ -112,3 +112,61 @@ describe("reduced motion", () => {
     expect(reducedMotionBlocks).toBeNull();
   });
 });
+
+describe("ruler bands", () => {
+  /**
+   * A selector's length declaration, in px.
+   *
+   * The unit is optional because a zero length is conventionally written
+   * without one, and `top: 0` is exactly the declaration that starts the
+   * date band.
+   */
+  const px = (selector: string, property: string): number => {
+    const match = new RegExp(`${property}:\\s*(-?[\\d.]+)(px)?\\s*;`).exec(
+      declarationsFor(selector),
+    );
+    if (match === null) throw new Error(`no ${property} on ${selector}`);
+    return Number(match[1]);
+  };
+
+  /**
+   * Worst-case rendered height of a label, in px.
+   *
+   * The bands are placed by absolute `top`, so a label's box height has
+   * to be known to know whether two bands touch. 0.7rem against a 16px
+   * root is 11.2px.
+   */
+  const labelHeight = 11.2;
+
+  it("pins line-height so the label boxes have a known height", () => {
+    // The bug this guards: without it the labels inherit HA's ~1.5, the
+    // date's box grows to ~17px from top 0, and it eats the top of the
+    // mark row — which renders as a gap bitten out of the ticks around
+    // every date label.
+    expect(declarationsFor(".lab")).toMatch(/line-height:\s*1\s*;/);
+  });
+
+  it("keeps the date band clear of the marks", () => {
+    expect(px(".lab.date", "top") + labelHeight).toBeLessThanOrEqual(
+      px(".mark", "top"),
+    );
+  });
+
+  it("keeps the tallest mark clear of the clock band", () => {
+    // Month marks are the tall ones, and they are the rarest, so an
+    // overlap here would show up on one day in thirty.
+    const markBottom = px(".mark", "top") + px(".tick.month .mark", "height");
+    expect(markBottom).toBeLessThanOrEqual(px(".lab.time", "top"));
+  });
+
+  it("leaves room for the clock band inside the ruler", () => {
+    expect(px(".lab.time", "top") + labelHeight).toBeLessThanOrEqual(
+      px(".ruler", "height"),
+    );
+  });
+
+  it("orders the bands date, marks, clock", () => {
+    expect(px(".lab.date", "top")).toBeLessThan(px(".mark", "top"));
+    expect(px(".mark", "top")).toBeLessThan(px(".lab.time", "top"));
+  });
+});

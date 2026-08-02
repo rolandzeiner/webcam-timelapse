@@ -162,11 +162,36 @@ export const cardStyles = css`
     font-variant-numeric: tabular-nums;
   }
 
+  /* Opt-in heading for the readings block. Only rendered when the config
+     carries a non-empty string, so the default look is unchanged. */
+  .readout-title {
+    font-size: var(--ha-font-size-s, 0.85rem);
+    font-weight: var(--ha-font-weight-medium, 600);
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 2px;
+    /* The readout block is right-aligned against the frame; a heading
+       that hugged the same edge would drift away from the labels it
+       introduces. */
+    text-align: left;
+  }
+
   .readout-row {
     display: flex;
     align-items: baseline;
     gap: 8px;
     font-size: var(--ha-font-size-s, 0.85rem);
+  }
+
+  /* Sized in em so the icon tracks the row's font size, and nudged onto
+     the text baseline — the row is baseline-aligned, which an inline SVG
+     otherwise sits proud of. */
+  .readout-icon {
+    --mdc-icon-size: 1.05em;
+    width: 1.05em;
+    height: 1.05em;
+    flex: none;
+    align-self: center;
+    margin-right: -2px;
   }
 
   .readout-name {
@@ -316,9 +341,12 @@ export const cardStyles = css`
      collides with its own kind. Dates sit above because a day boundary
      is the coarser unit: the eye reads the date band as headings and the
      clock band as the scale beneath them. */
+  /* Band geometry, all from the same origin so the gaps are deliberate:
+     date 0-11, marks 16-26, clock 30-41. The clock row sits tight under
+     the marks it labels; the wider gap above separates the two families. */
   .ruler {
     position: relative;
-    height: 40px;
+    height: 42px;
     margin: 0 12px 8px;
   }
 
@@ -337,7 +365,7 @@ export const cardStyles = css`
      than as differently-aligned ones. */
   .mark {
     position: absolute;
-    top: 15px;
+    top: 16px;
     left: 0;
     width: 1px;
     height: 4px;
@@ -356,18 +384,24 @@ export const cardStyles = css`
     background: var(--wtl-muted);
   }
 
+  /* line-height is pinned, not inherited. The three bands are placed by
+     absolute top values, so each label's box height has to be known
+     here — inheriting HA's 1.5 made the date's line box 17px tall from
+     top 0, and it swallowed the first 2px of the mark row, which read as
+     a gap chewed out of the ticks around every date. */
   .lab {
     position: absolute;
     left: 0;
     transform: translateX(-50%);
     font-size: var(--ha-font-size-xs, 0.7rem);
+    line-height: 1;
     color: var(--wtl-muted);
     white-space: nowrap;
     pointer-events: none;
   }
 
   .lab.time {
-    top: 27px;
+    top: 30px;
     /* Clock digits must not shuffle the label's centre as they change. */
     font-variant-numeric: tabular-nums;
     opacity: 0.7;
@@ -397,6 +431,14 @@ export const cardStyles = css`
     margin: 0 0 12px;
     color: var(--wtl-muted);
     font-size: var(--ha-font-size-s, 0.875rem);
+  }
+
+  /* Full width: the heading applies to the whole readings block, not to
+     any one row, so it should not line up with the per-row fields. */
+  .ent-title {
+    display: block;
+    width: 100%;
+    margin-bottom: 16px;
   }
 
   .ent-row {

@@ -316,6 +316,14 @@ export interface OverlayEntityConfig {
   /** Draw a sparkline for this entity as well as the numeric readout. */
   graph?: boolean;
   /**
+   * Show the entity's own icon ahead of its label.
+   *
+   * Resolved from the entity rather than configured here, so it follows
+   * whatever the user has set in Home Assistant — including the
+   * device-class default when no icon is set explicitly.
+   */
+  show_icon?: boolean;
+  /**
    * Read the measurement time from this state attribute instead of
    * `last_changed`. Opt-in per entity — see overlay-history.ts.
    */
@@ -333,6 +341,13 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   graph_hours?: number;
   /** Empty by default — the card is not tied to any domain. */
   entities?: OverlayEntityConfig[];
+  /**
+   * Heading above the overlay readings.
+   *
+   * Empty or absent renders nothing at all, which is the original look —
+   * the heading is opt-in so existing cards are untouched.
+   */
+  overlay_title?: string;
   /** Smooth cloud-driven brightness jumps during playback. 0 = off. */
   deflicker?: number;
 }

@@ -50,8 +50,12 @@
       "camera_entity": "Nur Kameras dieser Integration haben ein Archiv zum Durchblättern.",
       "graph_hours": "Wie viel Verlauf die Sparkline rund um die Position zeigt.",
       "autoplay": "Wird ignoriert, wenn dein System reduzierte Bewegung anfordert.",
-      "deflicker": "Gleicht wolkenbedingte Helligkeitssprünge bei der Wiedergabe aus. 0 schaltet es ab."
+      "deflicker": "Gleicht wolkenbedingte Helligkeitssprünge bei der Wiedergabe aus. 0 schaltet es ab.",
+      "overlay_title": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
+      "show_icon": "Verwendet das Symbol der Entität aus Home Assistant."
     },
-    "deflicker": "Helligkeit glätten"
+    "deflicker": "Helligkeit glätten",
+    "show_icon": "Symbol anzeigen",
+    "overlay_title": "Überschrift"
   }
 }

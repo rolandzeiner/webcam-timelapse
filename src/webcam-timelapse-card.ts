@@ -873,8 +873,24 @@ export class WebcamTimelapseCard extends LitElement {
             })
           : null;
 
+      // ha-state-icon rather than a configured icon string: it resolves
+      // the entity's own icon and falls back to the device-class default,
+      // so a sensor with no explicit icon still shows the right one
+      // instead of an empty box.
+      const stateObj = this.hass?.states[row.entity];
+      const icon =
+        row.show_icon && stateObj
+          ? html`<ha-state-icon
+              class="readout-icon"
+              style="color:${color}"
+              .hass=${this.hass}
+              .stateObj=${stateObj}
+            ></ha-state-icon>`
+          : nothing;
+
       return html`
         <div class="readout-row ${reading?.stale ? "stale" : ""}">
+          ${icon}
           <span class="readout-name" style="color:${color}">${name}</span>
           <span class="readout-value">${value}</span>
           ${reading !== null
@@ -891,7 +907,14 @@ export class WebcamTimelapseCard extends LitElement {
       `;
     });
 
-    return html`<div class="readout">${rendered}</div>`;
+    // Trimmed, so a heading of spaces is treated as none rather than
+    // reserving a blank line above the readings.
+    const heading = this.config?.overlay_title?.trim();
+
+    return html`<div class="readout">
+      ${heading ? html`<div class="readout-title">${heading}</div>` : nothing}
+      ${rendered}
+    </div>`;
   }
 
   private renderControls(): TemplateResult {
