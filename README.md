@@ -48,7 +48,7 @@ see the water level readings from each moment beside the picture.
 frame by frame.
 
 **Build a construction or garden timelapse.** Point it at any site camera and
-play back weeks at 32×.
+play back weeks at 64×.
 
 **Prove when something happened.** Every frame is timestamped and kept on
 disk, so you can find the exact capture.
@@ -151,9 +151,14 @@ deflicker: 50            # 0 turns it off
 entities: []
 ```
 
-**Controls.** Play, step one frame, cycle the speed, jump back to now. Drag
-the bar to scrub. Arrow keys, Home, End and Page Up/Down all work — the
-scrubber is a real slider, so your keyboard and screen reader treat it as one.
+**Controls sit over the picture.** Play, step one frame, cycle the speed,
+jump back to now. Drag the bar below to scrub. Arrow keys, Home, End and Page
+Up/Down all work — the scrubber is a real slider, so your keyboard and screen
+reader treat it as one.
+
+**Above 16× the card skips frames.** A browser decodes about thirty images a
+second, so faster speeds cover more ground per frame instead of painting every
+one. The motion stays smooth; the steps get bigger.
 
 **Playing from the newest frame replays the archive from the start**, since
 there is nothing newer to move into.
