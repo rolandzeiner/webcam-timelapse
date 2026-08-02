@@ -170,3 +170,38 @@ describe("ruler bands", () => {
     expect(px(".mark", "top")).toBeLessThan(px(".lab.time", "top"));
   });
 });
+
+describe("readout icon alignment", () => {
+  it("pins the row's line-height so there is a stable box to centre in", () => {
+    // Same class of bug as the ruler: an inherited line-height makes the
+    // row height theme-dependent, and a centred icon drifts off the text
+    // by however much it differs.
+    expect(declarationsFor(".readout-row")).toMatch(/line-height:\s*[\d.]+\s*;/);
+  });
+
+  it("gives the icon a display, because width on an inline box is ignored", () => {
+    // A custom element is inline by default. Without this the width and
+    // height below do nothing and the icon sits on the text baseline.
+    expect(declarationsFor(".readout-icon")).toMatch(/display:\s*(block|flex)/);
+  });
+
+  it("sizes the icon in em so it tracks the text at any font size", () => {
+    const body = declarationsFor(".readout-icon");
+    expect(body).toMatch(/width:\s*[\d.]+em/);
+    expect(body).toMatch(/height:\s*[\d.]+em/);
+    expect(body).not.toMatch(/width:\s*[\d.]+px/);
+  });
+
+  it("opts the icon out of the row's baseline alignment", () => {
+    // The text wants baseline alignment; a replaced box baseline-aligned
+    // against it perches on the baseline instead of beside it.
+    expect(declarationsFor(".readout-row")).toMatch(/align-items:\s*baseline/);
+    expect(declarationsFor(".readout-icon")).toMatch(/align-self:\s*center/);
+  });
+
+  it("never forces a display onto the MWC textfield itself", () => {
+    // ha-textfield's host is inline-flex; overriding it collapses the
+    // field's internal layout and the input renders invisible.
+    expect(declarationsFor(".ent-title")).not.toMatch(/display:/);
+  });
+});

@@ -297,18 +297,23 @@ export class WebcamTimelapseCardEditor
         <h4>${this.t("editor.overlay")}</h4>
         <p class="ent-hint">${this.t("editor.overlay_hint")}</p>
 
-        <ha-textfield
-          class="ent-title"
-          .label=${this.t("editor.overlay_title")}
-          .helper=${this.t("editor.helper.overlay_title")}
-          helperPersistent
-          .value=${this.config.overlay_title ?? ""}
-          @change=${(e: Event) =>
-            this.emit({
-              ...this.config!,
-              overlay_title: (e.target as HTMLInputElement).value,
-            })}
-        ></ha-textfield>
+        <!-- Wrapped rather than styled directly: ha-textfield is an MWC
+             element whose host is inline-flex, and forcing display on it
+             collapses its internal layout. The wrapper carries the
+             spacing, the field keeps its own box. -->
+        <div class="ent-title">
+          <ha-textfield
+            .label=${this.t("editor.overlay_title")}
+            .helper=${this.t("editor.helper.overlay_title")}
+            .helperPersistent=${true}
+            .value=${this.config.overlay_title ?? ""}
+            @change=${(e: Event) =>
+              this.emit({
+                ...this.config!,
+                overlay_title: (e.target as HTMLInputElement).value,
+              })}
+          ></ha-textfield>
+        </div>
 
         ${this.rows.map((row, index) => this.renderRow(row, index))}
         <ha-button @click=${this.addRow}>

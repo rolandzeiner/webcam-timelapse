@@ -180,18 +180,30 @@ export const cardStyles = css`
     align-items: baseline;
     gap: 8px;
     font-size: var(--ha-font-size-s, 0.85rem);
+    /* Pinned so the icon has a known box to be centred against. With an
+       inherited line-height the row's height varies with the theme, and
+       a centred icon drifts off the text by however much it differs. */
+    line-height: 1.25;
   }
 
-  /* Sized in em so the icon tracks the row's font size, and nudged onto
-     the text baseline — the row is baseline-aligned, which an inline SVG
-     otherwise sits proud of. */
+  /* display is explicit because a custom element is inline by default,
+     and width/height on an inline box are ignored — the icon then sized
+     itself from --mdc-icon-size alone and sat on the text baseline
+     rather than beside it.
+
+     The row is baseline-aligned for the text, so the icon opts out with
+     align-self and centres on the line box instead. At 1.25 line-height
+     the box is 1.25em and the icon 1.05em, putting its centre 0.625em
+     down; the text's optical centre (baseline at ~1.03em, cap height
+     ~0.7em) lands at ~0.68em. Close enough to read as aligned, and it
+     holds at any font size because every term is in em. */
   .readout-icon {
+    display: block;
     --mdc-icon-size: 1.05em;
     width: 1.05em;
     height: 1.05em;
     flex: none;
     align-self: center;
-    margin-right: -2px;
   }
 
   .readout-name {
@@ -434,11 +446,15 @@ export const cardStyles = css`
   }
 
   /* Full width: the heading applies to the whole readings block, not to
-     any one row, so it should not line up with the per-row fields. */
+     any one row, so it should not line up with the per-row fields. The
+     width goes on the field, the spacing on the wrapper — never a
+     display override on the MWC element itself. */
   .ent-title {
-    display: block;
+    margin-bottom: 20px;
+  }
+
+  .ent-title ha-textfield {
     width: 100%;
-    margin-bottom: 16px;
   }
 
   .ent-row {
