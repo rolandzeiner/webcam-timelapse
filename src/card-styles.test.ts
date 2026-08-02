@@ -164,6 +164,15 @@ describe("timeline bands", () => {
     expect(px(".track", "height")).toBeGreaterThanOrEqual(24);
   });
 
+  it("leaves air between the frame and the date band", () => {
+    // The date band is the first thing under the picture. With no gap the
+    // labels read as part of the frame rather than as the timeline's own
+    // heading. Shorthand order is top, side, bottom.
+    const margin = /margin:\s*([\d.]+)px/.exec(declarationsFor(".timeline"));
+    expect(margin).not.toBeNull();
+    expect(Number(margin?.[1])).toBeGreaterThan(0);
+  });
+
   it("gives each label band room for its text", () => {
     expect(px(".band", "height")).toBeGreaterThanOrEqual(LABEL_HEIGHT);
   });
@@ -213,6 +222,17 @@ describe("narrow layout", () => {
     const body = narrowRule(".readout");
     expect(body).toMatch(/right:\s*auto/);
     expect(body).toMatch(/bottom:\s*auto/);
+  });
+
+  it("aligns the readout with the timestamp and the badge", () => {
+    // All three are top-anchored overlays on the frame. Sharing a top
+    // edge is what makes them read as one row; any drift between these
+    // three numbers shows up as boxes floating at unrelated heights.
+    const top = (body: string): string | undefined =>
+      /top:\s*(\d+)px/.exec(body)?.[1];
+
+    expect(top(narrowRule(".readout"))).toBe(top(declarationsFor(".stamp")));
+    expect(top(narrowRule(".readout"))).toBe(top(declarationsFor(".badge")));
   });
 
   it("hides the sparklines", () => {

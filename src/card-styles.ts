@@ -296,8 +296,11 @@ export const cardStyles = css`
   /* Dates, bar and clock times as one block. The bands are in normal
      flow and the marks live inside the track, so all three are keyed off
      the same percentage and cannot drift apart. */
+  /* The top margin is load-bearing: the date band is the first thing
+     under the frame, and with no gap the labels read as part of the
+     picture rather than as the timeline's heading. */
   .timeline {
-    margin: 0 12px 8px;
+    margin: 12px 12px 8px;
   }
 
   .band {
@@ -563,9 +566,11 @@ export const cardStyles = css`
     .readout {
       right: auto;
       bottom: auto;
-      /* Below the timestamp and badge rather than flush with the top
-         edge, so the three overlays do not stack on the same line. */
-      top: 44px;
+      /* Same top edge as the timestamp and the badge, so the three
+         overlays read as one row across the top of the frame instead of
+         three boxes at unrelated heights. Kept in step with .stamp and
+         .badge by a test rather than by memory. */
+      top: 8px;
       left: 50%;
       transform: translateX(-50%);
       max-width: calc(100% - 16px);
