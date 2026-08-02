@@ -128,9 +128,10 @@ export const cardStyles = css`
     backdrop-filter: blur(2px);
   }
 
+  /* Top-left, because the controls now own the bottom of the stage. */
   .stamp {
     left: 8px;
-    bottom: 8px;
+    top: 8px;
   }
 
   .badge {
@@ -148,10 +149,15 @@ export const cardStyles = css`
     background: var(--wtl-gap);
   }
 
+  /* Lifted clear of the control pill rather than sharing the bottom edge
+     with it. A centred pill and a right-aligned readout overlap on any
+     card narrow enough for the two to meet in the middle, and that width
+     depends on how many sensors are configured — so the clearance is
+     vertical, where it holds at every width. */
   .readout {
     position: absolute;
     right: 8px;
-    bottom: 8px;
+    bottom: 56px;
     display: grid;
     gap: 2px;
     padding: 8px 10px;
@@ -243,31 +249,43 @@ export const cardStyles = css`
 
   /* --- controls ---------------------------------------------------- */
 
+  /* A pill over the frame instead of a bar under it. Removing the row
+     from the flow is most of the height this card saves, and the
+     controls belong to the picture anyway. Same dark scrim as the other
+     stage overlays so it stays legible over any frame. */
   .controls {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 2px;
-    padding: 4px 8px;
-  }
-
-  .spacer {
-    flex: 1;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    color: #fff;
+    /* Smaller than the 48px default so the pill stays slim, still well
+       over the 24px WCAG 2.5.8 minimum target. */
+    --mdc-icon-button-size: 40px;
+    --mdc-icon-size: 20px;
   }
 
   .speed {
-    min-width: 44px;
+    min-width: 40px;
     padding: 6px 8px;
     border: 0;
-    border-radius: 6px;
+    border-radius: 999px;
     background: transparent;
-    color: var(--wtl-text);
+    color: inherit;
     font: inherit;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
   }
 
   .speed:hover {
-    background: var(--wtl-divider);
+    background: rgba(255, 255, 255, 0.18);
   }
 
   .speed:focus-visible {
@@ -277,10 +295,60 @@ export const cardStyles = css`
 
   /* --- scrubber ---------------------------------------------------- */
 
+  /* Dates, bar and clock times as one block. The bands are in normal
+     flow and the marks live inside the track, so all three are keyed off
+     the same percentage and cannot drift apart. */
+  .timeline {
+    margin: 0 12px 8px;
+  }
+
+  .band {
+    position: relative;
+    height: 12px;
+  }
+
+  .band.dates {
+    margin-bottom: 1px;
+  }
+
+  .band.times {
+    margin-top: 1px;
+  }
+
   .track {
     position: relative;
-    height: 44px; /* WCAG 2.5.8 target size, kept even though the bar is thin */
-    margin: 0 12px;
+    height: 40px; /* WCAG 2.5.8 target size, kept even though the bar is thin */
+  }
+
+  /* Behind the bar, not beside it. Paint order is DOM order — the marks
+     render before the rail — because a z-index here would re-enter the
+     stacking competition .layers exists to contain. */
+  .marks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* Centred on the rail so each mark reads as a tick the bar runs
+     through, showing equally above and below it. */
+  .mark {
+    position: absolute;
+    top: 50%;
+    width: 1px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+    background: var(--wtl-divider);
+  }
+
+  .mark.day {
+    height: 22px;
+    background: var(--wtl-muted);
+  }
+
+  .mark.month {
+    height: 30px;
+    width: 2px;
+    background: var(--wtl-muted);
   }
 
   .rail,
@@ -351,62 +419,17 @@ export const cardStyles = css`
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
-  /* --- ruler ------------------------------------------------------- */
+  /* --- ruler labels ------------------------------------------------ */
 
-  /* Three bands: dates on top, the marks they belong to in the middle,
-     clock labels underneath. Keeping the two label families in separate
-     rows means neither has to be thinned against the other — each only
-     collides with its own kind. Dates sit above because a day boundary
-     is the coarser unit: the eye reads the date band as headings and the
-     clock band as the scale beneath them. */
-  /* Band geometry, all from the same origin so the gaps are deliberate:
-     date 0-11, marks 16-26, clock 30-41. The clock row sits tight under
-     the marks it labels; the wider gap above separates the two families. */
-  .ruler {
-    position: relative;
-    height: 42px;
-    margin: 0 12px 8px;
-  }
+  /* Two bands, dates above the bar and clock times below, so the label
+     families never have to be thinned against each other — each only
+     collides with its own kind. Dates go on top because a day boundary
+     is the coarser unit: the eye reads them as headings over the scale.
 
-  /* Zero-width anchors: the tick carries only a position, and its
-     children do their own centring. Translating the anchor as well would
-     shift every child twice. */
-  .tick {
-    position: absolute;
-    top: 0;
-    width: 0;
-    height: 100%;
-  }
-
-  /* Marks hang below the date band; all three heights share a top edge so
-     day and month ticks read as taller versions of the same mark rather
-     than as differently-aligned ones. */
-  .mark {
-    position: absolute;
-    top: 16px;
-    left: 0;
-    width: 1px;
-    height: 4px;
-    transform: translateX(-50%);
-    background: var(--wtl-divider);
-  }
-
-  .tick.day .mark {
-    height: 7px;
-    background: var(--wtl-muted);
-  }
-
-  .tick.month .mark {
-    height: 10px;
-    width: 2px;
-    background: var(--wtl-muted);
-  }
-
-  /* line-height is pinned, not inherited. The three bands are placed by
-     absolute top values, so each label's box height has to be known
-     here — inheriting HA's 1.5 made the date's line box 17px tall from
-     top 0, and it swallowed the first 2px of the mark row, which read as
-     a gap chewed out of the ticks around every date. */
+     line-height is pinned rather than inherited. The bands are fixed
+     height, so a label's box height has to be known here; inheriting
+     HA's 1.5 made the date box 17px tall in a 12px band and it spilled
+     into the marks below. */
   .lab {
     position: absolute;
     left: 0;
@@ -419,17 +442,17 @@ export const cardStyles = css`
   }
 
   .lab.time {
-    top: 30px;
+    top: 0;
     /* Clock digits must not shuffle the label's centre as they change. */
     font-variant-numeric: tabular-nums;
     opacity: 0.7;
   }
 
-  /* The date band. Slightly stronger than the clock row: it is the
-     heading, and it appears far less often, so it can afford the weight
-     without turning the ruler into noise. */
+  /* Slightly stronger than the clock row: it is the heading, and it
+     appears far less often, so it can afford the weight without turning
+     the timeline into noise. */
   .lab.date {
-    top: 0;
+    bottom: 0;
     font-weight: 500;
     color: var(--wtl-text);
   }
@@ -529,6 +552,11 @@ export const cardStyles = css`
   /* --- responsive -------------------------------------------------- */
 
   @container (max-width: 380px) {
+    /* The readout leaves the frame and lands on the card surface, so
+       every colour picked to sit on a dark scrim has to become a theme
+       colour. This block was malformed — it had carried stray copies of
+       the .spark-wrap and .spark rules since before the timeline work,
+       which left .readout-name white-on-transparent here. */
     .readout {
       position: static;
       border-radius: 0;
@@ -537,19 +565,13 @@ export const cardStyles = css`
       backdrop-filter: none;
     }
 
+    .readout-title {
+      color: var(--wtl-text);
+    }
+
     .readout-name,
+    .readout-at,
     .spark-wrap {
-    margin: 2px 0 4px;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .spark {
-    display: block;
-    width: 100%;
-    height: 34px;
-  }
-
-  .readout-at {
       color: var(--wtl-muted);
     }
   }

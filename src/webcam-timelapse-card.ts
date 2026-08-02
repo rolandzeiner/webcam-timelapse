@@ -754,10 +754,7 @@ export class WebcamTimelapseCard extends LitElement {
         ${renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
         ${this.renderStage(slot)}
         ${hasFrames(this.index)
-          ? html`
-              ${this.renderControls()} ${this.renderTrack(slot)}
-              ${this.config.show_dayticks ? this.renderRuler() : nothing}
-            `
+          ? this.renderTimeline(slot)
           : nothing}
       </ha-card>
     `;
@@ -822,6 +819,7 @@ export class WebcamTimelapseCard extends LitElement {
           : this.atLive
             ? html`<div class="badge live">${this.t("badge.live")}</div>`
             : nothing}
+        ${this.renderControls()}
       </div>
     `;
   }
@@ -939,7 +937,6 @@ export class WebcamTimelapseCard extends LitElement {
         >
           ${this.speed}×
         </button>
-        <span class="spacer"></span>
         <ha-icon-button .label=${this.t("controls.now")} @click=${this.jumpToNow}>
           <ha-icon icon="mdi:update"></ha-icon>
         </ha-icon-button>
@@ -947,13 +944,58 @@ export class WebcamTimelapseCard extends LitElement {
     `;
   }
 
-  private renderTrack(slot: number | null): TemplateResult {
+  /**
+   * Scrubber and ruler as one object.
+   *
+   * The marks live inside the track and are painted first, so the rail,
+   * the fill and the thumb sit on top of them — a ruler the slider runs
+   * along rather than a second widget under it. Paint order comes from
+   * DOM order on purpose: every element here is at `z-index: auto`, and
+   * introducing one would drag the whole overlay into the stacking
+   * competition that `.layers` exists to keep it out of.
+   *
+   * Dates sit above the bar and clock times below, both keyed off the
+   * same percentage as the marks, so the three bands cannot drift apart.
+   */
+  private renderTimeline(slot: number | null): TemplateResult {
     const last = Math.max(1, this.index.count - 1);
     const fill = (this.position / last) * 100;
+    const ticks = this.config?.show_dayticks !== false;
+    const { days, times } = ticks
+      ? this.rulerFor()
+      : { days: [] as DayTick[], times: [] as TimeTick[] };
 
     return html`
-      <div class="track">
-        <div class="rail"></div>
+      <div class="timeline">
+        ${ticks
+          ? html`<div class="band dates" aria-hidden="true">
+              ${days.map((tick) =>
+                tick.label
+                  ? html`<span class="lab date" style="left:${tick.left}%"
+                      >${tick.label}</span
+                    >`
+                  : nothing,
+              )}
+            </div>`
+          : nothing}
+
+        <div class="track">
+          ${ticks
+            ? html`<div class="marks" aria-hidden="true">
+                ${times.map(
+                  (tick) =>
+                    html`<span class="mark" style="left:${tick.left}%"></span>`,
+                )}
+                ${days.map(
+                  (tick) =>
+                    html`<span
+                      class="mark ${tick.isMonthStart ? "month" : "day"}"
+                      style="left:${tick.left}%"
+                    ></span>`,
+                )}
+              </div>`
+            : nothing}
+          <div class="rail"></div>
         <div class="fill" style="width:${fill}%"></div>
         ${this.index.gaps.map(([start, length]) => {
           const left = (start / last) * 100;
@@ -975,7 +1017,20 @@ export class WebcamTimelapseCard extends LitElement {
             : ""}
           @input=${this.onScrub}
           @change=${this.onScrubCommit}
-        />
+          />
+        </div>
+
+        ${ticks
+          ? html`<div class="band times" aria-hidden="true">
+              ${times.map((tick) =>
+                tick.label
+                  ? html`<span class="lab time" style="left:${tick.left}%"
+                      >${tick.label}</span
+                    >`
+                  : nothing,
+              )}
+            </div>`
+          : nothing}
       </div>
     `;
   }
@@ -1009,36 +1064,6 @@ export class WebcamTimelapseCard extends LitElement {
     return this.rulerCache;
   }
 
-  private renderRuler(): TemplateResult {
-    const { days, times } = this.rulerFor();
-    return html`
-      <div class="ruler" aria-hidden="true">
-        ${times.map(
-          (tick) => html`
-            <span class="tick minor" style="left:${tick.left}%">
-              <span class="mark"></span>
-              ${tick.label
-                ? html`<span class="lab time">${tick.label}</span>`
-                : nothing}
-            </span>
-          `,
-        )}
-        ${days.map(
-          (tick) => html`
-            <span
-              class="tick ${tick.isMonthStart ? "month" : "day"}"
-              style="left:${tick.left}%"
-            >
-              <span class="mark"></span>
-              ${tick.label
-                ? html`<span class="lab date">${tick.label}</span>`
-                : nothing}
-            </span>
-          `,
-        )}
-      </div>
-    `;
-  }
 }
 
 const windowWithCards = window as WindowWithCustomCards;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import cardSource from "./webcam-timelapse-card.ts?raw";
 import { cardStyles } from "./card-styles";
 
 /**
@@ -113,61 +114,82 @@ describe("reduced motion", () => {
   });
 });
 
-describe("ruler bands", () => {
-  /**
-   * A selector's length declaration, in px.
-   *
-   * The unit is optional because a zero length is conventionally written
-   * without one, and `top: 0` is exactly the declaration that starts the
-   * date band.
-   */
-  const px = (selector: string, property: string): number => {
-    const match = new RegExp(`${property}:\\s*(-?[\\d.]+)(px)?\\s*;`).exec(
-      declarationsFor(selector),
-    );
-    if (match === null) throw new Error(`no ${property} on ${selector}`);
-    return Number(match[1]);
-  };
+/**
+ * A selector's length declaration, in px.
+ *
+ * The unit is optional because a zero length is conventionally written
+ * without one.
+ */
+function px(selector: string, property: string): number {
+  const match = new RegExp(`${property}:\\s*(-?[\\d.]+)(px)?\\s*;`).exec(
+    declarationsFor(selector),
+  );
+  if (match === null) throw new Error(`no ${property} on ${selector}`);
+  return Number(match[1]);
+}
 
-  /**
-   * Worst-case rendered height of a label, in px.
-   *
-   * The bands are placed by absolute `top`, so a label's box height has
-   * to be known to know whether two bands touch. 0.7rem against a 16px
-   * root is 11.2px.
-   */
-  const labelHeight = 11.2;
+/** 0.7rem against a 16px root, at line-height 1. */
+const LABEL_HEIGHT = 11.2;
 
+describe("timeline bands", () => {
   it("pins line-height so the label boxes have a known height", () => {
-    // The bug this guards: without it the labels inherit HA's ~1.5, the
-    // date's box grows to ~17px from top 0, and it eats the top of the
-    // mark row — which renders as a gap bitten out of the ticks around
-    // every date label.
+    // Inheriting HA's ~1.5 makes a 0.7rem label 17px tall, which spills
+    // out of a 12px band and into the marks.
     expect(declarationsFor(".lab")).toMatch(/line-height:\s*1\s*;/);
   });
 
-  it("keeps the date band clear of the marks", () => {
-    expect(px(".lab.date", "top") + labelHeight).toBeLessThanOrEqual(
-      px(".mark", "top"),
+  it("centres the marks so the bar runs through them", () => {
+    // This is what makes the slider and the ruler read as one object
+    // rather than as a bar with a separate scale beneath it.
+    const body = declarationsFor(".mark");
+    expect(body).toMatch(/top:\s*50%/);
+    expect(body).toMatch(/transform:\s*translate\(-50%,\s*-50%\)/);
+  });
+
+  it("orders the mark heights minor, day, month", () => {
+    expect(px(".mark", "height")).toBeLessThan(px(".mark.day", "height"));
+    expect(px(".mark.day", "height")).toBeLessThan(px(".mark.month", "height"));
+  });
+
+  it("keeps the tallest mark inside the track", () => {
+    expect(px(".mark.month", "height")).toBeLessThanOrEqual(
+      px(".track", "height"),
     );
   });
 
-  it("keeps the tallest mark clear of the clock band", () => {
-    // Month marks are the tall ones, and they are the rarest, so an
-    // overlap here would show up on one day in thirty.
-    const markBottom = px(".mark", "top") + px(".tick.month .mark", "height");
-    expect(markBottom).toBeLessThanOrEqual(px(".lab.time", "top"));
+  it("keeps the slider a large enough pointer target", () => {
+    // WCAG 2.2 SC 2.5.8 wants 24x24 CSS px. The bar itself is 6px, so the
+    // track height is the whole of what makes this control hittable —
+    // shrinking it to slim the card is exactly the tempting mistake.
+    expect(px(".track", "height")).toBeGreaterThanOrEqual(24);
   });
 
-  it("leaves room for the clock band inside the ruler", () => {
-    expect(px(".lab.time", "top") + labelHeight).toBeLessThanOrEqual(
-      px(".ruler", "height"),
-    );
+  it("gives each label band room for its text", () => {
+    expect(px(".band", "height")).toBeGreaterThanOrEqual(LABEL_HEIGHT);
   });
 
-  it("orders the bands date, marks, clock", () => {
-    expect(px(".lab.date", "top")).toBeLessThan(px(".mark", "top"));
-    expect(px(".mark", "top")).toBeLessThan(px(".lab.time", "top"));
+  it("keeps the marks behind the bar without reaching for z-index", () => {
+    // Paint order is DOM order. A z-index here would re-enter the
+    // stacking competition .layers exists to contain.
+    expect(declarationsFor(".marks")).not.toMatch(/z-index/);
+    expect(declarationsFor(".mark")).not.toMatch(/z-index/);
+  });
+});
+
+describe("controls overlay", () => {
+  it("floats the controls over the stage", () => {
+    const body = declarationsFor(".controls");
+    expect(body).toMatch(/position:\s*absolute/);
+    expect(body).toMatch(/left:\s*50%/);
+    expect(body).toMatch(/bottom:/);
+  });
+
+  it("keeps the readout clear of the control pill", () => {
+    // Both live at the bottom of the stage. A centred pill and a
+    // right-aligned readout meet on any card narrow enough for the two to
+    // reach the middle, and that width depends on how many sensors are
+    // configured — so the clearance has to be vertical.
+    expect(px(".readout", "bottom")).toBeGreaterThan(px(".controls", "bottom"));
   });
 });
 
@@ -206,5 +228,39 @@ describe("readout icon alignment", () => {
     expect(declarationsFor(".ent-row ha-form")).toMatch(
       /grid-column:\s*1\s*\/\s*-1/,
     );
+  });
+});
+
+describe("timeline markup order", () => {
+  it("renders dates, then the bar, then clock times", () => {
+    const dates = cardSource.indexOf('class="band dates"');
+    const track = cardSource.indexOf('<div class="track">');
+    const times = cardSource.indexOf('class="band times"');
+
+    expect(dates).toBeGreaterThan(-1);
+    expect(track).toBeGreaterThan(dates);
+    expect(times).toBeGreaterThan(track);
+  });
+
+  it("paints the marks before the rail", () => {
+    // The marks sit behind the bar purely by DOM order — everything here
+    // is z-index auto. Moving them after the rail would put the ruler on
+    // top of the slider with no CSS change to explain it.
+    const marks = cardSource.indexOf('class="marks"');
+    const rail = cardSource.indexOf('class="rail"');
+
+    expect(marks).toBeGreaterThan(-1);
+    expect(rail).toBeGreaterThan(marks);
+  });
+
+  it("renders the controls inside the stage", () => {
+    // The pill is absolutely positioned against .stage. Rendered as a
+    // sibling it would anchor to the card instead and sit over the
+    // timeline.
+    const stage = cardSource.indexOf('<div class="stage" style=');
+    const controls = cardSource.indexOf("${this.renderControls()}");
+
+    expect(stage).toBeGreaterThan(-1);
+    expect(controls).toBeGreaterThan(stage);
   });
 });
