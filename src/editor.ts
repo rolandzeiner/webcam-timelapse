@@ -25,6 +25,30 @@ import type {
 /** Must stay in step with `SPEEDS` in `webcam-timelapse-card.ts`. */
 const SPEEDS = [1, 2, 4, 8, 16, 32, 64];
 
+/**
+ * Text and number inputs go through ha-form selectors, never ha-textfield.
+ *
+ * `ha-textfield` is not registered in the card-editor context — it renders
+ * as an unknown element with no content, which silently swallowed the
+ * name, unit and decimals fields on every entity row and, later, the
+ * overlay heading. Nothing errors; the inputs are simply absent. `ha-form`
+ * loads its own selectors, so anything routed through it is safe.
+ */
+const OVERLAY_TITLE_SCHEMA = [
+  { name: "overlay_title", selector: { text: {} } },
+] as const;
+
+const ROW_SCHEMA = [
+  {
+    type: "grid",
+    schema: [
+      { name: "name", selector: { text: {} } },
+      { name: "unit", selector: { text: {} } },
+      { name: "decimals", selector: { number: { min: 0, max: 4, mode: "box" } } },
+    ],
+  },
+] as const;
+
 interface HaFormEvent extends CustomEvent {
   detail: { value: WebcamTimelapseCardConfig };
 }
@@ -182,37 +206,18 @@ export class WebcamTimelapseCardEditor
           }}
         ></ha-entity-picker>
 
+        <ha-form
+          .hass=${this.hass}
+          .data=${row}
+          .schema=${ROW_SCHEMA}
+          .computeLabel=${this.computeLabel}
+          @value-changed=${(e: CustomEvent<{ value: OverlayEntityConfig }>) => {
+            e.stopPropagation();
+            this.patchRow(index, e.detail.value);
+          }}
+        ></ha-form>
+
         <div class="ent-controls">
-          <ha-textfield
-            .label=${this.t("editor.name")}
-            .value=${row.name ?? ""}
-            @change=${(e: Event) =>
-              this.patchRow(index, {
-                name: (e.target as HTMLInputElement).value,
-              })}
-          ></ha-textfield>
-
-          <ha-textfield
-            .label=${this.t("editor.unit")}
-            .value=${row.unit ?? ""}
-            @change=${(e: Event) =>
-              this.patchRow(index, {
-                unit: (e.target as HTMLInputElement).value,
-              })}
-          ></ha-textfield>
-
-          <ha-textfield
-            .label=${this.t("editor.decimals")}
-            type="number"
-            min="0"
-            max="4"
-            .value=${String(row.decimals ?? 1)}
-            @change=${(e: Event) =>
-              this.patchRow(index, {
-                decimals: Number((e.target as HTMLInputElement).value),
-              })}
-          ></ha-textfield>
-
           <!-- The one sanctioned native control: HA ships no colour
                selector. Both @input and @change are wired — @input gives
                a live preview while dragging, @change is what fires on
@@ -297,22 +302,15 @@ export class WebcamTimelapseCardEditor
         <h4>${this.t("editor.overlay")}</h4>
         <p class="ent-hint">${this.t("editor.overlay_hint")}</p>
 
-        <!-- Wrapped rather than styled directly: ha-textfield is an MWC
-             element whose host is inline-flex, and forcing display on it
-             collapses its internal layout. The wrapper carries the
-             spacing, the field keeps its own box. -->
         <div class="ent-title">
-          <ha-textfield
-            .label=${this.t("editor.overlay_title")}
-            .helper=${this.t("editor.helper.overlay_title")}
-            .helperPersistent=${true}
-            .value=${this.config.overlay_title ?? ""}
-            @change=${(e: Event) =>
-              this.emit({
-                ...this.config!,
-                overlay_title: (e.target as HTMLInputElement).value,
-              })}
-          ></ha-textfield>
+          <ha-form
+            .hass=${this.hass}
+            .data=${this.config}
+            .schema=${OVERLAY_TITLE_SCHEMA}
+            .computeLabel=${this.computeLabel}
+            .computeHelper=${this.computeHelper}
+            @value-changed=${this.onFormChange}
+          ></ha-form>
         </div>
 
         ${this.rows.map((row, index) => this.renderRow(row, index))}

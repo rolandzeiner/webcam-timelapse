@@ -199,9 +199,12 @@ describe("readout icon alignment", () => {
     expect(declarationsFor(".readout-icon")).toMatch(/align-self:\s*center/);
   });
 
-  it("never forces a display onto the MWC textfield itself", () => {
-    // ha-textfield's host is inline-flex; overriding it collapses the
-    // field's internal layout and the input renders invisible.
-    expect(declarationsFor(".ent-title")).not.toMatch(/display:/);
+  it("spans ha-form across the whole entity row", () => {
+    // .ent-row is a two-column grid and ha-form is a direct child, so
+    // without an explicit span it lands in the narrow auto column beside
+    // the entity picker rather than under it.
+    expect(declarationsFor(".ent-row ha-form")).toMatch(
+      /grid-column:\s*1\s*\/\s*-1/,
+    );
   });
 });

@@ -204,6 +204,12 @@ export const cardStyles = css`
     height: 1.05em;
     flex: none;
     align-self: center;
+    /* Optical nudge, not geometry. Centring on the line box is correct to
+       within half a pixel, but the row's cross size is set by the text's
+       descenders, which sit lower than anything in an MDI glyph — so a
+       mathematically centred icon still reads slightly low. Bottom margin
+       lifts a centre-aligned item by half its value. */
+    margin-bottom: 0.16em;
   }
 
   .readout-name {
@@ -445,16 +451,12 @@ export const cardStyles = css`
     font-size: var(--ha-font-size-s, 0.875rem);
   }
 
-  /* Full width: the heading applies to the whole readings block, not to
-     any one row, so it should not line up with the per-row fields. The
-     width goes on the field, the spacing on the wrapper — never a
-     display override on the MWC element itself. */
+  /* The heading applies to the whole readings block, not to any one row,
+     so it sits above them at full width. ha-form is block-level already;
+     the wrapper carries only the spacing. */
   .ent-title {
-    margin-bottom: 20px;
-  }
-
-  .ent-title ha-textfield {
-    width: 100%;
+    display: block;
+    margin-bottom: 4px;
   }
 
   .ent-row {
@@ -463,6 +465,13 @@ export const cardStyles = css`
     gap: 8px;
     padding: 12px 0;
     border-top: 1px solid var(--wtl-divider);
+  }
+
+  /* The row is a two-column grid and ha-form is a direct child, so
+     without this it lands in the narrow auto column beside the entity
+     picker instead of under it. */
+  .ent-row ha-form {
+    grid-column: 1 / -1;
   }
 
   .ent-controls {
