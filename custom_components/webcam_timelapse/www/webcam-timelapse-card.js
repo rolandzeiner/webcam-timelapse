@@ -139,15 +139,13 @@ function t(t,e,i,s){var n,o=arguments.length,r=o<3?e:null===s?s=Object.getOwnPro
     background: var(--wtl-gap);
   }
 
-  /* Lifted clear of the control pill rather than sharing the bottom edge
-     with it. A centred pill and a right-aligned readout overlap on any
-     card narrow enough for the two to meet in the middle, and that width
-     depends on how many sensors are configured — so the clearance is
-     vertical, where it holds at every width. */
+  /* Back on the bottom-right corner. It shares that edge with the centred
+     control pill, which is fine while there is room between them — the
+     container query below moves it to the top before the two can meet. */
   .readout {
     position: absolute;
     right: 8px;
-    bottom: 56px;
+    bottom: 8px;
     display: grid;
     gap: 2px;
     padding: 8px 10px;
@@ -541,28 +539,33 @@ function t(t,e,i,s){var n,o=arguments.length,r=o<3?e:null===s?s=Object.getOwnPro
 
   /* --- responsive -------------------------------------------------- */
 
-  @container (max-width: 380px) {
-    /* The readout leaves the frame and lands on the card surface, so
-       every colour picked to sit on a dark scrim has to become a theme
-       colour. This block was malformed — it had carried stray copies of
-       the .spark-wrap and .spark rules since before the timeline work,
-       which left .readout-name white-on-transparent here. */
+  /* Breakpoint set by the collision, not by a round number.
+
+     The control pill is centred and the readout is right-aligned, so the
+     two close on each other as the card narrows. The pill is ~212px, and
+     a three-sensor readout runs ~230px, which puts the meeting point just
+     past 600px — hence 620px, with a little margin because the readout's
+     width follows its content. Below that the readout moves to the top,
+     where nothing else is competing for the space. */
+  @container (max-width: 620px) {
+    /* Cleared explicitly: the base rule pins the bottom-right corner, and
+       an unset side would leave the box anchored to both. */
     .readout {
-      position: static;
-      border-radius: 0;
-      background: transparent;
-      color: var(--wtl-text);
-      backdrop-filter: none;
+      right: auto;
+      bottom: auto;
+      /* Below the timestamp and badge rather than flush with the top
+         edge, so the three overlays do not stack on the same line. */
+      top: 44px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: calc(100% - 16px);
     }
 
-    .readout-title {
-      color: var(--wtl-text);
-    }
-
-    .readout-name,
-    .readout-at,
+    /* The numbers are the point; the chart is the first thing that should
+       go. A sparkline needs width this card no longer has, and dropping
+       it also shortens the block so it covers less of the frame. */
     .spark-wrap {
-      color: var(--wtl-muted);
+      display: none;
     }
   }
 

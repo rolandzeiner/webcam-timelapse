@@ -184,12 +184,49 @@ describe("controls overlay", () => {
     expect(body).toMatch(/bottom:/);
   });
 
-  it("keeps the readout clear of the control pill", () => {
-    // Both live at the bottom of the stage. A centred pill and a
-    // right-aligned readout meet on any card narrow enough for the two to
-    // reach the middle, and that width depends on how many sensors are
-    // configured — so the clearance has to be vertical.
-    expect(px(".readout", "bottom")).toBeGreaterThan(px(".controls", "bottom"));
+});
+
+/** Everything inside the @container block, comments stripped. */
+function narrowBlock(): string {
+  const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+  const start = css.indexOf("@container");
+  return start === -1 ? "" : css.slice(start);
+}
+
+/** The declarations a selector carries inside the @container block. */
+function narrowRule(selector: string): string {
+  const match = new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`).exec(narrowBlock());
+  return match?.[1] ?? "";
+}
+
+describe("narrow layout", () => {
+  it("moves the readout to the top centre", () => {
+    const body = narrowRule(".readout");
+    expect(body).toMatch(/top:/);
+    expect(body).toMatch(/left:\s*50%/);
+    expect(body).toMatch(/transform:\s*translateX\(-50%\)/);
+  });
+
+  it("releases the corner the base rule pins", () => {
+    // Setting top and left without clearing right and bottom leaves the
+    // box anchored to both corners, so it stretches instead of moving.
+    const body = narrowRule(".readout");
+    expect(body).toMatch(/right:\s*auto/);
+    expect(body).toMatch(/bottom:\s*auto/);
+  });
+
+  it("hides the sparklines", () => {
+    expect(narrowRule(".spark-wrap")).toMatch(/display:\s*none/);
+  });
+
+  it("switches before the readout can reach the control pill", () => {
+    // Above the breakpoint both sit on the bottom edge: the pill centred
+    // at ~212px, the readout right-aligned at ~230px. They meet just past
+    // 600px, so the switch has to happen above that — this is the number
+    // that keeps the two from overlapping at any width.
+    const match = /@container\s*\(max-width:\s*(\d+)px\)/.exec(narrowBlock());
+    expect(match).not.toBeNull();
+    expect(Number(match?.[1])).toBeGreaterThanOrEqual(620);
   });
 });
 
