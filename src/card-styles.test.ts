@@ -464,7 +464,7 @@ describe("picture click target", () => {
   it("ignores clicks aimed at a control or a reading", () => {
     // Both sit inside the stage, so their clicks bubble through it.
     // Without the guard, tapping pause would also open the camera dialog.
-    const handler = /onStageClick\([\s\S]{0,700}?\n  \}/.exec(cardSource)?.[0];
+    const handler = /onStageClick\([\s\S]{0,1200}?\n  \}/.exec(cardSource)?.[0];
 
     expect(handler).toBeDefined();
     expect(handler).toMatch(/composedPath\(\)/);
@@ -472,10 +472,21 @@ describe("picture click target", () => {
     expect(handler).toMatch(/"readout-row"/);
   });
 
+  it("only inspects the path below the stage", () => {
+    // composedPath runs from the target up through Home Assistant's own
+    // DOM to window. Searching all of it for a class as common as
+    // "controls" lets any ancestor above this card veto every click on
+    // the picture — the whole feature dies silently.
+    const handler = /onStageClick\([\s\S]{0,900}?\n  \}/.exec(cardSource)?.[0];
+
+    expect(handler).toMatch(/currentTarget/);
+    expect(handler).toMatch(/slice\(0, boundary\)/);
+  });
+
   it("reads the composed path rather than the retargeted target", () => {
     // A click starting inside a control's shadow root is retargeted to
     // the host, so event.target would not carry the class being checked.
-    const handler = /onStageClick\([\s\S]{0,700}?\n  \}/.exec(cardSource)?.[0];
+    const handler = /onStageClick\([\s\S]{0,1200}?\n  \}/.exec(cardSource)?.[0];
     expect(handler).not.toMatch(/event\.target/);
   });
 });

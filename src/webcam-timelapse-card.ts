@@ -1027,14 +1027,20 @@ export class WebcamTimelapseCard extends LitElement {
    * to the host and the class check would miss.
    */
   private onStageClick(event: MouseEvent): void {
-    const aimedElsewhere = event
-      .composedPath()
-      .some(
-        (node) =>
-          node instanceof HTMLElement &&
-          (node.classList.contains("controls") ||
-            node.classList.contains("readout-row")),
-      );
+    const path = event.composedPath();
+    // Only the segment below the stage. composedPath runs all the way up
+    // through Home Assistant's own DOM to window, so searching the whole
+    // of it for a class as common as "controls" lets any ancestor
+    // anywhere above this card veto every click on the picture.
+    const boundary = path.indexOf(event.currentTarget as EventTarget);
+    const inside = boundary === -1 ? path : path.slice(0, boundary);
+
+    const aimedElsewhere = inside.some(
+      (node) =>
+        node instanceof HTMLElement &&
+        (node.classList.contains("controls") ||
+          node.classList.contains("readout-row")),
+    );
     if (aimedElsewhere) return;
     if (this.config) this.fireMoreInfo(this.config.camera_entity);
   }
