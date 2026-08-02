@@ -314,7 +314,7 @@ describe("timeline markup order", () => {
     // The pill is absolutely positioned against .stage. Rendered as a
     // sibling it would anchor to the card instead and sit over the
     // timeline.
-    const stage = cardSource.indexOf('<div class="stage" style=');
+    const stage = cardSource.indexOf('class="stage"');
     const controls = cardSource.indexOf("${this.renderControls()}");
 
     expect(stage).toBeGreaterThan(-1);
@@ -447,5 +447,35 @@ describe("more-info targets", () => {
     // they punch two dead rectangles into the camera's click target.
     const body = declarationsFor(".stamp");
     expect(body).toMatch(/pointer-events:\s*none/);
+  });
+});
+
+describe("picture click target", () => {
+  it("binds the click on the stage, not on the image layers", () => {
+    // The layers are absolutely positioned under four sibling overlays.
+    // A handler bound there only fires when the layers happen to win
+    // hit-testing at that point, so any overlay that grows — or an error
+    // panel covering the frame — silently takes the target away. The
+    // stage is the common ancestor and receives the click however it was
+    // routed.
+    expect(cardSource).toMatch(/class="stage"[\s\S]{0,120}@click=\$\{this\.onStageClick\}/);
+  });
+
+  it("ignores clicks aimed at a control or a reading", () => {
+    // Both sit inside the stage, so their clicks bubble through it.
+    // Without the guard, tapping pause would also open the camera dialog.
+    const handler = /onStageClick\([\s\S]{0,700}?\n  \}/.exec(cardSource)?.[0];
+
+    expect(handler).toBeDefined();
+    expect(handler).toMatch(/composedPath\(\)/);
+    expect(handler).toMatch(/"controls"/);
+    expect(handler).toMatch(/"readout-row"/);
+  });
+
+  it("reads the composed path rather than the retargeted target", () => {
+    // A click starting inside a control's shadow root is retargeted to
+    // the host, so event.target would not carry the class being checked.
+    const handler = /onStageClick\([\s\S]{0,700}?\n  \}/.exec(cardSource)?.[0];
+    expect(handler).not.toMatch(/event\.target/);
   });
 });

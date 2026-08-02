@@ -825,13 +825,16 @@ export class WebcamTimelapseCard extends LitElement {
     // attribute, so a binding on a layer would wipe the opacity, z-index
     // and transition that revealFrame() writes there.
     return html`
-      <div class="stage" style="--wtl-frame-filter:${filter}">
+      <div
+        class="stage"
+        style="--wtl-frame-filter:${filter}"
+        @click=${this.onStageClick}
+      >
         <div
           class="layers"
           role="button"
           tabindex="0"
           aria-label=${this.t("actions.show_camera")}
-          @click=${() => this.fireMoreInfo(this.config!.camera_entity)}
           @keydown=${(event: KeyboardEvent) =>
             this.onActivateKey(event, this.config!.camera_entity)}
         >
@@ -1005,6 +1008,35 @@ export class WebcamTimelapseCard extends LitElement {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     this.fireMoreInfo(entityId);
+  }
+
+  /**
+   * Any click on the picture that was not aimed at something else.
+   *
+   * Bound on the stage rather than on the image layers, so it does not
+   * depend on which element wins hit-testing. The layers are absolutely
+   * positioned under four sibling overlays with their own stacking
+   * behaviour; a handler bound there only fires when the layers happen to
+   * be the topmost thing at that point, and any overlay that grows —
+   * or an error panel that covers the frame outright — silently takes the
+   * whole target away. The stage is the common ancestor, so the click
+   * arrives however it was routed.
+   *
+   * `composedPath` rather than `event.target` because the click may have
+   * started inside a control's shadow root, where `target` is retargeted
+   * to the host and the class check would miss.
+   */
+  private onStageClick(event: MouseEvent): void {
+    const aimedElsewhere = event
+      .composedPath()
+      .some(
+        (node) =>
+          node instanceof HTMLElement &&
+          (node.classList.contains("controls") ||
+            node.classList.contains("readout-row")),
+      );
+    if (aimedElsewhere) return;
+    if (this.config) this.fireMoreInfo(this.config.camera_entity);
   }
 
   private renderControls(): TemplateResult {

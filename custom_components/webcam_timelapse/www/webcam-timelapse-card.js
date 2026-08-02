@@ -778,13 +778,16 @@ function t(t,e,i,s){var n,o=arguments.length,a=o<3?e:null===s?s=Object.getOwnPro
           </div>
         </div>
       `;const e=this.gains[this.position]??1,i=[];1!==e&&i.push(`brightness(${e.toFixed(3)})`),this.onGap&&i.push("grayscale(0.5)","brightness(0.5)");const s=i.length>0?i.join(" "):"none";return F`
-      <div class="stage" style="--wtl-frame-filter:${s}">
+      <div
+        class="stage"
+        style="--wtl-frame-filter:${s}"
+        @click=${this.onStageClick}
+      >
         <div
           class="layers"
           role="button"
           tabindex="0"
           aria-label=${this.t("actions.show_camera")}
-          @click=${()=>this.fireMoreInfo(this.config.camera_entity)}
           @keydown=${t=>this.onActivateKey(t,this.config.camera_entity)}
         >
           <img class="layer a" alt="" decoding="async" fetchpriority="high" />
@@ -861,7 +864,7 @@ function t(t,e,i,s){var n,o=arguments.length,a=o<3?e:null===s?s=Object.getOwnPro
       `}),n=this.config?.overlay_title?.trim();return F`<div class="readout">
       ${n?F`<div class="readout-title">${n}</div>`:G}
       ${s}
-    </div>`}fireMoreInfo(t){t&&this.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId:t},bubbles:!0,composed:!0}))}onActivateKey(t,e){"Enter"!==t.key&&" "!==t.key||(t.preventDefault(),this.fireMoreInfo(e))}renderControls(){return F`
+    </div>`}fireMoreInfo(t){t&&this.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId:t},bubbles:!0,composed:!0}))}onActivateKey(t,e){"Enter"!==t.key&&" "!==t.key||(t.preventDefault(),this.fireMoreInfo(e))}onStageClick(t){t.composedPath().some(t=>t instanceof HTMLElement&&(t.classList.contains("controls")||t.classList.contains("readout-row")))||this.config&&this.fireMoreInfo(this.config.camera_entity)}renderControls(){return F`
       <div class="controls">
         <ha-icon-button .label=${this.t("controls.previous")} @click=${()=>this.stepBy(-1)}>
           <ha-icon icon="mdi:skip-previous"></ha-icon>
