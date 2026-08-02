@@ -6,6 +6,7 @@ import {
   FADE_MAX_SPEED,
   FADE_MS,
   fadeDurationMs,
+  frameReadiness,
   type FrameIndex,
   hasFrames,
   MAX_TICK_FPS,
@@ -365,6 +366,89 @@ describe("prefetchWindow", () => {
         for (const target of prefetchWindow(present, position, 8, stride, -1)) {
           expect(target).toBeGreaterThan(position);
         }
+      }
+    }
+  });
+});
+
+describe("frameReadiness", () => {
+  const HELD = "https://ha.local/api/frames/1000.webp";
+  const ASKED = "https://ha.local/api/frames/2000.webp";
+
+  it("accepts a frame the element actually holds", () => {
+    expect(
+      frameReadiness({
+        currentSrc: ASKED,
+        requested: ASKED,
+        complete: true,
+        naturalWidth: 1024,
+      }),
+    ).toBe("ready");
+  });
+
+  it("refuses a stale bitmap that looks complete", () => {
+    // The bug this exists for. After a rejected decode of a new src the
+    // element still holds the PREVIOUS frame, so complete and
+    // naturalWidth both describe an image we did not ask for. Trusting
+    // them revealed the layer anyway, and because the two layers
+    // alternate the stage flipped between two old frames while the
+    // playhead advanced normally.
+    expect(
+      frameReadiness({
+        currentSrc: HELD,
+        requested: ASKED,
+        complete: true,
+        naturalWidth: 1024,
+      }),
+    ).toBe("pending");
+  });
+
+  it("reports a finished request with no image as failed", () => {
+    // A pruned frame or a 404: the right answer is to try the next
+    // source, not to keep waiting for something that will never arrive.
+    expect(
+      frameReadiness({
+        currentSrc: ASKED,
+        requested: ASKED,
+        complete: true,
+        naturalWidth: 0,
+      }),
+    ).toBe("failed");
+  });
+
+  it("waits while the right frame is still loading", () => {
+    expect(
+      frameReadiness({
+        currentSrc: ASKED,
+        requested: ASKED,
+        complete: false,
+        naturalWidth: 0,
+      }),
+    ).toBe("pending");
+  });
+
+  it("waits on an element that has never loaded anything", () => {
+    expect(
+      frameReadiness({
+        currentSrc: "",
+        requested: ASKED,
+        complete: false,
+        naturalWidth: 0,
+      }),
+    ).toBe("pending");
+  });
+
+  it("never calls a frame ready unless it is the one requested", () => {
+    for (const complete of [true, false]) {
+      for (const naturalWidth of [0, 1024]) {
+        expect(
+          frameReadiness({
+            currentSrc: HELD,
+            requested: ASKED,
+            complete,
+            naturalWidth,
+          }),
+        ).not.toBe("ready");
       }
     }
   });

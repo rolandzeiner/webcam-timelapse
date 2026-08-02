@@ -34,6 +34,7 @@ import {
   EMPTY_INDEX,
   fadeDurationMs,
   type FrameIndex,
+  frameReadiness,
   hasFrames,
   nextPlaybackPosition,
   nextPresent,
@@ -552,17 +553,37 @@ export class WebcamTimelapseCard extends LitElement {
     // on disk even when the live proxy is not yet warm. Giving up after
     // the first failure is what renders as an unexplained black card.
     for (const url of candidates) {
+      // Resolved against the same base the browser will use, so it can be
+      // compared with currentSrc rather than with the relative form.
+      const requested = new URL(url, document.baseURI).href;
       incoming.src = url;
       try {
         await incoming.decode();
       } catch {
-        // Firefox rejects decode() in cases where the bitmap is actually
-        // available (notably when src was reassigned during a previous
-        // decode). Trust the element's own view before discarding the
-        // frame: `complete` plus a non-zero intrinsic width means it is
-        // painted and ready.
-        if (!incoming.complete || incoming.naturalWidth === 0) continue;
+        // Swallowed on purpose. decode() rejects in cases where the frame
+        // is fine — Firefox does it whenever src was reassigned during a
+        // previous decode — so the element's own state decides, not this
+        // rejection. What that state must NOT be trusted for is whether
+        // the frame is the one we asked for; frameReadiness handles that.
       }
+
+      const readiness = frameReadiness({
+        currentSrc: incoming.currentSrc,
+        requested,
+        complete: incoming.complete,
+        naturalWidth: incoming.naturalWidth,
+      });
+
+      // The request finished and there is nothing there: a pruned frame or
+      // a proxy with nothing cached. Fall through to the next source — the
+      // archived frame is on disk even when the live proxy is not warm.
+      if (readiness === "failed") continue;
+
+      // Still holding the previous frame. Revealing the layer now would
+      // paint a stale image under a playhead that has already moved on, so
+      // drop this frame and leave the last good one up.
+      if (readiness === "pending") return;
+
       // A newer frame was requested while this decode was in flight;
       // swapping now would show an older image over a newer one.
       if (generation !== this.frameGeneration) return;
@@ -575,6 +596,15 @@ export class WebcamTimelapseCard extends LitElement {
     }
 
     if (generation !== this.frameGeneration) return;
+
+    // During playback a frame that will not load is a dropped frame, not
+    // something to put a panel over the picture for. An archive with holes
+    // at the start would otherwise strobe the error overlay on and off
+    // against the last good frame. Stepping and scrubbing still report it:
+    // there the user asked for one specific frame and deserves to know it
+    // is missing.
+    if (this.playing) return;
+
     // Every source failed. Say so — a silently black stage gives the user
     // nothing to act on and looks identical to a camera that is simply
     // dark at night.
