@@ -15,6 +15,7 @@ import {
   playbackCadence,
   positionAt,
   prefetchDepth,
+  prefetchWindow,
   presenceBitmap,
   shouldAutoplay,
   slotAt,
@@ -279,6 +280,92 @@ describe("nextPlaybackPosition", () => {
       }
       // Wherever it stopped, it stopped on the newest surviving frame.
       expect(position).toBe(38);
+    }
+  });
+});
+
+describe("prefetchWindow", () => {
+  const full = (count: number): Uint8Array => new Uint8Array(count).fill(1);
+
+  it("fills the whole window from a standing start", () => {
+    expect(prefetchWindow(full(100), 0, 4, 1, -1)).toEqual([1, 2, 3, 4]);
+    expect(prefetchWindow(full(100), 0, 4, 2, -1)).toEqual([2, 4, 6, 8]);
+  });
+
+  it("asks for one frame per tick once the window is full", () => {
+    // The fix. Playback advances by `stride` and the window slides by the
+    // same amount, so exactly one position enters it per tick. Re-issuing
+    // all 16 was ~485 requests a second at 32x against a cold cache.
+    const present = full(500);
+    for (const stride of [1, 2, 4]) {
+      let through = -1;
+      let position = 0;
+      // Prime the window, then measure the steady state.
+      for (const target of prefetchWindow(present, position, 16, stride, through)) {
+        through = target;
+      }
+      for (let tick = 0; tick < 20; tick++) {
+        position += stride;
+        const targets = prefetchWindow(present, position, 16, stride, through);
+        expect(targets).toHaveLength(1);
+        through = targets[0] ?? through;
+      }
+    }
+  });
+
+  it("never re-requests a frame it already asked for", () => {
+    const present = full(200);
+    const seen = new Set<number>();
+    let through = -1;
+    for (let position = 0; position < 100; position += 2) {
+      for (const target of prefetchWindow(present, position, 8, 2, through)) {
+        expect(seen.has(target)).toBe(false);
+        seen.add(target);
+        through = target;
+      }
+    }
+    expect(seen.size).toBeGreaterThan(0);
+  });
+
+  it("refills after the playhead jumps backwards", () => {
+    // Scrubbing back leaves `through` beyond the new window. Treating that
+    // as "already fetched" would starve playback of every frame ahead of
+    // it, so a stale marker has to be discarded rather than trusted.
+    const present = full(300);
+    const through = 250;
+    expect(prefetchWindow(present, 10, 4, 1, through)).toEqual([11, 12, 13, 14]);
+  });
+
+  it("keeps its place on a small step that stays inside the window", () => {
+    // Those frames are already in flight or cached; re-requesting them is
+    // the waste this function exists to avoid.
+    expect(prefetchWindow(full(300), 10, 8, 1, 14)).toEqual([15, 16, 17, 18]);
+  });
+
+  it("collapses strided targets that a gap lands on the same frame", () => {
+    const present = full(100);
+    for (let i = 11; i < 30; i++) present[i] = 0;
+    // Targets 12, 14, 16 … all resolve to 30; it must be asked for once.
+    const targets = prefetchWindow(present, 10, 6, 2, -1);
+    expect(new Set(targets).size).toBe(targets.length);
+    expect(targets[0]).toBe(30);
+  });
+
+  it("stops at the end of the archive instead of running off it", () => {
+    expect(prefetchWindow(full(20), 17, 8, 1, -1)).toEqual([18, 19]);
+    expect(prefetchWindow(full(20), 19, 8, 1, -1)).toEqual([]);
+    expect(prefetchWindow(new Uint8Array(0), 0, 8, 1, -1)).toEqual([]);
+  });
+
+  it("never hands back a position behind the playhead", () => {
+    const present = full(120);
+    for (const hole of [12, 13, 40]) present[hole] = 0;
+    for (const stride of [1, 2, 4]) {
+      for (let position = 0; position < 110; position++) {
+        for (const target of prefetchWindow(present, position, 8, stride, -1)) {
+          expect(target).toBeGreaterThan(position);
+        }
+      }
     }
   });
 });

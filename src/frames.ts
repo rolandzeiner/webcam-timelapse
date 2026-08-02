@@ -242,6 +242,55 @@ export function nextPlaybackPosition(
   return last !== null && last > position ? last : null;
 }
 
+/**
+ * Which frames to newly request to keep the prefetch window full.
+ *
+ * Returns only the positions that have just entered the window, never the
+ * ones already asked for. That distinction is the whole point. Playback
+ * calls this on every tick, and consecutive windows overlap almost
+ * entirely — re-requesting the full depth each time meant building
+ * `depth` throwaway `Image` objects per tick, which at 32x is ~485 a
+ * second against a cold cache. They saturate the browser's per-origin
+ * connection pool, and the frame playback is actually waiting on ends up
+ * queued behind hundreds of speculative ones, so the picture freezes
+ * until the HTTP cache warms up. Asking only for what is new costs one
+ * request per tick in steady state, because the window slides forward by
+ * exactly one stride.
+ *
+ * `through` is the furthest position already requested. It needs no reset
+ * from the caller: a playhead that jumped backwards leaves it beyond the
+ * new window, which is self-evidently stale and is treated as "nothing
+ * requested yet". A small backward step that still lands inside the
+ * window deliberately keeps it, because those frames are already in
+ * flight or cached.
+ */
+export function prefetchWindow(
+  present: Uint8Array,
+  position: number,
+  depth: number,
+  stride: number,
+  through: number,
+): number[] {
+  const step = Math.max(1, stride);
+  const horizon = position + depth * step;
+  let cursor = through > horizon ? position : Math.max(through, position);
+
+  const targets: number[] = [];
+  for (let n = 1; n <= depth; n++) {
+    const target = position + n * step;
+    if (target <= cursor) continue;
+    const next = nextPresent(present, target);
+    if (next === null) break;
+    // A gap can collapse several strided targets onto the same surviving
+    // frame; ask for it once.
+    if (next > cursor) {
+      targets.push(next);
+      cursor = next;
+    }
+  }
+  return targets;
+}
+
 /** Longest frame-to-frame blend, used when stepping or scrubbing. */
 export const FADE_MS = 120;
 
