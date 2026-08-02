@@ -349,25 +349,39 @@ export const cardStyles = css`
   }
 
   /* Centred on the rail so each mark reads as a tick the bar runs
-     through, showing equally above and below it. */
+     through, showing equally above and below it.
+
+     The marks carry their own colour, deliberately not the rail's. Both
+     were --wtl-divider, which is the token for "barely there" — so the
+     scale dissolved into the bar it sits behind and read as hidden
+     rather than quiet.
+
+     Weight is graded rather than uniform, because the hierarchy is the
+     information: minor ticks say the scale is continuous, day boundaries
+     are what you actually navigate by, month starts are the rarest and
+     strongest. Only 6px of a minor tick clears the 6px rail, so the
+     contrast has to do the work the length cannot. */
   .mark {
     position: absolute;
     top: 50%;
     width: 1px;
-    height: 14px;
+    height: 18px;
     transform: translate(-50%, -50%);
-    background: var(--wtl-divider);
+    background: var(--wtl-muted);
+    opacity: 0.5;
   }
 
   .mark.day {
-    height: 22px;
-    background: var(--wtl-muted);
+    height: 26px;
+    background: var(--wtl-text);
+    opacity: 0.85;
   }
 
   .mark.month {
-    height: 30px;
+    height: 34px;
     width: 2px;
-    background: var(--wtl-muted);
+    background: var(--wtl-text);
+    opacity: 1;
   }
 
   .rail,

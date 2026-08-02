@@ -360,3 +360,43 @@ describe("transport control order", () => {
     );
   });
 });
+
+describe("ruler visibility", () => {
+  const colour = (body: string): string =>
+    /background:\s*([^;]+);/.exec(body)?.[1]?.trim() ?? "";
+  const alpha = (body: string): number =>
+    Number(/opacity:\s*([\d.]+)/.exec(body)?.[1] ?? 1);
+
+  it("does not paint the marks in the rail's own colour", () => {
+    // The bug: both were var(--wtl-divider), the token for "barely
+    // there". A scale drawn in the same colour as the bar it sits behind
+    // dissolves into it and reads as hidden rather than quiet.
+    expect(colour(declarationsFor(".mark"))).not.toBe(
+      colour(declarationsFor(".rail")),
+    );
+  });
+
+  it("grades the marks from minor to month", () => {
+    // The hierarchy is the information: minor ticks say the scale is
+    // continuous, day boundaries are what you navigate by, month starts
+    // are rarest and strongest. Prominence has to rise monotonically or
+    // the grading says nothing.
+    const minor = alpha(declarationsFor(".mark"));
+    const day = alpha(declarationsFor(".mark.day"));
+    const month = alpha(declarationsFor(".mark.month"));
+
+    expect(minor).toBeLessThan(day);
+    expect(day).toBeLessThanOrEqual(month);
+  });
+
+  it("keeps a minor tick visible past the rail it crosses", () => {
+    // A centred mark only shows the part clearing the rail — half its
+    // height each side, minus half the rail. Too little and the contrast
+    // has nothing to work with.
+    const markHeight = px(".mark", "height");
+    const railHeight = px(".rail", "height");
+    const clearance = (markHeight - railHeight) / 2;
+
+    expect(clearance).toBeGreaterThanOrEqual(5);
+  });
+});
