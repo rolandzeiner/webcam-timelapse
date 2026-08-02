@@ -22,7 +22,8 @@ import type {
   WebcamTimelapseCardConfig,
 } from "./types";
 
-const SPEEDS = [1, 2, 4, 8, 16, 32];
+/** Must stay in step with `SPEEDS` in `webcam-timelapse-card.ts`. */
+const SPEEDS = [1, 2, 4, 8, 16, 32, 64];
 
 interface HaFormEvent extends CustomEvent {
   detail: { value: WebcamTimelapseCardConfig };

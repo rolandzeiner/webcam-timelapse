@@ -143,7 +143,7 @@ type: custom:webcam-timelapse-card
 camera_entity: camera.kleine_erlauf
 title: Kleine Erlauf
 autoplay: false
-speed: 8                 # 1 | 2 | 4 | 8 | 16 | 32
+speed: 8                 # 1 | 2 | 4 | 8 | 16 | 32 | 64 (default 32)
 show_dayticks: true
 show_graph: true
 graph_hours: 24

@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BASE_FPS,
   EMPTY_INDEX,
   FADE_MAX_SPEED,
   FADE_MS,
   fadeDurationMs,
   type FrameIndex,
   hasFrames,
+  MAX_TICK_FPS,
+  MIN_FRAME_MS,
+  nextPlaybackPosition,
   nextPresent,
+  playbackCadence,
   positionAt,
   prefetchDepth,
   presenceBitmap,
@@ -138,6 +143,146 @@ describe("prefetchDepth", () => {
   });
 });
 
+describe("playbackCadence", () => {
+  /**
+   * Archive frames consumed per second of wall clock, which is the only
+   * thing a viewer can actually perceive.
+   *
+   * Asserting on this rather than on `stride` or `frameDelay` individually
+   * is deliberate: those two trade off against each other, so either alone
+   * can look right while the product is wrong.
+   */
+  const framesPerSecond = (speed: number): number => {
+    const { stride, frameDelay } = playbackCadence(speed);
+    return (stride * 1000) / frameDelay;
+  };
+
+  /** Effective multiplier, where 1x is `BASE_FPS` frames per second. */
+  const effectiveSpeed = (speed: number): number =>
+    framesPerSecond(speed) / BASE_FPS;
+
+  it("is exact below the decode ceiling", () => {
+    for (const speed of [1, 2, 4, 8]) {
+      expect(playbackCadence(speed).stride).toBe(1);
+      expect(effectiveSpeed(speed)).toBeCloseTo(speed, 6);
+    }
+  });
+
+  it("keeps every doubling of the label a real doubling of the rate", () => {
+    // The bug this function exists to kill: 16x, 32x and 64x all clamped to
+    // the same 33 ms tick at stride 1, so the top three buttons played at
+    // one identical rate. Ratios, not absolutes, because the ceiling costs
+    // 16x about 5% and that shortfall is honest.
+    expect(effectiveSpeed(32) / effectiveSpeed(16)).toBeCloseTo(2, 1);
+    expect(effectiveSpeed(64) / effectiveSpeed(32)).toBeCloseTo(2, 1);
+    expect(effectiveSpeed(64) / effectiveSpeed(16)).toBeCloseTo(4, 1);
+  });
+
+  it("buys speed above the ceiling by skipping, never by painting sooner", () => {
+    for (const speed of [1, 2, 4, 8, 16, 32, 64]) {
+      // The decode floor is a hard wall: asking for a shorter tick than
+      // this queues work that lands late and reads as stutter.
+      expect(playbackCadence(speed).frameDelay).toBeGreaterThanOrEqual(
+        MIN_FRAME_MS,
+      );
+      expect(framesPerSecond(speed)).toBeLessThanOrEqual(MAX_TICK_FPS * 4 + 1e-9);
+    }
+    // Everything at or above 32x pays for its speed in stride.
+    expect(playbackCadence(32).stride).toBe(2);
+    expect(playbackCadence(64).stride).toBe(4);
+  });
+
+  it("leaves 16x painting every frame", () => {
+    // 16x wants 32 fps against a ~30 fps ceiling. Skipping every second
+    // frame there would overshoot by far more than painting them all
+    // undershoots, so it must stay at stride 1 — unchanged from before
+    // strides existed.
+    expect(playbackCadence(16)).toEqual({ stride: 1, frameDelay: MIN_FRAME_MS });
+  });
+
+  it("always advances by a whole positive number of frames", () => {
+    for (const speed of [0, -4, 0.25, 1, 16, 64, 4096]) {
+      const { stride } = playbackCadence(speed);
+      expect(Number.isInteger(stride)).toBe(true);
+      expect(stride).toBeGreaterThanOrEqual(1);
+      expect(Number.isFinite(playbackCadence(speed).frameDelay)).toBe(true);
+    }
+  });
+});
+
+describe("nextPlaybackPosition", () => {
+  /** All frames present, no outages. */
+  const full = (count: number): Uint8Array => new Uint8Array(count).fill(1);
+
+  it("advances by the stride it is given", () => {
+    expect(nextPlaybackPosition(full(100), 10, 1)).toBe(11);
+    expect(nextPlaybackPosition(full(100), 10, 2)).toBe(12);
+    expect(nextPlaybackPosition(full(100), 10, 4)).toBe(14);
+  });
+
+  it("steps over an outage the stride lands inside", () => {
+    const present = full(100);
+    for (let i = 12; i < 20; i++) present[i] = 0;
+    // Stride 4 from 10 aims at 14, which is a hole; playback must not
+    // stall on blanks, it jumps to the far side of the gap.
+    expect(nextPlaybackPosition(present, 10, 4)).toBe(20);
+  });
+
+  it("lands on the newest frame when a wide stride overshoots it", () => {
+    // The regression a stride introduces: 64x jumps four at a time, so
+    // from position 97 of 100 it clears the end entirely. Stopping there
+    // would leave the last frames unwatchable at speed and never reach
+    // the live edge.
+    expect(nextPlaybackPosition(full(100), 97, 4)).toBe(99);
+    expect(nextPlaybackPosition(full(100), 98, 2)).toBe(99);
+  });
+
+  it("stops once the newest frame is reached", () => {
+    expect(nextPlaybackPosition(full(100), 99, 1)).toBeNull();
+    expect(nextPlaybackPosition(full(100), 99, 4)).toBeNull();
+    expect(nextPlaybackPosition(new Uint8Array(0), 0, 4)).toBeNull();
+  });
+
+  it("ignores trailing blanks rather than treating them as the end", () => {
+    const present = full(100);
+    for (let i = 90; i < 100; i++) present[i] = 0;
+    // 89 is the newest frame that exists; the overshoot fallback must
+    // find it, and must then terminate on it.
+    expect(nextPlaybackPosition(present, 87, 4)).toBe(89);
+    expect(nextPlaybackPosition(present, 89, 4)).toBeNull();
+  });
+
+  it("never hands the playback loop a position that is not progress", () => {
+    // The loop treats any non-null result as an advance, so a value at or
+    // behind the playhead would spin it forever on one frame.
+    const present = full(50);
+    for (const hole of [7, 8, 9, 30, 31]) present[hole] = 0;
+    for (const stride of [1, 2, 4, 8]) {
+      for (let position = 0; position < 50; position++) {
+        const next = nextPlaybackPosition(present, position, stride);
+        if (next !== null) expect(next).toBeGreaterThan(position);
+      }
+    }
+  });
+
+  it("terminates from every starting position at every stride", () => {
+    const present = full(40);
+    for (const hole of [5, 6, 20, 21, 22, 39]) present[hole] = 0;
+    for (const stride of [1, 2, 3, 4, 8, 64]) {
+      let position = 0;
+      let steps = 0;
+      for (;;) {
+        const next = nextPlaybackPosition(present, position, stride);
+        if (next === null) break;
+        position = next;
+        expect(++steps).toBeLessThanOrEqual(present.length);
+      }
+      // Wherever it stopped, it stopped on the newest surviving frame.
+      expect(position).toBe(38);
+    }
+  });
+});
+
 describe("shouldAutoplay", () => {
   const base = { configured: true, reducedMotion: false, alreadyPlaying: false };
 
@@ -164,14 +309,19 @@ describe("shouldAutoplay", () => {
 describe("fadeDurationMs", () => {
   const playing = { playing: true, reducedMotion: false };
   const idle = { playing: false, reducedMotion: false };
-  /** The card's own budget: 500 ms at 1x, floored at ~30 fps. */
-  const budget = (speed: number): number => Math.max(500 / speed, 33);
+  /**
+   * The card's own budget.
+   *
+   * Taken from `playbackCadence` rather than recomputed here, so the test
+   * cannot keep passing against a formula the card no longer uses.
+   */
+  const budget = (speed: number): number => playbackCadence(speed).frameDelay;
 
   it("never lets a fade outlast the frame budget", () => {
     // The whole point. A fade longer than the budget is cut off by the
     // next swap, so both layers stay part-opaque and the stage ghosts
     // permanently — the bug a fixed 160 ms transition had from 4x up.
-    for (const speed of [1, 2, 4, 8, 16, 32]) {
+    for (const speed of [1, 2, 4, 8, 16, 32, 64]) {
       expect(fadeDurationMs(speed, budget(speed), playing)).toBeLessThanOrEqual(
         budget(speed),
       );

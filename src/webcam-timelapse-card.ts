@@ -35,7 +35,10 @@ import {
   fadeDurationMs,
   type FrameIndex,
   hasFrames,
+  nextPlaybackPosition,
   nextPresent,
+  type PlaybackCadence,
+  playbackCadence,
   prefetchDepth,
   PrefetchRing,
   presenceBitmap,
@@ -61,19 +64,9 @@ import type {
 } from "./types";
 import { prefersReducedMotion, safeImageUri } from "./utils";
 
-const SPEEDS = [1, 2, 4, 8, 16, 32] as const;
-/** Milliseconds per frame at 1x. */
-const BASE_FRAME_MS = 500;
-/**
- * Floor on the frame interval, ~30 fps.
- *
- * Above this the browser cannot decode a ~50 KB WebP per frame anyway, so
- * asking for more just queues work that arrives late and makes playback
- * stutter rather than speeding it up. Advancing is gated on decode, so the
- * floor keeps the request rate matched to what the device can actually
- * paint.
- */
-const MIN_FRAME_MS = 33;
+const SPEEDS = [1, 2, 4, 8, 16, 32, 64] as const;
+/** Speed a card starts at when config says nothing usable. */
+const DEFAULT_SPEED = 32;
 /** Ignore image loads while the thumb has moved within this window. */
 const SCRUB_QUIET_MS = 80;
 
@@ -139,7 +132,7 @@ export class WebcamTimelapseCard extends LitElement {
     }
     this.config = {
       autoplay: false,
-      speed: 4,
+      speed: DEFAULT_SPEED,
       show_dayticks: true,
       show_graph: true,
       graph_hours: 24,
@@ -151,7 +144,7 @@ export class WebcamTimelapseCard extends LitElement {
     };
     this.speed = SPEEDS.includes(this.config.speed as never)
       ? (this.config.speed as number)
-      : 4;
+      : DEFAULT_SPEED;
   }
 
   static getConfigElement(): LovelaceCardEditor {
@@ -345,8 +338,18 @@ export class WebcamTimelapseCard extends LitElement {
 
   // --- playback ----------------------------------------------------
 
+  /**
+   * How far to jump and how long to wait, at the current speed.
+   *
+   * Read fresh on every tick rather than cached, so cycling the speed
+   * button takes effect on the next frame instead of the next replay.
+   */
+  private get cadence(): PlaybackCadence {
+    return playbackCadence(this.speed);
+  }
+
   private get frameDelay(): number {
-    return Math.max(BASE_FRAME_MS / this.speed, MIN_FRAME_MS);
+    return this.cadence.frameDelay;
   }
 
   private get fadeDuration(): number {
@@ -375,7 +378,13 @@ export class WebcamTimelapseCard extends LitElement {
     let advance = false;
     while (this.playToken === token && this.playing) {
       if (advance) {
-        const next = nextPresent(this.present, this.position + 1);
+        // Stride, not one: above the decode ceiling the only way to play
+        // faster is to skip frames rather than paint them sooner.
+        const next = nextPlaybackPosition(
+          this.present,
+          this.position,
+          this.cadence.stride,
+        );
         if (next === null) {
           // Settle on the newest frame rather than looping silently past it.
           this.playing = false;
@@ -623,8 +632,12 @@ export class WebcamTimelapseCard extends LitElement {
 
   private prefetchAhead(): void {
     const depth = prefetchDepth(this.speed);
+    // Walk in strides, so the window holds the frames playback will
+    // actually paint. Stepping one at a time would spend the whole
+    // budget on frames the stride skips — at 64x, three quarters of it.
+    const { stride } = this.cadence;
     for (let n = 1; n <= depth; n++) {
-      const next = nextPresent(this.present, this.position + n);
+      const next = nextPresent(this.present, this.position + n * stride);
       if (next === null) break;
       const url = urlAt(this.index, next);
       if (url) this.ring.prefetch(url);
