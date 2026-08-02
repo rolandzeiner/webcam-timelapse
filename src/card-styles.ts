@@ -128,9 +128,10 @@ export const cardStyles = css`
     backdrop-filter: blur(2px);
   }
 
+  /* Top-left, because the controls now own the bottom of the stage. */
   .stamp {
     left: 8px;
-    bottom: 8px;
+    top: 8px;
   }
 
   .badge {
@@ -148,6 +149,9 @@ export const cardStyles = css`
     background: var(--wtl-gap);
   }
 
+  /* Back on the bottom-right corner. It shares that edge with the centred
+     control pill, which is fine while there is room between them — the
+     container query below moves it to the top before the two can meet. */
   .readout {
     position: absolute;
     right: 8px;
@@ -162,11 +166,54 @@ export const cardStyles = css`
     font-variant-numeric: tabular-nums;
   }
 
+  /* Opt-in heading for the readings block. Only rendered when the config
+     carries a non-empty string, so the default look is unchanged. */
+  .readout-title {
+    font-size: var(--ha-font-size-s, 0.85rem);
+    font-weight: var(--ha-font-weight-medium, 600);
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 2px;
+    /* The readout block is right-aligned against the frame; a heading
+       that hugged the same edge would drift away from the labels it
+       introduces. */
+    text-align: left;
+  }
+
   .readout-row {
     display: flex;
     align-items: baseline;
     gap: 8px;
     font-size: var(--ha-font-size-s, 0.85rem);
+    /* Pinned so the icon has a known box to be centred against. With an
+       inherited line-height the row's height varies with the theme, and
+       a centred icon drifts off the text by however much it differs. */
+    line-height: 1.25;
+  }
+
+  /* display is explicit because a custom element is inline by default,
+     and width/height on an inline box are ignored — the icon then sized
+     itself from --mdc-icon-size alone and sat on the text baseline
+     rather than beside it.
+
+     The row is baseline-aligned for the text, so the icon opts out with
+     align-self and centres on the line box instead. At 1.25 line-height
+     the box is 1.25em and the icon 1.05em, putting its centre 0.625em
+     down; the text's optical centre (baseline at ~1.03em, cap height
+     ~0.7em) lands at ~0.68em. Close enough to read as aligned, and it
+     holds at any font size because every term is in em. */
+  .readout-icon {
+    display: block;
+    --mdc-icon-size: 1.05em;
+    width: 1.05em;
+    height: 1.05em;
+    flex: none;
+    align-self: center;
+    /* Optical nudge, not geometry. Centring on the line box is correct to
+       within half a pixel, but the row's cross size is set by the text's
+       descenders, which sit lower than anything in an MDI glyph — so a
+       mathematically centred icon still reads slightly low. Bottom margin
+       lifts a centre-aligned item by half its value. */
+    margin-bottom: 0.16em;
   }
 
   .readout-name {
@@ -200,31 +247,43 @@ export const cardStyles = css`
 
   /* --- controls ---------------------------------------------------- */
 
+  /* A pill over the frame instead of a bar under it. Removing the row
+     from the flow is most of the height this card saves, and the
+     controls belong to the picture anyway. Same dark scrim as the other
+     stage overlays so it stays legible over any frame. */
   .controls {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 2px;
-    padding: 4px 8px;
-  }
-
-  .spacer {
-    flex: 1;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    color: #fff;
+    /* Smaller than the 48px default so the pill stays slim, still well
+       over the 24px WCAG 2.5.8 minimum target. */
+    --mdc-icon-button-size: 40px;
+    --mdc-icon-size: 20px;
   }
 
   .speed {
-    min-width: 44px;
+    min-width: 40px;
     padding: 6px 8px;
     border: 0;
-    border-radius: 6px;
+    border-radius: 999px;
     background: transparent;
-    color: var(--wtl-text);
+    color: inherit;
     font: inherit;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
   }
 
   .speed:hover {
-    background: var(--wtl-divider);
+    background: rgba(255, 255, 255, 0.18);
   }
 
   .speed:focus-visible {
@@ -234,10 +293,63 @@ export const cardStyles = css`
 
   /* --- scrubber ---------------------------------------------------- */
 
+  /* Dates, bar and clock times as one block. The bands are in normal
+     flow and the marks live inside the track, so all three are keyed off
+     the same percentage and cannot drift apart. */
+  /* The top margin is load-bearing: the date band is the first thing
+     under the frame, and with no gap the labels read as part of the
+     picture rather than as the timeline's heading. */
+  .timeline {
+    margin: 12px 12px 8px;
+  }
+
+  .band {
+    position: relative;
+    height: 12px;
+  }
+
+  .band.dates {
+    margin-bottom: 1px;
+  }
+
+  .band.times {
+    margin-top: 1px;
+  }
+
   .track {
     position: relative;
-    height: 44px; /* WCAG 2.5.8 target size, kept even though the bar is thin */
-    margin: 0 12px;
+    height: 40px; /* WCAG 2.5.8 target size, kept even though the bar is thin */
+  }
+
+  /* Behind the bar, not beside it. Paint order is DOM order — the marks
+     render before the rail — because a z-index here would re-enter the
+     stacking competition .layers exists to contain. */
+  .marks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* Centred on the rail so each mark reads as a tick the bar runs
+     through, showing equally above and below it. */
+  .mark {
+    position: absolute;
+    top: 50%;
+    width: 1px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+    background: var(--wtl-divider);
+  }
+
+  .mark.day {
+    height: 22px;
+    background: var(--wtl-muted);
+  }
+
+  .mark.month {
+    height: 30px;
+    width: 2px;
+    background: var(--wtl-muted);
   }
 
   .rail,
@@ -308,67 +420,42 @@ export const cardStyles = css`
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
-  /* --- ruler ------------------------------------------------------- */
+  /* --- ruler labels ------------------------------------------------ */
 
-  /* Two label rows, not one. Clock labels sit above date labels so the
-     two families can never collide horizontally, which means each only
-     has to be thinned against its own kind. */
-  .ruler {
-    position: relative;
-    height: 34px;
-    margin: 0 12px 8px;
-  }
+  /* Two bands, dates above the bar and clock times below, so the label
+     families never have to be thinned against each other — each only
+     collides with its own kind. Dates go on top because a day boundary
+     is the coarser unit: the eye reads them as headings over the scale.
 
-  /* Zero-width anchors: the tick carries only a position, and its
-     children do their own centring. Translating the anchor as well would
-     shift every child twice. */
-  .tick {
-    position: absolute;
-    top: 0;
-    width: 0;
-    height: 100%;
-  }
-
-  .mark {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 1px;
-    height: 4px;
-    transform: translateX(-50%);
-    background: var(--wtl-divider);
-  }
-
-  .tick.day .mark {
-    height: 7px;
-    background: var(--wtl-muted);
-  }
-
-  .tick.month .mark {
-    height: 10px;
-    width: 2px;
-    background: var(--wtl-muted);
-  }
-
+     line-height is pinned rather than inherited. The bands are fixed
+     height, so a label's box height has to be known here; inheriting
+     HA's 1.5 made the date box 17px tall in a 12px band and it spilled
+     into the marks below. */
   .lab {
     position: absolute;
     left: 0;
     transform: translateX(-50%);
     font-size: var(--ha-font-size-xs, 0.7rem);
+    line-height: 1;
     color: var(--wtl-muted);
     white-space: nowrap;
     pointer-events: none;
   }
 
   .lab.time {
-    top: 12px;
+    top: 0;
     /* Clock digits must not shuffle the label's centre as they change. */
     font-variant-numeric: tabular-nums;
     opacity: 0.7;
   }
 
+  /* Slightly stronger than the clock row: it is the heading, and it
+     appears far less often, so it can afford the weight without turning
+     the timeline into noise. */
   .lab.date {
-    top: 23px;
+    bottom: 0;
+    font-weight: 500;
+    color: var(--wtl-text);
   }
 
   /* --- editor ------------------------------------------------------ */
@@ -388,12 +475,27 @@ export const cardStyles = css`
     font-size: var(--ha-font-size-s, 0.875rem);
   }
 
+  /* The heading applies to the whole readings block, not to any one row,
+     so it sits above them at full width. ha-form is block-level already;
+     the wrapper carries only the spacing. */
+  .ent-title {
+    display: block;
+    margin-bottom: 4px;
+  }
+
   .ent-row {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 8px;
     padding: 12px 0;
     border-top: 1px solid var(--wtl-divider);
+  }
+
+  /* The row is a two-column grid and ha-form is a direct child, so
+     without this it lands in the narrow auto column beside the entity
+     picker instead of under it. */
+  .ent-row ha-form {
+    grid-column: 1 / -1;
   }
 
   .ent-controls {
@@ -450,29 +552,35 @@ export const cardStyles = css`
 
   /* --- responsive -------------------------------------------------- */
 
-  @container (max-width: 380px) {
+  /* Breakpoint set by the collision, not by a round number.
+
+     The control pill is centred and the readout is right-aligned, so the
+     two close on each other as the card narrows. The pill is ~212px, and
+     a three-sensor readout runs ~230px, which puts the meeting point just
+     past 600px — hence 620px, with a little margin because the readout's
+     width follows its content. Below that the readout moves to the top,
+     where nothing else is competing for the space. */
+  @container (max-width: 620px) {
+    /* Cleared explicitly: the base rule pins the bottom-right corner, and
+       an unset side would leave the box anchored to both. */
     .readout {
-      position: static;
-      border-radius: 0;
-      background: transparent;
-      color: var(--wtl-text);
-      backdrop-filter: none;
+      right: auto;
+      bottom: auto;
+      /* Same top edge as the timestamp and the badge, so the three
+         overlays read as one row across the top of the frame instead of
+         three boxes at unrelated heights. Kept in step with .stamp and
+         .badge by a test rather than by memory. */
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: calc(100% - 16px);
     }
 
-    .readout-name,
+    /* The numbers are the point; the chart is the first thing that should
+       go. A sparkline needs width this card no longer has, and dropping
+       it also shortens the block so it covers less of the frame. */
     .spark-wrap {
-    margin: 2px 0 4px;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .spark {
-    display: block;
-    width: 100%;
-    height: 34px;
-  }
-
-  .readout-at {
-      color: var(--wtl-muted);
+      display: none;
     }
   }
 

@@ -35,9 +35,13 @@ import {
   fadeDurationMs,
   type FrameIndex,
   hasFrames,
+  nextPlaybackPosition,
   nextPresent,
+  type PlaybackCadence,
+  playbackCadence,
   prefetchDepth,
   PrefetchRing,
+  prefetchWindow,
   presenceBitmap,
   shouldAutoplay,
   urlAt,
@@ -61,19 +65,9 @@ import type {
 } from "./types";
 import { prefersReducedMotion, safeImageUri } from "./utils";
 
-const SPEEDS = [1, 2, 4, 8, 16, 32] as const;
-/** Milliseconds per frame at 1x. */
-const BASE_FRAME_MS = 500;
-/**
- * Floor on the frame interval, ~30 fps.
- *
- * Above this the browser cannot decode a ~50 KB WebP per frame anyway, so
- * asking for more just queues work that arrives late and makes playback
- * stutter rather than speeding it up. Advancing is gated on decode, so the
- * floor keeps the request rate matched to what the device can actually
- * paint.
- */
-const MIN_FRAME_MS = 33;
+const SPEEDS = [1, 2, 4, 8, 16, 32, 64] as const;
+/** Speed a card starts at when config says nothing usable. */
+const DEFAULT_SPEED = 32;
 /** Ignore image loads while the thumb has moved within this window. */
 const SCRUB_QUIET_MS = 80;
 
@@ -110,6 +104,14 @@ export class WebcamTimelapseCard extends LitElement {
 
   private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
+  /**
+   * Furthest grid position already handed to the prefetch ring.
+   *
+   * Keeps the per-tick request count at roughly one instead of a whole
+   * window. `prefetchWindow` detects a stale value itself, so nothing has
+   * to reset this on a scrub or a jump.
+   */
+  private prefetchedThrough = -1;
   private useLayerA = true;
   private frameGeneration = 0;
   private swapChain: Promise<void> = Promise.resolve();
@@ -139,7 +141,7 @@ export class WebcamTimelapseCard extends LitElement {
     }
     this.config = {
       autoplay: false,
-      speed: 4,
+      speed: DEFAULT_SPEED,
       show_dayticks: true,
       show_graph: true,
       graph_hours: 24,
@@ -151,7 +153,12 @@ export class WebcamTimelapseCard extends LitElement {
     };
     this.speed = SPEEDS.includes(this.config.speed as never)
       ? (this.config.speed as number)
-      : 4;
+      : DEFAULT_SPEED;
+    // Size the ring for the speed the card actually starts at. Left at the
+    // 1x default it held four slots while the window asked for sixteen, so
+    // three quarters of every prefetch was dropped the moment it was
+    // created and its fetch could be cancelled mid-flight.
+    this.ring = new PrefetchRing(prefetchDepth(this.speed));
   }
 
   static getConfigElement(): LovelaceCardEditor {
@@ -345,8 +352,18 @@ export class WebcamTimelapseCard extends LitElement {
 
   // --- playback ----------------------------------------------------
 
+  /**
+   * How far to jump and how long to wait, at the current speed.
+   *
+   * Read fresh on every tick rather than cached, so cycling the speed
+   * button takes effect on the next frame instead of the next replay.
+   */
+  private get cadence(): PlaybackCadence {
+    return playbackCadence(this.speed);
+  }
+
   private get frameDelay(): number {
-    return Math.max(BASE_FRAME_MS / this.speed, MIN_FRAME_MS);
+    return this.cadence.frameDelay;
   }
 
   private get fadeDuration(): number {
@@ -375,7 +392,13 @@ export class WebcamTimelapseCard extends LitElement {
     let advance = false;
     while (this.playToken === token && this.playing) {
       if (advance) {
-        const next = nextPresent(this.present, this.position + 1);
+        // Stride, not one: above the decode ceiling the only way to play
+        // faster is to skip frames rather than paint them sooner.
+        const next = nextPlaybackPosition(
+          this.present,
+          this.position,
+          this.cadence.stride,
+        );
         if (next === null) {
           // Settle on the newest frame rather than looping silently past it.
           this.playing = false;
@@ -476,7 +499,11 @@ export class WebcamTimelapseCard extends LitElement {
   private cycleSpeed(): void {
     const next = SPEEDS[(SPEEDS.indexOf(this.speed as never) + 1) % SPEEDS.length];
     this.speed = next ?? 1;
+    // A new ring drops the references holding the old prefetches alive, so
+    // forget how far ahead we had reached and let the window refill at the
+    // new stride rather than skipping frames nothing is keeping warm.
     this.ring = new PrefetchRing(prefetchDepth(this.speed));
+    this.prefetchedThrough = -1;
   }
 
   private goTo(position: number): void {
@@ -622,12 +649,22 @@ export class WebcamTimelapseCard extends LitElement {
   }
 
   private prefetchAhead(): void {
-    const depth = prefetchDepth(this.speed);
-    for (let n = 1; n <= depth; n++) {
-      const next = nextPresent(this.present, this.position + n);
-      if (next === null) break;
-      const url = urlAt(this.index, next);
+    // Walk in strides, so the window holds the frames playback will
+    // actually paint. Stepping one at a time would spend the whole
+    // budget on frames the stride skips — at 64x, three quarters of it.
+    const targets = prefetchWindow(
+      this.present,
+      this.position,
+      prefetchDepth(this.speed),
+      this.cadence.stride,
+      this.prefetchedThrough,
+    );
+    for (const target of targets) {
+      const url = urlAt(this.index, target);
       if (url) this.ring.prefetch(url);
+      // Advance even when the URL could not be built, so a frame that
+      // cannot be addressed is not retried on every tick forever.
+      this.prefetchedThrough = target;
     }
   }
 
@@ -717,10 +754,7 @@ export class WebcamTimelapseCard extends LitElement {
         ${renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
         ${this.renderStage(slot)}
         ${hasFrames(this.index)
-          ? html`
-              ${this.renderControls()} ${this.renderTrack(slot)}
-              ${this.config.show_dayticks ? this.renderRuler() : nothing}
-            `
+          ? this.renderTimeline(slot)
           : nothing}
       </ha-card>
     `;
@@ -785,6 +819,7 @@ export class WebcamTimelapseCard extends LitElement {
           : this.atLive
             ? html`<div class="badge live">${this.t("badge.live")}</div>`
             : nothing}
+        ${this.renderControls()}
       </div>
     `;
   }
@@ -836,8 +871,24 @@ export class WebcamTimelapseCard extends LitElement {
             })
           : null;
 
+      // ha-state-icon rather than a configured icon string: it resolves
+      // the entity's own icon and falls back to the device-class default,
+      // so a sensor with no explicit icon still shows the right one
+      // instead of an empty box.
+      const stateObj = this.hass?.states[row.entity];
+      const icon =
+        row.show_icon && stateObj
+          ? html`<ha-state-icon
+              class="readout-icon"
+              style="color:${color}"
+              .hass=${this.hass}
+              .stateObj=${stateObj}
+            ></ha-state-icon>`
+          : nothing;
+
       return html`
         <div class="readout-row ${reading?.stale ? "stale" : ""}">
+          ${icon}
           <span class="readout-name" style="color:${color}">${name}</span>
           <span class="readout-value">${value}</span>
           ${reading !== null
@@ -854,7 +905,14 @@ export class WebcamTimelapseCard extends LitElement {
       `;
     });
 
-    return html`<div class="readout">${rendered}</div>`;
+    // Trimmed, so a heading of spaces is treated as none rather than
+    // reserving a blank line above the readings.
+    const heading = this.config?.overlay_title?.trim();
+
+    return html`<div class="readout">
+      ${heading ? html`<div class="readout-title">${heading}</div>` : nothing}
+      ${rendered}
+    </div>`;
   }
 
   private renderControls(): TemplateResult {
@@ -879,7 +937,6 @@ export class WebcamTimelapseCard extends LitElement {
         >
           ${this.speed}×
         </button>
-        <span class="spacer"></span>
         <ha-icon-button .label=${this.t("controls.now")} @click=${this.jumpToNow}>
           <ha-icon icon="mdi:update"></ha-icon>
         </ha-icon-button>
@@ -887,13 +944,58 @@ export class WebcamTimelapseCard extends LitElement {
     `;
   }
 
-  private renderTrack(slot: number | null): TemplateResult {
+  /**
+   * Scrubber and ruler as one object.
+   *
+   * The marks live inside the track and are painted first, so the rail,
+   * the fill and the thumb sit on top of them — a ruler the slider runs
+   * along rather than a second widget under it. Paint order comes from
+   * DOM order on purpose: every element here is at `z-index: auto`, and
+   * introducing one would drag the whole overlay into the stacking
+   * competition that `.layers` exists to keep it out of.
+   *
+   * Dates sit above the bar and clock times below, both keyed off the
+   * same percentage as the marks, so the three bands cannot drift apart.
+   */
+  private renderTimeline(slot: number | null): TemplateResult {
     const last = Math.max(1, this.index.count - 1);
     const fill = (this.position / last) * 100;
+    const ticks = this.config?.show_dayticks !== false;
+    const { days, times } = ticks
+      ? this.rulerFor()
+      : { days: [] as DayTick[], times: [] as TimeTick[] };
 
     return html`
-      <div class="track">
-        <div class="rail"></div>
+      <div class="timeline">
+        ${ticks
+          ? html`<div class="band dates" aria-hidden="true">
+              ${days.map((tick) =>
+                tick.label
+                  ? html`<span class="lab date" style="left:${tick.left}%"
+                      >${tick.label}</span
+                    >`
+                  : nothing,
+              )}
+            </div>`
+          : nothing}
+
+        <div class="track">
+          ${ticks
+            ? html`<div class="marks" aria-hidden="true">
+                ${times.map(
+                  (tick) =>
+                    html`<span class="mark" style="left:${tick.left}%"></span>`,
+                )}
+                ${days.map(
+                  (tick) =>
+                    html`<span
+                      class="mark ${tick.isMonthStart ? "month" : "day"}"
+                      style="left:${tick.left}%"
+                    ></span>`,
+                )}
+              </div>`
+            : nothing}
+          <div class="rail"></div>
         <div class="fill" style="width:${fill}%"></div>
         ${this.index.gaps.map(([start, length]) => {
           const left = (start / last) * 100;
@@ -915,7 +1017,20 @@ export class WebcamTimelapseCard extends LitElement {
             : ""}
           @input=${this.onScrub}
           @change=${this.onScrubCommit}
-        />
+          />
+        </div>
+
+        ${ticks
+          ? html`<div class="band times" aria-hidden="true">
+              ${times.map((tick) =>
+                tick.label
+                  ? html`<span class="lab time" style="left:${tick.left}%"
+                      >${tick.label}</span
+                    >`
+                  : nothing,
+              )}
+            </div>`
+          : nothing}
       </div>
     `;
   }
@@ -949,36 +1064,6 @@ export class WebcamTimelapseCard extends LitElement {
     return this.rulerCache;
   }
 
-  private renderRuler(): TemplateResult {
-    const { days, times } = this.rulerFor();
-    return html`
-      <div class="ruler" aria-hidden="true">
-        ${times.map(
-          (tick) => html`
-            <span class="tick minor" style="left:${tick.left}%">
-              <span class="mark"></span>
-              ${tick.label
-                ? html`<span class="lab time">${tick.label}</span>`
-                : nothing}
-            </span>
-          `,
-        )}
-        ${days.map(
-          (tick) => html`
-            <span
-              class="tick ${tick.isMonthStart ? "month" : "day"}"
-              style="left:${tick.left}%"
-            >
-              <span class="mark"></span>
-              ${tick.label
-                ? html`<span class="lab date">${tick.label}</span>`
-                : nothing}
-            </span>
-          `,
-        )}
-      </div>
-    `;
-  }
 }
 
 const windowWithCards = window as WindowWithCustomCards;

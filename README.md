@@ -48,7 +48,7 @@ see the water level readings from each moment beside the picture.
 frame by frame.
 
 **Build a construction or garden timelapse.** Point it at any site camera and
-play back weeks at 32×.
+play back weeks at 64×.
 
 **Prove when something happened.** Every frame is timestamped and kept on
 disk, so you can find the exact capture.
@@ -143,7 +143,7 @@ type: custom:webcam-timelapse-card
 camera_entity: camera.kleine_erlauf
 title: Kleine Erlauf
 autoplay: false
-speed: 8                 # 1 | 2 | 4 | 8 | 16 | 32
+speed: 8                 # 1 | 2 | 4 | 8 | 16 | 32 | 64 (default 32)
 show_dayticks: true
 show_graph: true
 graph_hours: 24
@@ -151,9 +151,14 @@ deflicker: 50            # 0 turns it off
 entities: []
 ```
 
-**Controls.** Play, step one frame, cycle the speed, jump back to now. Drag
-the bar to scrub. Arrow keys, Home, End and Page Up/Down all work — the
-scrubber is a real slider, so your keyboard and screen reader treat it as one.
+**Controls sit over the picture.** Play, step one frame, cycle the speed,
+jump back to now. Drag the bar below to scrub. Arrow keys, Home, End and Page
+Up/Down all work — the scrubber is a real slider, so your keyboard and screen
+reader treat it as one.
+
+**Above 16× the card skips frames.** A browser decodes about thirty images a
+second, so faster speeds cover more ground per frame instead of painting every
+one. The motion stays smooth; the steps get bigger.
 
 **Playing from the newest frame replays the archive from the start**, since
 there is nothing newer to move into.
@@ -166,6 +171,7 @@ rather than sitting on blank time.
 Add any sensors you want shown over the picture:
 
 ```yaml
+overlay_title: Kleine Erlauf      # optional; omit for no heading
 entities:
   - entity: sensor.wasserstand
     name: Level
@@ -173,6 +179,7 @@ entities:
     decimals: 0
     color: "#3d7ea6"
     graph: true
+    show_icon: true
     time_attribute: timestamp
   - entity: sensor.wassertemperatur
     name: Temperature
@@ -197,7 +204,15 @@ smooth line between two hourly readings would invent a number nobody measured.
 | `decimals` | Decimal places. Default 1 |
 | `color` | Any CSS colour |
 | `graph` | Draw a sparkline behind the playhead |
+| `show_icon` | Show the entity's own icon before its label |
 | `time_attribute` | Read the measurement time from this attribute instead of the state's last-changed time |
+
+`show_icon` uses whatever icon the entity has in Home Assistant, including the
+device-class default when none is set explicitly — so it follows the entity
+rather than duplicating an icon name in the card config.
+
+`overlay_title` sits above the readings as a heading for the block. Leaving it
+empty or omitting it renders nothing, which is the default look.
 
 Use `time_attribute` for sensors whose real measurement time lives in an
 attribute. It is off by default because asking for attributes makes the

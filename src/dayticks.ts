@@ -244,8 +244,15 @@ export function timeStepFor(
  * The step is re-derived from the actual local time at each mark instead
  * of accumulating. On a DST transition the sequence therefore snaps back
  * onto round clock times instead of carrying the one-hour shift forward
- * for the rest of the window. Midnight is skipped: the day tick already
- * marks it, and with a date label that says more.
+ * for the rest of the window.
+ *
+ * Midnight is emitted like any other round hour. It used to be skipped,
+ * on the grounds that the day tick already marked it and said more — but
+ * that reasoning only held while the date label sat in the clock row.
+ * With the two families in separate rows, skipping it just punched a hole
+ * in the hour sequence: 23:00, nothing, 01:00. The day tick still draws
+ * its own taller mark at the same instant; the two coincide to within a
+ * fraction of a pixel, and the taller one wins.
  */
 export function timeTicks(
   index: FrameIndex,
@@ -265,11 +272,11 @@ export function timeTicks(
   // the labelled times repeat day to day (always 06:00 and 18:00, never
   // drifting to 05:00 on Tuesday).
   //
-  // Capped at 12 h. Without the cap a long window pushes this to 24 h, at
-  // which point the only eligible instant is midnight — which is skipped
-  // below because the day tick already owns it — and the ruler renders
-  // marks with no times at all, i.e. exactly the question it exists to
-  // answer goes unanswered.
+  // Capped at 12 h, so a day always carries at least two clock labels. A
+  // long window would otherwise push this to 24 h, leaving midnight as
+  // the only eligible instant and the rest of the ruler a row of marks
+  // with no times against them — exactly the question it exists to
+  // answer, unanswered.
   const pxPerTick = (interval / (end - t0)) * trackPx;
   const labelEveryNth = Math.max(1, Math.ceil(MIN_TIME_LABEL_PX / pxPerTick));
   const labelInterval = Math.min(43200, interval * labelEveryNth);
@@ -296,7 +303,7 @@ export function timeTicks(
     // is not enough — this one would already have been drawn. Skipping it
     // costs a single mark at the transition and keeps every mark that is
     // drawn honest.
-    if (offGrid === 0 && secondsIn !== 0) {
+    if (offGrid === 0) {
       const position = Math.round((at - t0) / index.step);
       const left = (position / lastPosition) * 100;
       const leftPx = (left / 100) * trackPx;

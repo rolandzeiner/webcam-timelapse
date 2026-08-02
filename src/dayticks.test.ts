@@ -243,14 +243,38 @@ describe("timeTicks", () => {
     }
   });
 
-  it("leaves midnight to the day tick", () => {
-    // Midnight already carries a taller mark and a date label; a clock
-    // label there would just be a second, worse answer to the same
-    // question.
+  it("marks midnight like any other round hour", () => {
+    // Midnight used to be skipped because the date label sat in the clock
+    // row and said more. Now that dates have their own row above the
+    // marks, skipping it just leaves a hole in the sequence — 23:00,
+    // nothing, 01:00 — which reads as a rendering fault rather than as a
+    // day boundary.
     const index = spanning("2026-08-01T00:00:00Z", 3);
-    for (const tick of timeTicks(index, VIENNA, "de-AT", 800)) {
-      expect(clockAt(index, tick.position)).not.toBe("00:00");
-    }
+    const clocks = timeTicks(index, VIENNA, "de-AT", 800).map((tick) =>
+      clockAt(index, tick.position),
+    );
+    expect(clocks).toContain("00:00");
+  });
+
+  it("keeps the labelled hours evenly spaced across a day boundary", () => {
+    // The actual complaint, in the form the eye sees it: a swallowed
+    // midnight leaves 20:00 followed by 04:00 and one stride of double
+    // width, which reads as a rendering fault rather than as a new day.
+    //
+    // 700px picks a 4 h label interval, which divides the day evenly — so
+    // perfectly even spacing is a property the output really has here. At
+    // 2.5 h it would not be, and asserting it there would be testing the
+    // greedy thinner rather than the day boundary.
+    const index = spanning("2026-08-01T00:00:00Z", 2);
+    const labelled = timeTicks(index, VIENNA, "de-AT", 700).filter(
+      (tick) => tick.label !== "",
+    );
+    expect(labelled.map((tick) => tick.label)).toContain("00:00");
+
+    const gaps = labelled
+      .slice(1)
+      .map((tick, i) => tick.left - (labelled[i]?.left ?? 0));
+    expect(Math.max(...gaps)).toBeLessThan(Math.min(...gaps) * 1.1);
   });
 
   it("stays inside the track", () => {
