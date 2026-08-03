@@ -56,3 +56,17 @@ export function overlayGroups(
 
   return groups;
 }
+
+/**
+ * Every configured reading, across both blocks.
+ *
+ * History is fetched per entity, so anything this misses renders as a row
+ * with its label and icon and a dash where the value should be. Read from
+ * the groups rather than from `config.entities` directly — collecting one
+ * block and rendering two is precisely how the left block shipped empty.
+ */
+export function overlayEntities(
+  config: WebcamTimelapseCardConfig | undefined,
+): OverlayEntityConfig[] {
+  return overlayGroups(config).flatMap((group) => group.entities);
+}

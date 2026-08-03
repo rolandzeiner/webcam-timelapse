@@ -22,7 +22,11 @@ import {
   radiusForStrength,
 } from "./deflicker";
 import { localize } from "./localize/localize";
-import { overlayGroups, type OverlayGroup } from "./overlay-groups";
+import {
+  overlayEntities,
+  overlayGroups,
+  type OverlayGroup,
+} from "./overlay-groups";
 import {
   dayTicks,
   formatClock,
@@ -151,7 +155,10 @@ export class WebcamTimelapseCard extends LitElement {
       ...config,
       // Drop malformed rows rather than crashing render on a hand-edited
       // YAML typo: one bad entry should cost that row, not the card.
+      // Both blocks, or the left one is a hand-edit away from the crash
+      // this exists to prevent.
       entities: (config.entities ?? []).filter((row) => row?.entity),
+      entities_left: (config.entities_left ?? []).filter((row) => row?.entity),
     };
     this.speed = SPEEDS.includes(this.config.speed as never)
       ? (this.config.speed as number)
@@ -324,7 +331,7 @@ export class WebcamTimelapseCard extends LitElement {
   }
 
   private async refreshHistory(): Promise<void> {
-    const entities = this.config?.entities ?? [];
+    const entities = overlayEntities(this.config);
     if (!this.hass || entities.length === 0) return;
 
     const timeAttributes: Record<string, string> = {};

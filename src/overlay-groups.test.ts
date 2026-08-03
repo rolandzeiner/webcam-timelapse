@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { overlayGroups } from "./overlay-groups";
+import { overlayEntities, overlayGroups } from "./overlay-groups";
 import type { WebcamTimelapseCardConfig } from "./types";
 
 /** The two keys every test here needs; the rest of the config is irrelevant. */
@@ -70,6 +70,29 @@ describe("overlay groups", () => {
       expect.objectContaining({ side: "left", title: "Wetter" }),
       expect.objectContaining({ side: "right", title: "Pegel" }),
     ]);
+  });
+
+  it("collects the entities of both blocks", () => {
+    // History is fetched per entity, and anything missing from this list
+    // gets a row with a label, an icon and no reading. That is exactly
+    // how the left block shipped the first time: it rendered, and every
+    // value in it was a dash.
+    const entities = overlayEntities(
+      config({
+        entities: [{ entity: "sensor.level" }],
+        entities_left: [{ entity: "sensor.temp" }, { entity: "sensor.rain" }],
+      }),
+    );
+
+    expect(entities.map((row) => row.entity)).toEqual([
+      "sensor.temp",
+      "sensor.rain",
+      "sensor.level",
+    ]);
+  });
+
+  it("collects nothing when no block is configured", () => {
+    expect(overlayEntities(config({}))).toEqual([]);
   });
 
   it("treats a blank heading as none", () => {
