@@ -217,6 +217,32 @@ rather than duplicating an icon name in the card config.
 `overlay_title` sits above the readings as a heading for the block. Leaving it
 empty or omitting it renders nothing, which is the default look.
 
+### A second block on the left
+
+`entities` sits in the bottom-right corner. To show a second set of readings,
+put them in `entities_left`:
+
+```yaml
+overlay_title: Kleine Erlauf      # bottom right, as before
+entities:
+  - entity: sensor.wasserstand
+
+overlay_title_left: Wetter        # bottom left
+entities_left:
+  - entity: sensor.aussentemperatur
+```
+
+`entities_left` takes exactly the same options as `entities`.
+
+Adding it never moves what you already had: `entities` keeps the right-hand
+corner whether or not a second block is beside it. A card with only
+`entities_left` shows one block on the left.
+
+On a narrow card the two stack at the top of the picture instead, with the
+right-hand block above the left one — there is no room for two blocks and the
+playback controls along the bottom edge. Sparklines are hidden at that width,
+as they are for a single block.
+
 Use `time_attribute` for sensors whose real measurement time lives in an
 attribute. It is off by default because asking for attributes makes the
 history request about 25× larger.

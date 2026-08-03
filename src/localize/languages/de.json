@@ -34,8 +34,10 @@
     "autoplay": "Automatisch abspielen",
     "speed": "Geschwindigkeit",
     "graph_hours": "Diagramm-Zeitraum",
-    "overlay": "Eingeblendete Messwerte",
-    "overlay_hint": "Die Werte über dem Bild gehören zu dem Zeitpunkt, zu dem du scrollst – nicht zur Gegenwart.",
+    "overlay_right": "Eingeblendete Messwerte (rechts)",
+    "overlay_right_hint": "Die Werte über dem Bild gehören zu dem Zeitpunkt, zu dem du scrollst – nicht zur Gegenwart.",
+    "overlay_left": "Eingeblendete Messwerte (links)",
+    "overlay_left_hint": "Ein zweiter Block auf der anderen Seite des Bildes. Leer lassen, dann bleibt es bei einem Block rechts.",
     "add_entity": "Entität hinzufügen",
     "entity": "Entität",
     "name": "Bezeichnung",
@@ -52,11 +54,13 @@
       "autoplay": "Wird ignoriert, wenn dein System reduzierte Bewegung anfordert.",
       "deflicker": "Gleicht wolkenbedingte Helligkeitssprünge bei der Wiedergabe aus. 0 schaltet es ab.",
       "overlay_title": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
+      "overlay_title_left": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
       "show_icon": "Verwendet das Symbol der Entität aus Home Assistant."
     },
     "deflicker": "Helligkeit glätten",
     "show_icon": "Symbol anzeigen",
-    "overlay_title": "Überschrift"
+    "overlay_title": "Überschrift",
+    "overlay_title_left": "Überschrift"
   },
   "actions": {
     "show_camera": "Kameradetails anzeigen",

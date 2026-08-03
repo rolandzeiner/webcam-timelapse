@@ -195,18 +195,37 @@ describe("controls overlay", () => {
 
 });
 
-/** Everything inside the @container block, comments stripped. */
-function narrowBlock(): string {
+/**
+ * Everything inside one @container block, comments stripped.
+ *
+ * There are two: the pair's earlier switch and the single block's. They
+ * are addressed by their breakpoint rather than by position so neither
+ * test can silently start reading the other one's rules.
+ */
+function narrowBlock(maxWidth = SINGLE_BREAKPOINT): string {
   const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
-  const start = css.indexOf("@container");
-  return start === -1 ? "" : css.slice(start);
+  const start = css.indexOf(`@container (max-width: ${maxWidth}px)`);
+  if (start === -1) return "";
+  const next = css.indexOf("@container", start + 1);
+  return css.slice(start, next === -1 ? undefined : next);
 }
 
-/** The declarations a selector carries inside the @container block. */
-function narrowRule(selector: string): string {
-  const match = new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`).exec(narrowBlock());
-  return match?.[1] ?? "";
+/** The declarations a selector carries inside a @container block. */
+function narrowRule(selector: string, maxWidth = SINGLE_BREAKPOINT): string {
+  const pattern = new RegExp(`(?:^|[{;}\\s])${escape(selector)}\\s*\\{([^}]*)\\}`);
+  return pattern.exec(narrowBlock(maxWidth))?.[1] ?? "";
 }
+
+function escape(selector: string): string {
+  return selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** The breakpoints, read off the stylesheet rather than hard-coded twice. */
+const BREAKPOINTS = [
+  ...cardStyles.cssText.matchAll(/@container\s*\(max-width:\s*(\d+)px\)/g),
+].map((match) => Number(match[1]));
+const SINGLE_BREAKPOINT = Math.min(...BREAKPOINTS);
+const PAIR_BREAKPOINT = Math.max(...BREAKPOINTS);
 
 describe("narrow layout", () => {
   it("moves the readout to the top centre", () => {
@@ -244,9 +263,87 @@ describe("narrow layout", () => {
     // at ~212px, the readout right-aligned at ~230px. They meet just past
     // 600px, so the switch has to happen above that — this is the number
     // that keeps the two from overlapping at any width.
-    const match = /@container\s*\(max-width:\s*(\d+)px\)/.exec(narrowBlock());
-    expect(match).not.toBeNull();
-    expect(Number(match?.[1])).toBeGreaterThanOrEqual(620);
+    expect(SINGLE_BREAKPOINT).toBeGreaterThanOrEqual(620);
+  });
+
+  it("re-centres a lone left block", () => {
+    // .readout.left pins the opposite edge and is more specific than the
+    // centring rule, so without an override here it would sit at the
+    // frame edge with the centring transform still pulling on it.
+    expect(narrowRule(".readout.left")).toMatch(/left:\s*50%/);
+  });
+});
+
+describe("two readout blocks", () => {
+  it("leaves a single block's layout entirely alone", () => {
+    // THE rule this feature is built around: one configured block must
+    // render exactly where it always did. The guarantee is mechanical
+    // rather than visual — the wrapper generates no box, and every rule
+    // that could move a block is scoped to .pair, which only exists when
+    // there are two. If a declaration here ever escapes that scope, a
+    // single-block card starts moving and this catches it.
+    expect(declarationsFor(".readouts")).toMatch(/display:\s*contents/);
+
+    const selectors = [
+      ...narrowBlock(PAIR_BREAKPOINT).matchAll(/([^{}]+)\{/g),
+    ]
+      .map((match) => match[1]!.trim())
+      .filter((selector) => !selector.startsWith("@container"));
+
+    expect(selectors.length).toBeGreaterThan(0);
+    for (const selector of selectors) {
+      expect(selector).toMatch(/^\.readouts\.pair\b/);
+    }
+  });
+
+  it("pins the second block to the opposite corner", () => {
+    const body = declarationsFor(".readout.left");
+    expect(body).toMatch(/left:\s*8px/);
+    // Without this the box stays anchored to both edges and stretches
+    // across the frame instead of moving to the left corner.
+    expect(body).toMatch(/right:\s*auto/);
+  });
+
+  it("stacks the pair with the right-hand block on top when narrow", () => {
+    // Roland's call: the block that was there first stays on top. DOM
+    // order is left-then-right, so column-reverse is what delivers that.
+    // A plain `column` would silently invert it.
+    const body = narrowRule(".readouts.pair", PAIR_BREAKPOINT);
+    expect(body).toMatch(/flex-direction:\s*column-reverse/);
+    expect(body).toMatch(/align-items:\s*center/);
+  });
+
+  it("returns the stacked blocks to normal flow", () => {
+    // Absolutely-positioned children cannot stack in a column, and the
+    // centring transform they inherit from the single-block rules would
+    // drag them half their width off centre.
+    const body = narrowRule(".readouts.pair .readout", PAIR_BREAKPOINT);
+    expect(body).toMatch(/position:\s*static/);
+    expect(body).toMatch(/transform:\s*none/);
+  });
+
+  it("hides the sparklines in the stacked layout too", () => {
+    expect(narrowRule(".readouts.pair .spark-wrap", PAIR_BREAKPOINT)).toMatch(
+      /display:\s*none/,
+    );
+  });
+
+  it("switches earlier than a single block does", () => {
+    // Re-derived, not inherited. The pill's left edge is at W/2 - 106 and
+    // the left-hand block's right edge at ~238, which meet at W ≈ 688 —
+    // so the pair has to leave the bottom edge well before 620, or it
+    // overlaps the pill across most of a phone's width.
+    expect(PAIR_BREAKPOINT).toBeGreaterThan(SINGLE_BREAKPOINT);
+    expect(PAIR_BREAKPOINT).toBeGreaterThanOrEqual(688);
+  });
+
+  it("aligns the stacked pair with the timestamp and the badge", () => {
+    const top = (body: string): string | undefined =>
+      /top:\s*(\d+)px/.exec(body)?.[1];
+
+    expect(top(narrowRule(".readouts.pair", PAIR_BREAKPOINT))).toBe(
+      top(declarationsFor(".stamp")),
+    );
   });
 });
 

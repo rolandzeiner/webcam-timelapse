@@ -22,6 +22,7 @@ import {
   radiusForStrength,
 } from "./deflicker";
 import { localize } from "./localize/localize";
+import { overlayGroups, type OverlayGroup } from "./overlay-groups";
 import {
   dayTicks,
   formatClock,
@@ -854,7 +855,7 @@ export class WebcamTimelapseCard extends LitElement {
               </time>
             </div>`
           : nothing}
-        ${slot !== null ? this.renderReadout(slot) : nothing}
+        ${slot !== null ? this.renderReadouts(slot) : nothing}
         ${this.onGap
           ? html`<div class="badge gap">${this.t("badge.gap")}</div>`
           : this.atLive
@@ -866,7 +867,25 @@ export class WebcamTimelapseCard extends LitElement {
   }
 
   /**
-   * The time-synced overlay.
+   * The readings blocks, wrapped so the narrow layout can stack them.
+   *
+   * The wrapper is inert until there are two blocks — `display: contents`
+   * means it generates no box at all, so a single block still positions
+   * itself against the stage exactly as it did before there was a second
+   * one. `pair` is what switches the wrapper on, and nothing in the
+   * stylesheet touches a block's box without going through that class.
+   */
+  private renderReadouts(slot: number): TemplateResult | typeof nothing {
+    const groups = overlayGroups(this.config);
+    if (groups.length === 0) return nothing;
+
+    return html`<div class="readouts ${groups.length > 1 ? "pair" : ""}">
+      ${groups.map((group) => this.renderReadout(slot, group))}
+    </div>`;
+  }
+
+  /**
+   * One time-synced overlay block.
    *
    * Every value is the reading in effect at the scrubbed moment, and each
    * row shows the time that reading was actually taken. Showing the
@@ -874,9 +893,8 @@ export class WebcamTimelapseCard extends LitElement {
    * without it a value sitting next to a 12:05 frame silently implies a
    * 12:05 measurement.
    */
-  private renderReadout(slot: number): TemplateResult | typeof nothing {
-    const rows = this.config?.entities ?? [];
-    if (rows.length === 0) return nothing;
+  private renderReadout(slot: number, group: OverlayGroup): TemplateResult {
+    const rows = group.entities;
 
     const at = slot * 1000;
     const rendered = rows.map((row) => {
@@ -954,12 +972,13 @@ export class WebcamTimelapseCard extends LitElement {
       `;
     });
 
-    // Trimmed, so a heading of spaces is treated as none rather than
-    // reserving a blank line above the readings.
-    const heading = this.config?.overlay_title?.trim();
-
-    return html`<div class="readout">
-      ${heading ? html`<div class="readout-title">${heading}</div>` : nothing}
+    // The side is a modifier on the same element, not a separate one:
+    // .readout-row has to stay where it is for onStageClick to keep
+    // telling a reading apart from the picture behind it.
+    return html`<div class="readout ${group.side === "left" ? "left" : ""}">
+      ${group.title
+        ? html`<div class="readout-title">${group.title}</div>`
+        : nothing}
       ${rendered}
     </div>`;
   }
