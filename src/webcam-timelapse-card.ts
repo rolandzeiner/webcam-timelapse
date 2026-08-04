@@ -8,6 +8,7 @@ import { LitElement, html, nothing, type PropertyValues, type TemplateResult } f
 import { customElement, property, query, state } from "lit/decorators.js";
 
 import { cardStyles } from "./card-styles";
+import { Coalescer } from "./coalesce";
 import {
   CARD_TAG,
   CARD_VERSION,
@@ -76,6 +77,16 @@ const SPEEDS = [1, 2, 4, 8, 16, 32, 64] as const;
 const DEFAULT_SPEED = 32;
 /** Ignore image loads while the thumb has moved within this window. */
 const SCRUB_QUIET_MS = 80;
+/**
+ * How long a deliberate frame request may wait for a slow load.
+ *
+ * Only ever reached when the element is still holding the previous
+ * picture after `decode()` came back — the load is in flight and a moment
+ * of patience is the difference between the right frame and no update at
+ * all. Long enough for a cold frame over a slow link, short enough that a
+ * genuinely dead source still reports itself.
+ */
+const FRAME_SETTLE_MS = 1500;
 
 interface WindowWithCustomCards extends Window {
   customCards?: {
@@ -120,7 +131,16 @@ export class WebcamTimelapseCard extends LitElement {
   private prefetchedThrough = -1;
   private useLayerA = true;
   private frameGeneration = 0;
-  private swapChain: Promise<void> = Promise.resolve();
+  /**
+   * Latest-wins gate over the frame swap.
+   *
+   * Both `<img>` layers are shared, so swaps must not overlap — but they
+   * must not QUEUE either. Every swap paints wherever the playhead is
+   * when it starts, so a request made while one is running is only ever a
+   * request for the newest position, and the ones in between are already
+   * obsolete. See coalesce.ts for what chaining them instead cost.
+   */
+  private readonly swaps = new Coalescer(() => this.performSwap());
   private gains: Float32Array = new Float32Array(0);
   private versionChecked = false;
   private rulerCache?: { key: string; days: DayTick[]; times: TimeTick[] };
@@ -131,9 +151,12 @@ export class WebcamTimelapseCard extends LitElement {
   private playToken: number | undefined;
   private playCounter = 0;
   private indexTimer: number | undefined;
-  private scrubRaf: number | undefined;
+  /** Trailing edge of the scrub throttle: fires once the drag settles. */
+  private scrubSettle: number | undefined;
   private lastScrubAt = 0;
   private pendingPosition: number | undefined;
+  /** Last position a swap actually painted, so repeats cost nothing. */
+  private loadedPosition: number | undefined;
   private resizeObserver?: ResizeObserver;
   private intersectionObserver?: IntersectionObserver;
   private visible = true;
@@ -220,7 +243,7 @@ export class WebcamTimelapseCard extends LitElement {
     this.resizeObserver?.disconnect();
     this.stopPlayback();
     if (this.indexTimer) window.clearTimeout(this.indexTimer);
-    if (this.scrubRaf) cancelAnimationFrame(this.scrubRaf);
+    if (this.scrubSettle) window.clearTimeout(this.scrubSettle);
     this.ring.clear();
   }
 
@@ -538,22 +561,30 @@ export class WebcamTimelapseCard extends LitElement {
    * swapped in over a newer frame.
    */
   private swapInFrame(): Promise<void> {
-    // Queue behind any swap already running. Both <img> layers are shared,
-    // so overlapping swaps write src on an element that is mid-decode —
-    // which Firefox reports as a decode failure and Chrome silently
-    // tolerates. Serialising removes the class of bug rather than the
-    // symptom.
-    this.swapChain = this.swapChain.then(() => this.performSwap());
-    return this.swapChain;
+    // Collapse into any swap already running rather than queueing behind
+    // it. Both <img> layers are shared, so overlapping swaps write src on
+    // an element that is mid-decode — which Firefox reports as a decode
+    // failure and Chrome silently tolerates. Serialising removes that
+    // class of bug; coalescing stops the serialisation turning a drag
+    // into a hundred sequential fetches the picture has to crawl through.
+    return this.swaps.request();
   }
 
   private async performSwap(): Promise<void> {
-    const candidates = this.frameSources();
+    // Snapshot the playhead this run is painting. A swap can await for
+    // hundreds of milliseconds and the playhead is free to move while it
+    // does, so every later decision — which sources, and what to record
+    // as painted — has to name the same frame the URLs came from.
+    const position = this.position;
+    const candidates = this.frameSources(position);
     if (candidates.length === 0) return;
 
     const generation = ++this.frameGeneration;
     const incoming = this.useLayerA ? this.layerB : this.layerA;
     if (!incoming) return;
+
+    /** A source that never finished loading, as opposed to one that 404'd. */
+    let sawPending = false;
 
     // Try each source in turn. A decode rejects on a 404 (a pruned frame,
     // or a camera proxy that has nothing cached yet) — falling through to
@@ -575,22 +606,44 @@ export class WebcamTimelapseCard extends LitElement {
         // the frame is the one we asked for; frameReadiness handles that.
       }
 
-      const readiness = frameReadiness({
+      let readiness = frameReadiness({
         currentSrc: incoming.currentSrc,
         requested,
         complete: incoming.complete,
         naturalWidth: incoming.naturalWidth,
       });
 
+      // Still holding the previous frame: the load has not finished, so
+      // there is nothing to reveal YET. Dropping it here is right during
+      // playback — the next tick paints over it in a few tens of
+      // milliseconds — but on the scrub and step paths there is no next
+      // tick. The user asked for one specific frame, and giving up
+      // silently leaves the previous picture on screen for good, under a
+      // clock and a thumb that both say otherwise. So wait for the load
+      // the browser is already running, then ask again.
+      if (readiness === "pending" && !this.playing) {
+        await this.awaitLoad(incoming);
+        readiness = frameReadiness({
+          currentSrc: incoming.currentSrc,
+          requested,
+          complete: incoming.complete,
+          naturalWidth: incoming.naturalWidth,
+        });
+      }
+
       // The request finished and there is nothing there: a pruned frame or
       // a proxy with nothing cached. Fall through to the next source — the
       // archived frame is on disk even when the live proxy is not warm.
       if (readiness === "failed") continue;
 
-      // Still holding the previous frame. Revealing the layer now would
-      // paint a stale image under a playhead that has already moved on, so
-      // drop this frame and leave the last good one up.
-      if (readiness === "pending") return;
+      // Never arrived. Try the next source rather than stop here: a live
+      // proxy that hangs is exactly the case the archived frame exists to
+      // cover, and it is on disk by definition. Reassigning src aborts
+      // the stalled request on the way past.
+      if (readiness === "pending") {
+        sawPending = true;
+        continue;
+      }
 
       // A newer frame was requested while this decode was in flight;
       // swapping now would show an older image over a newer one.
@@ -598,6 +651,7 @@ export class WebcamTimelapseCard extends LitElement {
 
       this.revealFrame(incoming, this.useLayerA ? this.layerA : this.layerB);
       this.useLayerA = !this.useLayerA;
+      this.loadedPosition = position;
       this.frameError = undefined;
       this.requestUpdate();
       return;
@@ -613,11 +667,46 @@ export class WebcamTimelapseCard extends LitElement {
     // is missing.
     if (this.playing) return;
 
+    // A source that is still loading is not a source that failed. Leave
+    // the last good frame up and say nothing — an error panel over a
+    // frame that is merely slow is worse than a moment of the previous
+    // picture.
+    if (sawPending) return;
+
     // Every source failed. Say so — a silently black stage gives the user
     // nothing to act on and looks identical to a camera that is simply
     // dark at night.
     this.frameError = candidates[0];
     this.requestUpdate();
+  }
+
+  /**
+   * Wait for an `<img>` load to finish, one way or the other.
+   *
+   * `decode()` is not a reliable "it arrived" signal: it rejects whenever
+   * src was reassigned during a previous decode, and Firefox does that
+   * routinely on shared layers. The load events are, so this listens for
+   * them directly and lets the caller re-read the element afterwards.
+   *
+   * Capped, because a source that never answers must not wedge the swap
+   * queue — the coalescer only runs one swap at a time, so an unbounded
+   * wait here would freeze every later frame too. Resolves rather than
+   * rejects on timeout: `frameReadiness` decides what the element holds,
+   * not this.
+   */
+  private awaitLoad(image: HTMLImageElement): Promise<void> {
+    return new Promise<void>((resolve) => {
+      let timer: number | undefined;
+      const finish = (): void => {
+        if (timer !== undefined) window.clearTimeout(timer);
+        image.removeEventListener("load", finish);
+        image.removeEventListener("error", finish);
+        resolve();
+      };
+      image.addEventListener("load", finish);
+      image.addEventListener("error", finish);
+      timer = window.setTimeout(finish, FRAME_SETTLE_MS);
+    });
   }
 
   /**
@@ -674,14 +763,14 @@ export class WebcamTimelapseCard extends LitElement {
    * included as a fallback because it is the source this card actually
    * guarantees — it is on disk by definition.
    */
-  private frameSources(): string[] {
+  private frameSources(position: number): string[] {
     const sources: string[] = [];
     const live = safeImageUri(
       this.hass?.states[this.config!.camera_entity]?.attributes
         .entity_picture as string | undefined,
     );
-    if (this.atLive && live) sources.push(live);
-    const archived = urlAt(this.index, this.position);
+    if (position >= this.index.count - 1 && live) sources.push(live);
+    const archived = urlAt(this.index, position);
     if (archived) sources.push(archived);
     return sources;
   }
@@ -710,29 +799,64 @@ export class WebcamTimelapseCard extends LitElement {
    * Scrub handler.
    *
    * The readout, stamp and thumb update immediately — they are all cheap
-   * reads from in-memory arrays. Only the image `src` is throttled, and
-   * that is the whole point: dragging across a fortnight otherwise queues
-   * a couple of thousand image requests and locks up a low-end tablet.
-   * The final position always loads, on `change`.
+   * reads from in-memory arrays. Only the image load is throttled, and
+   * that is the whole point: dragging across a fortnight otherwise fires
+   * a couple of thousand prefetch requests and locks up a low-end tablet.
+   *
+   * Leading AND trailing. The leading edge is what makes the picture
+   * follow the thumb instead of waiting for it to stop; the trailing one
+   * is what guarantees the position the thumb actually SETTLES on gets
+   * loaded. Leading-only looks fine in a slow drag — every move is its own
+   * quiet window — and fails exactly when the user flicks the slider: the
+   * whole flick lands inside one window, every move after the first is
+   * discarded, and the card keeps showing the frame from wherever the
+   * flick began. `change` used to be the only thing rescuing that, which
+   * left the correctness of the picture resting on an event the throttle
+   * knows nothing about.
    */
   private onScrub(event: Event): void {
     const position = Number((event.target as HTMLInputElement).value);
     this.position = position;
+    this.pendingPosition = position;
 
     const now = performance.now();
-    this.pendingPosition = position;
-    if (now - this.lastScrubAt < SCRUB_QUIET_MS) return;
-    this.lastScrubAt = now;
+    if (now - this.lastScrubAt >= SCRUB_QUIET_MS) {
+      this.lastScrubAt = now;
+      this.loadPendingPosition();
+    }
 
-    if (this.scrubRaf) cancelAnimationFrame(this.scrubRaf);
-    this.scrubRaf = requestAnimationFrame(() => {
-      this.scrubRaf = undefined;
-      if (this.pendingPosition !== undefined) this.goTo(this.pendingPosition);
-    });
+    // Re-armed on every move, so it fires SCRUB_QUIET_MS after the LAST
+    // one — the moment the drag settles — rather than mid-flick.
+    if (this.scrubSettle) window.clearTimeout(this.scrubSettle);
+    this.scrubSettle = window.setTimeout(() => {
+      this.scrubSettle = undefined;
+      this.loadPendingPosition();
+    }, SCRUB_QUIET_MS);
+  }
+
+  /**
+   * Load whatever position the thumb is on now, skipping a repeat.
+   *
+   * `loadedPosition` is what the swap last actually PAINTED, not what was
+   * last requested — so the leading and trailing edges of one flick
+   * collapse into a single load, while a scrub back to a position that
+   * some earlier navigation had visited still reloads. Keyed off the
+   * request instead, a step or a playback run would leave a stale marker
+   * behind and swallow a legitimate scrub to that same frame.
+   */
+  private loadPendingPosition(): void {
+    const position = this.pendingPosition;
+    if (position === undefined || position === this.loadedPosition) return;
+    this.goTo(position);
   }
 
   private onScrubCommit(event: Event): void {
-    this.goTo(Number((event.target as HTMLInputElement).value));
+    // Belt and braces: `change` also fires for a keyboard step or a click
+    // on the track, where there may never be a second `input` to settle.
+    if (this.scrubSettle) window.clearTimeout(this.scrubSettle);
+    this.scrubSettle = undefined;
+    this.pendingPosition = Number((event.target as HTMLInputElement).value);
+    this.loadPendingPosition();
   }
 
   private jumpToNow(): void {
