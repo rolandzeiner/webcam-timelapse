@@ -254,8 +254,12 @@ describe("narrow layout", () => {
     expect(top(narrowRule(".readout"))).toBe(top(declarationsFor(".badge")));
   });
 
-  it("hides the sparklines", () => {
-    expect(narrowRule(".spark-wrap")).toMatch(/display:\s*none/);
+  it("keeps the sparklines", () => {
+    // Reversed deliberately. Width used to drop the chart on the theory
+    // that the numbers are the point — but a chart that vanishes reads as
+    // a broken sensor, and chasing that costs far more than a cramped
+    // sparkline does. If it has to go again, make it opt-in.
+    expect(narrowRule(".spark-wrap")).not.toMatch(/display:\s*none/);
   });
 
   it("switches before the readout can reach the control pill", () => {
@@ -322,10 +326,10 @@ describe("two readout blocks", () => {
     expect(body).toMatch(/transform:\s*none/);
   });
 
-  it("hides the sparklines in the stacked layout too", () => {
-    expect(narrowRule(".readouts.pair .spark-wrap", PAIR_BREAKPOINT)).toMatch(
-      /display:\s*none/,
-    );
+  it("keeps the sparklines in the stacked layout too", () => {
+    expect(
+      narrowRule(".readouts.pair .spark-wrap", PAIR_BREAKPOINT),
+    ).not.toMatch(/display:\s*none/);
   });
 
   it("switches earlier than a single block does", () => {

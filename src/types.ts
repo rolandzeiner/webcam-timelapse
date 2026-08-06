@@ -316,6 +316,15 @@ export interface OverlayEntityConfig {
   /** Draw a sparkline for this entity as well as the numeric readout. */
   graph?: boolean;
   /**
+   * Override the card's `graph_hours` for this row.
+   *
+   * One window rarely suits every gauge on a card. A river pegel moves
+   * every few minutes and reads well over a day; groundwater moves
+   * millimetres a day and is a flat line until you give it weeks. Absent,
+   * the card-level value applies.
+   */
+  graph_hours?: number;
+  /**
    * Show the entity's own icon ahead of its label.
    *
    * Resolved from the entity rather than configured here, so it follows

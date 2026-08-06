@@ -34,12 +34,18 @@ export interface SparklineOptions {
  *
  * Returning null rather than an empty box lets the caller omit the
  * element entirely — an empty chart frame reads as "broken", whereas no
- * chart reads as "not applicable", which is what a single data point
- * actually means.
+ * chart reads as "not applicable", which is what no data at all means.
+ *
+ * One point is enough. The line is a step held to the right edge, so a
+ * lone reading is a legitimate partial series: the value from then until
+ * the end of the window, and honestly nothing before it. This used to
+ * require two, which quietly hid the graph for any gauge whose value
+ * simply had not changed inside the window — see `windowAround`, whose
+ * anchor point is usually the single point in question.
  */
 export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
   const { points, at, hours, color, label } = options;
-  if (points.length < 2) return null;
+  if (points.length === 0) return null;
 
   const half = (hours * 3_600_000) / 2;
   const t0 = at - half;

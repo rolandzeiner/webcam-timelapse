@@ -50,6 +50,15 @@ const ROW_SCHEMA = [
       { name: "name", selector: { text: {} } },
       { name: "unit", selector: { text: {} } },
       { name: "decimals", selector: { number: { min: 0, max: 4, mode: "box" } } },
+      // Per-row override of the card's graph window. Left empty on almost
+      // every row; it exists for the gauge whose cadence is nothing like
+      // the others on the same card.
+      {
+        name: "graph_hours",
+        selector: {
+          number: { min: 1, max: 8760, mode: "box", unit_of_measurement: "h" },
+        },
+      },
     ],
   },
 ] as const;

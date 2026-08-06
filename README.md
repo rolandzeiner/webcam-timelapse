@@ -207,12 +207,31 @@ smooth line between two hourly readings would invent a number nobody measured.
 | `decimals` | Decimal places. Default 1 |
 | `color` | Any CSS colour |
 | `graph` | Draw a sparkline behind the playhead |
+| `graph_hours` | Override the card's `graph_hours` for this row |
 | `show_icon` | Show the entity's own icon before its label |
 | `time_attribute` | Read the measurement time from this attribute instead of the state's last-changed time |
 
 `show_icon` uses whatever icon the entity has in Home Assistant, including the
 device-class default when none is set explicitly — so it follows the entity
 rather than duplicating an icon name in the card config.
+
+`graph_hours` per row exists because one window rarely suits every gauge on the
+same card. A river level moves every few minutes and reads well over the
+card-wide 24 hours; a groundwater gauge moves millimetres a day and stays a flat
+line until you give it weeks:
+
+```yaml
+graph_hours: 24                   # the card default
+entities_left:
+  - entity: sensor.grundwasserspiegel
+    graph: true
+    graph_hours: 720              # 30 days, so the trend is visible at all
+```
+
+A slow gauge still draws even when it has not changed inside the window. The
+recorder only stores changes, so such a window can be genuinely empty — the card
+carries the reading that was already in effect into it and holds the line flat,
+rather than dropping the graph and implying the sensor is dead.
 
 `overlay_title` sits above the readings as a heading for the block. Leaving it
 empty or omitting it renders nothing, which is the default look.

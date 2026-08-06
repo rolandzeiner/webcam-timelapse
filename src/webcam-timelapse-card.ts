@@ -362,13 +362,23 @@ export class WebcamTimelapseCard extends LitElement {
       if (row.time_attribute) timeAttributes[row.entity] = row.time_attribute;
     }
 
+    // Half of a graph window sits behind the playhead, and the playhead
+    // can be parked on the oldest frame in the archive. A row asking for
+    // a window wider than the archive would otherwise get a graph that
+    // truncates at the fetch boundary instead of filling.
+    const graphHours = Math.max(
+      this.config?.graph_hours ?? 24,
+      ...entities.map((row) => row.graph_hours ?? 0),
+    );
+
     this.history = await fetchOverlayHistory(
       this.hass,
       entities.map((row) => row.entity),
       {
         // Cover the whole archive so scrubbing to the oldest frame still
         // resolves a reading; +1 day of slack for the retention boundary.
-        days: (this.index.retention_days || 14) + 1,
+        days:
+          (this.index.retention_days || 14) + 1 + Math.ceil(graphHours / 48),
         timeAttributes,
       },
     );
@@ -1050,12 +1060,21 @@ export class WebcamTimelapseCard extends LitElement {
           ? "—"
           : `${reading.value.toFixed(row.decimals ?? 1)}${unit ? ` ${unit}` : ""}`;
 
+      // Deliberately NOT gated on `reading` — the graph and the number
+      // answer different questions. The number is "what was the value at
+      // this instant", which is honestly nothing when the playhead sits
+      // before the first reading. The graph is "what has this gauge
+      // done", which still has an answer there. Tying them meant a
+      // sensor added last week lost its chart across the whole earlier
+      // half of the archive, and a stale one lost it entirely. Whether
+      // there is anything to draw is sparkline's call, not this one's.
+      const graphHours = row.graph_hours ?? this.config?.graph_hours ?? 24;
       const graph =
-        row.graph && this.config?.show_graph !== false && reading !== null
+        row.graph && this.config?.show_graph !== false
           ? sparkline({
-              points: windowAround(points, at, this.config?.graph_hours ?? 24),
+              points: windowAround(points, at, graphHours),
               at,
-              hours: this.config?.graph_hours ?? 24,
+              hours: graphHours,
               color,
               label: `${name} history`,
             })

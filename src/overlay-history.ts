@@ -213,12 +213,48 @@ export function stalenessThreshold(points: HistoryPoint[], floorMs = 5_400_000):
   return Math.max(median * 2, floorMs);
 }
 
-/** Points inside a window centred on `at`, for the sparkline. */
+/**
+ * Points inside a window centred on `at`, for the sparkline — plus the
+ * reading already in effect when the window opens.
+ *
+ * That anchor carries more weight than it looks. The series is step /
+ * hold-last-known and the recorder stores only *changes*, so a slow gauge
+ * can cross an entire window without a single row while still having a
+ * perfectly well-defined value throughout it. Without an anchor those
+ * windows come back empty and the graph disappears, which reads as "the
+ * sensor is broken" when the truth is "the sensor is steady". The
+ * groundwater gauge is the motivating case: it moves a few millimetres a
+ * day, so twenty-four hours of it is routinely zero rows.
+ *
+ * The anchor is clamped to the window start rather than kept at its real
+ * timestamp. It is not a measurement — it is the value that was already
+ * in effect at `from`, which is the same hold-last-known rule `resolveAt`
+ * applies. Keeping the true time would also push it off-canvas, since the
+ * sparkline scales x to the window.
+ */
 export function windowAround(
   points: HistoryPoint[],
   at: number,
   hours: number,
 ): HistoryPoint[] {
   const half = (hours * 3_600_000) / 2;
-  return points.filter((p) => p.at >= at - half && p.at <= at + half);
+  const from = at - half;
+  const to = at + half;
+
+  const inside = points.filter((p) => p.at >= from && p.at <= to);
+
+  // A reading landing exactly on the window start already says what was
+  // in effect there; an anchor at the same instant would only stack a
+  // second point on the same x.
+  if (inside[0]?.at === from) return inside;
+
+  // `points` is sorted ascending, so the last entry before the window is
+  // the reading still standing when it opens.
+  let anchor: HistoryPoint | undefined;
+  for (const point of points) {
+    if (point.at >= from) break;
+    anchor = point;
+  }
+
+  return anchor ? [{ at: from, value: anchor.value }, ...inside] : inside;
 }

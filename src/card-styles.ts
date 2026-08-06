@@ -666,9 +666,6 @@ export const cardStyles = css`
       max-width: 100%;
     }
 
-    .readouts.pair .spark-wrap {
-      display: none;
-    }
   }
 
   /* Breakpoint set by the collision, not by a round number.
@@ -703,12 +700,6 @@ export const cardStyles = css`
       left: 50%;
     }
 
-    /* The numbers are the point; the chart is the first thing that should
-       go. A sparkline needs width this card no longer has, and dropping
-       it also shortens the block so it covers less of the frame. */
-    .spark-wrap {
-      display: none;
-    }
   }
 
   /* prefers-reduced-motion is handled entirely in TypeScript, not here.
