@@ -58,6 +58,15 @@ export const cardStyles = css`
     inset: 0;
     z-index: 0;
     overflow: hidden;
+    cursor: pointer;
+  }
+
+  /* Inset, because the layers fill the stage — an outset ring would be
+     clipped away by the stage's own overflow and the focus state would
+     be invisible exactly where it matters most. */
+  .layers:focus-visible {
+    outline: 2px solid var(--wtl-accent);
+    outline-offset: -2px;
   }
 
   /* opacity, z-index and transition are set imperatively by
@@ -115,8 +124,12 @@ export const cardStyles = css`
 
   /* --- overlays ---------------------------------------------------- */
 
+  /* Passive labels, so they must not eat the click that opens the
+     camera's more-info dialog — they sit over the picture and would
+     otherwise punch two dead rectangles into it. */
   .stamp,
   .badge {
+    pointer-events: none;
     position: absolute;
     padding: 4px 8px;
     border-radius: 6px;
@@ -149,6 +162,14 @@ export const cardStyles = css`
     background: var(--wtl-gap);
   }
 
+  /* Generates no box, so the blocks inside it position themselves
+     against .stage exactly as they did when there was only ever one.
+     It becomes a real element only in the narrow pair layout, and only
+     through .pair — see the container query below. */
+  .readouts {
+    display: contents;
+  }
+
   /* Back on the bottom-right corner. It shares that edge with the centred
      control pill, which is fine while there is room between them — the
      container query below moves it to the top before the two can meet. */
@@ -164,6 +185,14 @@ export const cardStyles = css`
     color: #fff;
     backdrop-filter: blur(2px);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* The second block takes the opposite corner. Nothing else changes:
+     the block that was already there keeps the rule above untouched, so
+     adding this one cannot move it. */
+  .readout.left {
+    right: auto;
+    left: 8px;
   }
 
   /* Opt-in heading for the readings block. Only rendered when the config
@@ -183,6 +212,8 @@ export const cardStyles = css`
     display: flex;
     align-items: baseline;
     gap: 8px;
+    cursor: pointer;
+    border-radius: 4px;
     font-size: var(--ha-font-size-s, 0.85rem);
     /* Pinned so the icon has a known box to be centred against. With an
        inherited line-height the row's height varies with the theme, and
@@ -229,6 +260,18 @@ export const cardStyles = css`
     opacity: 0.55;
   }
 
+  /* Outset here, unlike the layers: the readout sits inside the stage
+     with room around it, so the ring reads better outside the text than
+     cutting through it. */
+  .readout-row:focus-visible {
+    outline: 2px solid var(--wtl-accent);
+    outline-offset: 1px;
+  }
+
+  .readout-row:hover .readout-name {
+    color: #fff;
+  }
+
   .spark-wrap {
     margin: 2px 0 4px;
     color: rgba(255, 255, 255, 0.7);
@@ -268,6 +311,24 @@ export const cardStyles = css`
        over the 24px WCAG 2.5.8 minimum target. */
     --mdc-icon-button-size: 40px;
     --mdc-icon-size: 20px;
+  }
+
+  /* The one control people reach for without looking, so it carries the
+     extra weight. Size is the whole signal — no accent colour, which
+     would compete with the LIVE badge for the eye. */
+  .controls .play {
+    --mdc-icon-button-size: 46px;
+    --mdc-icon-size: 26px;
+  }
+
+  /* Divides transport from the controls that are not transport. A hairline
+     rather than a gap: the gap alone reads as a rendering accident at this
+     size, and the eye needs the group boundary to be deliberate. */
+  .sep {
+    width: 1px;
+    height: 18px;
+    margin: 0 5px;
+    background: rgba(255, 255, 255, 0.28);
   }
 
   .speed {
@@ -331,25 +392,39 @@ export const cardStyles = css`
   }
 
   /* Centred on the rail so each mark reads as a tick the bar runs
-     through, showing equally above and below it. */
+     through, showing equally above and below it.
+
+     The marks carry their own colour, deliberately not the rail's. Both
+     were --wtl-divider, which is the token for "barely there" — so the
+     scale dissolved into the bar it sits behind and read as hidden
+     rather than quiet.
+
+     Weight is graded rather than uniform, because the hierarchy is the
+     information: minor ticks say the scale is continuous, day boundaries
+     are what you actually navigate by, month starts are the rarest and
+     strongest. Only 6px of a minor tick clears the 6px rail, so the
+     contrast has to do the work the length cannot. */
   .mark {
     position: absolute;
     top: 50%;
     width: 1px;
-    height: 14px;
+    height: 18px;
     transform: translate(-50%, -50%);
-    background: var(--wtl-divider);
+    background: var(--wtl-muted);
+    opacity: 0.5;
   }
 
   .mark.day {
-    height: 22px;
-    background: var(--wtl-muted);
+    height: 26px;
+    background: var(--wtl-text);
+    opacity: 0.85;
   }
 
   .mark.month {
-    height: 30px;
+    height: 34px;
     width: 2px;
-    background: var(--wtl-muted);
+    background: var(--wtl-text);
+    opacity: 1;
   }
 
   .rail,
@@ -552,6 +627,47 @@ export const cardStyles = css`
 
   /* --- responsive -------------------------------------------------- */
 
+  /* Two blocks run out of room sooner than one, so the pair gets its own
+     breakpoint rather than inheriting the number below.
+
+     Re-derived rather than reused: the pill is centred at ~212px, so its
+     left edge sits at W/2 - 106. The left-hand block starts 8px in and a
+     three-sensor block runs ~230px, putting its right edge at ~238. Those
+     meet at W ≈ 688 — the single block's 620 would let the pair overlap
+     the pill for most of a phone's width.
+
+     Stacked rather than side by side, because below this width there is
+     no arrangement of two blocks along the bottom edge that clears the
+     centred pill at all. */
+  @container (max-width: 700px) {
+    /* The wrapper becomes a box only here. Every declaration in this
+       block is scoped to .pair, which is what keeps a single block on
+       exactly the layout it had before the second one existed. */
+    .readouts.pair {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      display: flex;
+      /* Reversed against DOM order so the right-hand block sits on top.
+         It is the block that was there first, and the one a single-block
+         card would have shown on its own. */
+      flex-direction: column-reverse;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Back into normal flow so the column can stack them. The corner pins
+       are inert on a static box, but the centring transform below is not
+       — left unset it would drag both blocks half their width off centre. */
+    .readouts.pair .readout {
+      position: static;
+      transform: none;
+      max-width: 100%;
+    }
+
+  }
+
   /* Breakpoint set by the collision, not by a round number.
 
      The control pill is centred and the readout is right-aligned, so the
@@ -576,12 +692,14 @@ export const cardStyles = css`
       max-width: calc(100% - 16px);
     }
 
-    /* The numbers are the point; the chart is the first thing that should
-       go. A sparkline needs width this card no longer has, and dropping
-       it also shortens the block so it covers less of the frame. */
-    .spark-wrap {
-      display: none;
+    /* A card configured with only the left block still gets one centred
+       block up here. Without this its edge pin outranks the centring
+       above — more specific — and it would sit at left: 8px while the
+       transform pulled it half its own width off the frame. */
+    .readout.left {
+      left: 50%;
     }
+
   }
 
   /* prefers-reduced-motion is handled entirely in TypeScript, not here.

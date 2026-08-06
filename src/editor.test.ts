@@ -23,6 +23,21 @@ describe("editor element choice", () => {
     expect(source.match(/<ha-form/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
+  it("offers both readings blocks", () => {
+    // The left block is only discoverable here. If the section is never
+    // rendered, the feature exists in YAML only and nobody finds it.
+    expect(source).toMatch(/renderSection\("right"/);
+    expect(source).toMatch(/renderSection\("left"/);
+    expect(source).toMatch(/OVERLAY_TITLE_LEFT_SCHEMA/);
+  });
+
+  it("writes each block to its own config key", () => {
+    // The right-hand block must keep writing to `entities`. Pointing it
+    // anywhere else silently orphans every config already in the wild.
+    expect(source).toMatch(/right:\s*"entities"/);
+    expect(source).toMatch(/left:\s*"entities_left"/);
+  });
+
   it("keeps every text and number input in a selector", () => {
     // A bare <input> would hit the same class of problem from the other
     // side: unstyled and inconsistent with the rest of the editor. The

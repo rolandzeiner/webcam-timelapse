@@ -160,6 +160,9 @@ reader treat it as one.
 second, so faster speeds cover more ground per frame instead of painting every
 one. The motion stays smooth; the steps get bigger.
 
+**Tap the picture for the camera, a reading for its sensor.** Both open the
+usual Home Assistant details dialog, and both work from the keyboard.
+
 **Playing from the newest frame replays the archive from the start**, since
 there is nothing newer to move into.
 
@@ -204,6 +207,7 @@ smooth line between two hourly readings would invent a number nobody measured.
 | `decimals` | Decimal places. Default 1 |
 | `color` | Any CSS colour |
 | `graph` | Draw a sparkline behind the playhead |
+| `graph_hours` | Override the card's `graph_hours` for this row |
 | `show_icon` | Show the entity's own icon before its label |
 | `time_attribute` | Read the measurement time from this attribute instead of the state's last-changed time |
 
@@ -211,8 +215,52 @@ smooth line between two hourly readings would invent a number nobody measured.
 device-class default when none is set explicitly — so it follows the entity
 rather than duplicating an icon name in the card config.
 
+`graph_hours` per row exists because one window rarely suits every gauge on the
+same card. A river level moves every few minutes and reads well over the
+card-wide 24 hours; a groundwater gauge moves millimetres a day and stays a flat
+line until you give it weeks:
+
+```yaml
+graph_hours: 24                   # the card default
+entities_left:
+  - entity: sensor.grundwasserspiegel
+    graph: true
+    graph_hours: 720              # 30 days, so the trend is visible at all
+```
+
+A slow gauge still draws even when it has not changed inside the window. The
+recorder only stores changes, so such a window can be genuinely empty — the card
+carries the reading that was already in effect into it and holds the line flat,
+rather than dropping the graph and implying the sensor is dead.
+
 `overlay_title` sits above the readings as a heading for the block. Leaving it
 empty or omitting it renders nothing, which is the default look.
+
+### A second block on the left
+
+`entities` sits in the bottom-right corner. To show a second set of readings,
+put them in `entities_left`:
+
+```yaml
+overlay_title: Kleine Erlauf      # bottom right, as before
+entities:
+  - entity: sensor.wasserstand
+
+overlay_title_left: Wetter        # bottom left
+entities_left:
+  - entity: sensor.aussentemperatur
+```
+
+`entities_left` takes exactly the same options as `entities`.
+
+Adding it never moves what you already had: `entities` keeps the right-hand
+corner whether or not a second block is beside it. A card with only
+`entities_left` shows one block on the left.
+
+On a narrow card the two stack at the top of the picture instead, with the
+right-hand block above the left one — there is no room for two blocks and the
+playback controls along the bottom edge. Sparklines are hidden at that width,
+as they are for a single block.
 
 Use `time_attribute` for sensors whose real measurement time lives in an
 attribute. It is off by default because asking for attributes makes the

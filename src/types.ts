@@ -316,6 +316,15 @@ export interface OverlayEntityConfig {
   /** Draw a sparkline for this entity as well as the numeric readout. */
   graph?: boolean;
   /**
+   * Override the card's `graph_hours` for this row.
+   *
+   * One window rarely suits every gauge on a card. A river pegel moves
+   * every few minutes and reads well over a day; groundwater moves
+   * millimetres a day and is a flat line until you give it weeks. Absent,
+   * the card-level value applies.
+   */
+  graph_hours?: number;
+  /**
    * Show the entity's own icon ahead of its label.
    *
    * Resolved from the entity rather than configured here, so it follows
@@ -339,7 +348,14 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   show_graph?: boolean;
   /** Hours of history shown behind the playhead. */
   graph_hours?: number;
-  /** Empty by default — the card is not tied to any domain. */
+  /**
+   * The right-hand readings block. Empty by default — the card is not
+   * tied to any domain.
+   *
+   * Deliberately not renamed to `entities_right` when the second block
+   * arrived: this key is in every config written so far, and it keeps
+   * the bottom-right corner it has always had.
+   */
   entities?: OverlayEntityConfig[];
   /**
    * Heading above the overlay readings.
@@ -348,6 +364,14 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
    * the heading is opt-in so existing cards are untouched.
    */
   overlay_title?: string;
+  /**
+   * The second, left-hand readings block. Opt-in and independent: a card
+   * with only this key renders one block on the left, and one with only
+   * `entities` is unchanged from before the block existed.
+   */
+  entities_left?: OverlayEntityConfig[];
+  /** Heading above the left-hand readings. Same opt-in rule as `overlay_title`. */
+  overlay_title_left?: string;
   /** Smooth cloud-driven brightness jumps during playback. 0 = off. */
   deflicker?: number;
 }

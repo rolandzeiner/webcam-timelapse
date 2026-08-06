@@ -291,6 +291,49 @@ export function prefetchWindow(
   return targets;
 }
 
+/**
+ * Whether an `<img>` is actually holding the frame that was just asked for.
+ *
+ * - `ready` — the element holds the requested frame, decoded.
+ * - `failed` — the request finished and there is no image: a 404, a pruned
+ *   frame, a proxy with nothing cached yet.
+ * - `pending` — the element is not holding the requested frame *yet*. It
+ *   is still showing whatever it had before.
+ */
+export type FrameReadiness = "ready" | "failed" | "pending";
+
+/**
+ * Decide readiness from the element's own view of itself.
+ *
+ * `complete` and `naturalWidth` describe whatever bitmap the element is
+ * holding right now — NOT the src most recently assigned to it. After a
+ * rejected `decode()` of a new src they still describe the *previous*
+ * frame, so testing them alone reports a stale image as ready.
+ *
+ * That is not hypothetical. Playback revealed the layer anyway, and since
+ * the two layers alternate, the stage flipped between two old frames
+ * while the playhead advanced at full speed — a picture juddering back
+ * and forth under a clock that looked perfectly normal. It only showed on
+ * a cold cache, because a warm one decodes instantly and never reaches
+ * the fallback.
+ *
+ * `currentSrc` is the fix: the browser sets it to the URL it actually
+ * fetched, so comparing it against the URL just requested is what
+ * distinguishes "this frame is here" from "the last frame is still here".
+ */
+export function frameReadiness(state: {
+  /** `img.currentSrc` — resolved absolute, empty before the first load. */
+  currentSrc: string;
+  /** The URL just assigned, resolved against the same base. */
+  requested: string;
+  complete: boolean;
+  naturalWidth: number;
+}): FrameReadiness {
+  if (state.currentSrc !== state.requested) return "pending";
+  if (!state.complete) return "pending";
+  return state.naturalWidth > 0 ? "ready" : "failed";
+}
+
 /** Longest frame-to-frame blend, used when stepping or scrubbing. */
 export const FADE_MS = 120;
 

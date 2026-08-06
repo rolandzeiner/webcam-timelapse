@@ -34,8 +34,10 @@
     "autoplay": "Play automatically",
     "speed": "Speed",
     "graph_hours": "Graph window",
-    "overlay": "Overlay readings",
-    "overlay_hint": "Values shown over the image are read at the moment you scrub to, not the current ones.",
+    "overlay_right": "Overlay readings (right)",
+    "overlay_right_hint": "Values shown over the image are read at the moment you scrub to, not the current ones.",
+    "overlay_left": "Overlay readings (left)",
+    "overlay_left_hint": "A second block on the other side of the picture. Leave it empty for one block on the right.",
     "add_entity": "Add entity",
     "entity": "Entity",
     "name": "Label",
@@ -52,10 +54,16 @@
       "autoplay": "Ignored when your system asks for reduced motion.",
       "deflicker": "Evens out cloud-driven brightness jumps during playback. 0 turns it off.",
       "overlay_title": "Shown above the readings. Leave empty for no heading.",
+      "overlay_title_left": "Shown above the readings. Leave empty for no heading.",
       "show_icon": "Uses the entity's own icon from Home Assistant."
     },
     "deflicker": "Smooth brightness",
     "show_icon": "Show icon",
-    "overlay_title": "Heading"
+    "overlay_title": "Heading",
+    "overlay_title_left": "Heading"
+  },
+  "actions": {
+    "show_camera": "Show camera details",
+    "show_entity": "Show details for {v}"
   }
 }

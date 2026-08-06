@@ -15,6 +15,7 @@ import { customElement, property, state } from "lit/decorators.js";
 
 import { cardStyles } from "./card-styles";
 import { localize } from "./localize/localize";
+import type { ReadoutSide } from "./overlay-groups";
 import type {
   HomeAssistant,
   LovelaceCardEditor,
@@ -38,6 +39,10 @@ const OVERLAY_TITLE_SCHEMA = [
   { name: "overlay_title", selector: { text: {} } },
 ] as const;
 
+const OVERLAY_TITLE_LEFT_SCHEMA = [
+  { name: "overlay_title_left", selector: { text: {} } },
+] as const;
+
 const ROW_SCHEMA = [
   {
     type: "grid",
@@ -45,6 +50,15 @@ const ROW_SCHEMA = [
       { name: "name", selector: { text: {} } },
       { name: "unit", selector: { text: {} } },
       { name: "decimals", selector: { number: { min: 0, max: 4, mode: "box" } } },
+      // Per-row override of the card's graph window. Left empty on almost
+      // every row; it exists for the gauge whose cadence is nothing like
+      // the others on the same card.
+      {
+        name: "graph_hours",
+        selector: {
+          number: { min: 1, max: 8760, mode: "box", unit_of_measurement: "h" },
+        },
+      },
     ],
   },
 ] as const;
@@ -160,39 +174,65 @@ export class WebcamTimelapseCardEditor
 
   // --- entities list ------------------------------------------------
 
-  private get rows(): OverlayEntityConfig[] {
-    return this.config?.entities ?? [];
+  /**
+   * The config key each block's entities live under.
+   *
+   * The right-hand block keeps `entities` rather than moving to a
+   * symmetrical `entities_right`, because that key is in every config
+   * written so far and renaming it would migrate them all for cosmetics.
+   */
+  private static readonly ENTITY_KEY = {
+    right: "entities",
+    left: "entities_left",
+  } as const satisfies Record<ReadoutSide, keyof WebcamTimelapseCardConfig>;
+
+  private rows(side: ReadoutSide): OverlayEntityConfig[] {
+    return this.config?.[WebcamTimelapseCardEditor.ENTITY_KEY[side]] ?? [];
   }
 
   /** Never mutate `this.config` in place — Lovelace holds that object. */
-  private updateRows(rows: OverlayEntityConfig[]): void {
-    this.emit({ ...this.config!, entities: rows });
+  private updateRows(side: ReadoutSide, rows: OverlayEntityConfig[]): void {
+    this.emit({
+      ...this.config!,
+      [WebcamTimelapseCardEditor.ENTITY_KEY[side]]: rows,
+    });
   }
 
-  private addRow(): void {
-    this.updateRows([...this.rows, { entity: "" }]);
+  private addRow(side: ReadoutSide): void {
+    this.updateRows(side, [...this.rows(side), { entity: "" }]);
   }
 
-  private removeRow(index: number): void {
-    this.updateRows(this.rows.filter((_, i) => i !== index));
+  private removeRow(side: ReadoutSide, index: number): void {
+    this.updateRows(
+      side,
+      this.rows(side).filter((_, i) => i !== index),
+    );
   }
 
-  private moveRow(index: number, delta: -1 | 1): void {
-    const rows = [...this.rows];
+  private moveRow(side: ReadoutSide, index: number, delta: -1 | 1): void {
+    const rows = [...this.rows(side)];
     const target = index + delta;
     if (target < 0 || target >= rows.length) return;
     [rows[index], rows[target]] = [rows[target]!, rows[index]!];
-    this.updateRows(rows);
+    this.updateRows(side, rows);
   }
 
-  private patchRow(index: number, patch: Partial<OverlayEntityConfig>): void {
-    const rows = this.rows.map((row, i) =>
+  private patchRow(
+    side: ReadoutSide,
+    index: number,
+    patch: Partial<OverlayEntityConfig>,
+  ): void {
+    const rows = this.rows(side).map((row, i) =>
       i === index ? { ...row, ...patch } : row,
     );
-    this.updateRows(rows);
+    this.updateRows(side, rows);
   }
 
-  private renderRow(row: OverlayEntityConfig, index: number): TemplateResult {
+  private renderRow(
+    side: ReadoutSide,
+    row: OverlayEntityConfig,
+    index: number,
+  ): TemplateResult {
     const label = row.name || row.entity || this.t("editor.entity");
     return html`
       <div class="ent-row" role="group" aria-label=${label}>
@@ -202,7 +242,7 @@ export class WebcamTimelapseCardEditor
           allow-custom-entity
           @value-changed=${(e: CustomEvent<{ value: string }>) => {
             e.stopPropagation();
-            this.patchRow(index, { entity: e.detail.value });
+            this.patchRow(side, index, { entity: e.detail.value });
           }}
         ></ha-entity-picker>
 
@@ -213,7 +253,7 @@ export class WebcamTimelapseCardEditor
           .computeLabel=${this.computeLabel}
           @value-changed=${(e: CustomEvent<{ value: OverlayEntityConfig }>) => {
             e.stopPropagation();
-            this.patchRow(index, e.detail.value);
+            this.patchRow(side, index, e.detail.value);
           }}
         ></ha-form>
 
@@ -228,11 +268,11 @@ export class WebcamTimelapseCardEditor
               type="color"
               .value=${row.color ?? "#3d7ea6"}
               @input=${(e: Event) =>
-                this.patchRow(index, {
+                this.patchRow(side, index, {
                   color: (e.target as HTMLInputElement).value,
                 })}
               @change=${(e: Event) =>
-                this.patchRow(index, {
+                this.patchRow(side, index, {
                   color: (e.target as HTMLInputElement).value,
                 })}
             />
@@ -242,7 +282,7 @@ export class WebcamTimelapseCardEditor
             <ha-switch
               .checked=${row.show_icon ?? false}
               @change=${(e: Event) =>
-                this.patchRow(index, {
+                this.patchRow(side, index, {
                   show_icon: (e.target as HTMLInputElement).checked,
                 })}
             ></ha-switch>
@@ -252,7 +292,7 @@ export class WebcamTimelapseCardEditor
             <ha-switch
               .checked=${row.graph ?? false}
               @change=${(e: Event) =>
-                this.patchRow(index, {
+                this.patchRow(side, index, {
                   graph: (e.target as HTMLInputElement).checked,
                 })}
             ></ha-switch>
@@ -263,20 +303,20 @@ export class WebcamTimelapseCardEditor
           <ha-icon-button
             .label=${this.t("editor.move_up")}
             .disabled=${index === 0}
-            @click=${() => this.moveRow(index, -1)}
+            @click=${() => this.moveRow(side, index, -1)}
           >
             <ha-icon icon="mdi:arrow-up"></ha-icon>
           </ha-icon-button>
           <ha-icon-button
             .label=${this.t("editor.move_down")}
-            .disabled=${index === this.rows.length - 1}
-            @click=${() => this.moveRow(index, 1)}
+            .disabled=${index === this.rows(side).length - 1}
+            @click=${() => this.moveRow(side, index, 1)}
           >
             <ha-icon icon="mdi:arrow-down"></ha-icon>
           </ha-icon-button>
           <ha-icon-button
             .label=${this.t("editor.remove")}
-            @click=${() => this.removeRow(index)}
+            @click=${() => this.removeRow(side, index)}
           >
             <ha-icon icon="mdi:delete-outline"></ha-icon>
           </ha-icon-button>
@@ -298,23 +338,48 @@ export class WebcamTimelapseCardEditor
         @value-changed=${this.onFormChange}
       ></ha-form>
 
+      ${this.renderSection("right", OVERLAY_TITLE_SCHEMA)}
+      ${this.renderSection("left", OVERLAY_TITLE_LEFT_SCHEMA)}
+    `;
+  }
+
+  /**
+   * One block's heading and entity list.
+   *
+   * Both sections are always shown. An empty left section is what tells
+   * someone the second block exists at all — discovering it would
+   * otherwise mean reading the YAML docs, and the card renders exactly
+   * as before until a row is added to it.
+   */
+  private renderSection(
+    side: ReadoutSide,
+    titleSchema: unknown,
+  ): TemplateResult {
+    // Built outside the template on purpose. A nested backtick inside an
+    // html`` body is valid JavaScript but it mis-segments the CI guard
+    // that scans these templates for stray backticks, which would blunt
+    // that check for everything below this point in the file.
+    const heading = this.t("editor.overlay_" + side);
+    const hint = this.t("editor.overlay_" + side + "_hint");
+
+    return html`
       <div class="ent-section">
-        <h4>${this.t("editor.overlay")}</h4>
-        <p class="ent-hint">${this.t("editor.overlay_hint")}</p>
+        <h4>${heading}</h4>
+        <p class="ent-hint">${hint}</p>
 
         <div class="ent-title">
           <ha-form
             .hass=${this.hass}
             .data=${this.config}
-            .schema=${OVERLAY_TITLE_SCHEMA}
+            .schema=${titleSchema}
             .computeLabel=${this.computeLabel}
             .computeHelper=${this.computeHelper}
             @value-changed=${this.onFormChange}
           ></ha-form>
         </div>
 
-        ${this.rows.map((row, index) => this.renderRow(row, index))}
-        <ha-button @click=${this.addRow}>
+        ${this.rows(side).map((row, index) => this.renderRow(side, row, index))}
+        <ha-button @click=${() => this.addRow(side)}>
           <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
           ${this.t("editor.add_entity")}
         </ha-button>
