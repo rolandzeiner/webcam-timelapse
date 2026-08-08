@@ -104,29 +104,33 @@ describe("stalenessThreshold", () => {
 
 describe("windowAround", () => {
   it("keeps only points inside the window", () => {
-    // Window is [T0-1h, T0+1h] — trailing, so it ends at the playhead.
     const points = windowAround(hourly, T0 + HOUR, 2);
-    expect(points.map((p) => p.value)).toEqual([137, 138]);
+    expect(points.map((p) => p.value)).toEqual([137, 138, 141]);
   });
 
   it("excludes points outside it", () => {
     expect(windowAround(hourly, T0, 1).map((p) => p.value)).toEqual([137]);
   });
 
-  it("ends at the playhead rather than straddling it", () => {
-    // Nothing ahead of the playhead may appear. The 141 is two hours into
-    // the future here, and a chart that showed it would be claiming a
-    // reading that has not been taken at the moment being scrubbed to.
-    expect(windowAround(hourly, T0 + HOUR, 24).map((p) => p.value)).toEqual([
-      137, 138,
-    ]);
+  it("straddles the playhead evenly", () => {
+    // The marker sits in the middle of the chart, so the window has to be
+    // centred on it — half behind, half ahead. `sparkline` scales x the
+    // same way, and the two disagreeing about which points are on canvas
+    // is how points end up drawn off the edge of the box.
+    const points: HistoryPoint[] = [
+      { at: T0 - 2 * HOUR, value: 1 },
+      { at: T0, value: 2 },
+      { at: T0 + 2 * HOUR, value: 3 },
+    ];
+    expect(windowAround(points, T0, 6).map((p) => p.value)).toEqual([1, 2, 3]);
+    expect(windowAround(points, T0, 2).map((p) => p.value)).toEqual([1, 2]);
   });
 
   it("carries the reading in effect when the window opens", () => {
     // Window is [T0+1.5h, T0+3.5h]. Only the 141 falls inside it; the 138
     // before it is the value that was standing as the window opened and
     // has to come along, or the line starts in mid-air.
-    const points = windowAround(hourly, T0 + 3.5 * HOUR, 2);
+    const points = windowAround(hourly, T0 + 2.5 * HOUR, 2);
     expect(points.map((p) => p.value)).toEqual([138, 141]);
   });
 
@@ -134,18 +138,18 @@ describe("windowAround", () => {
     // The anchor is not a measurement — it is the value already in effect
     // at `from`. Dated at its real time it would scale off-canvas.
     const from = T0 + 2.5 * HOUR;
-    const [anchor] = windowAround(hourly, T0 + 4.5 * HOUR, 2);
+    const [anchor] = windowAround(hourly, T0 + 3.5 * HOUR, 2);
     expect(anchor).toEqual({ at: from, value: 141 });
   });
 
   it("adds no anchor when a reading lands on the window start", () => {
     // The 138 sits exactly at `from`; anchoring would stack a second
     // point on the same x for nothing.
-    expect(windowAround(hourly, T0 + 3 * HOUR, 2)).toEqual(hourly.slice(1));
+    expect(windowAround(hourly, T0 + 2 * HOUR, 2)).toEqual(hourly.slice(1));
   });
 
   it("adds no anchor when nothing precedes the window", () => {
-    expect(windowAround(hourly, T0 + HOUR, 2)).toEqual(hourly.slice(0, 2));
+    expect(windowAround(hourly, T0, 2)).toEqual(hourly.slice(0, 2));
     expect(windowAround(hourly, T0 - 10 * HOUR, 2)).toEqual([]);
   });
 
@@ -158,7 +162,7 @@ describe("windowAround", () => {
     const twoDaysLater = T0 + 48 * HOUR;
 
     expect(windowAround(steady, twoDaysLater, 24)).toEqual([
-      { at: twoDaysLater - 24 * HOUR, value: 253.336 },
+      { at: twoDaysLater - 12 * HOUR, value: 253.336 },
     ]);
   });
 });

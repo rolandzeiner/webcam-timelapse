@@ -10,7 +10,7 @@
  * Pure module — takes numbers, returns an SVG template.
  */
 
-import { nothing, svg, type SVGTemplateResult } from "lit";
+import { svg, type SVGTemplateResult } from "lit";
 
 import type { HistoryPoint } from "./overlay-history";
 
@@ -20,9 +20,9 @@ const PADDING = 3;
 
 export interface SparklineOptions {
   points: HistoryPoint[];
-  /** Epoch ms of the playhead, drawn as a vertical marker at the right edge. */
+  /** Epoch ms of the playhead, drawn as a vertical marker down the middle. */
   at: number;
-  /** Hours of history behind the playhead; sets the horizontal scale. */
+  /** Window width in hours, centred on the playhead; sets the horizontal scale. */
   hours: number;
   color: string;
   /** Accessible summary; the SVG is otherwise aria-hidden. */
@@ -36,12 +36,6 @@ export interface SparklineOptions {
    * one that moved a metre. Absent or 0, no floor is applied.
    */
   quantum?: number;
-  /**
-   * Milliseconds after which the held-forward tail is drawn as an
-   * estimate rather than as measurement. From `seriesStats`, so the chart
-   * and the dimmed numeric readout agree on what counts as stale.
-   */
-  staleAfter?: number;
 }
 
 /** The smallest 1-2-5 × 10^k value at or above `raw`. */
@@ -79,18 +73,22 @@ export function extentOf(points: HistoryPoint[]): number {
  * anchor point is usually the single point in question.
  */
 export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
-  const { points, at, hours, color, label, quantum = 0, staleAfter } = options;
+  const { points, at, hours, color, label, quantum = 0 } = options;
   if (points.length === 0) return null;
 
-  // The window trails the playhead rather than straddling it. `hours` is
-  // documented as "history behind the playhead", and for a wide window
-  // the difference is the whole chart: a centred 720h window spent half
-  // its width on a future that, at live, is always the flat hold-forward
-  // line — so a slow gauge read as frozen while showing only 15 of the
-  // 30 days it was asked for.
-  const t1 = at;
-  const span = hours * 3_600_000 || 1;
-  const t0 = t1 - span;
+  // Centred on the playhead, which is where the marker sits.
+  //
+  // A trailing window is defensible on paper — it doubles the history on
+  // screen and spends no width on a future that is empty at live. On this
+  // card it is the wrong call. The chart belongs to a scrubber: the
+  // marker is the moment you are looking at, and putting it in the middle
+  // is what makes the picture, the number and the line read as one
+  // instrument. Reviewing an archive, the half ahead of the marker is the
+  // most useful half — it is what happened next.
+  const half = (hours * 3_600_000) / 2;
+  const t0 = at - half;
+  const t1 = at + half;
+  const span = t1 - t0 || 1;
 
   let min = Infinity;
   let max = -Infinity;
@@ -163,25 +161,29 @@ export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
       commands.push(`H ${px.toFixed(1)}`, `V ${py.toFixed(1)}`);
     }
   });
-  // The hold-forward is its own path, not the last leg of this one.
+  // Held flat to the end of the window, in the same stroke.
   //
-  // Everything up to the final reading is measurement. From there to the
-  // playhead is the hold-last-known rule being applied forward, and how
-  // much to trust it depends entirely on how long ago that reading was.
-  // Drawn as one continuous stroke there was no way to tell a value taken
-  // a minute ago from one taken three days ago — the chart asserting more
-  // than it knows, which is the thing the no-interpolation rule exists to
-  // prevent, quietly dropped at the right-hand edge.
+  // A gauge that has not reported since the last reading is not a gap in
+  // the data — under hold-last-known its value is exactly that reading,
+  // and that is what the number beside the chart shows too. Drawing the
+  // held part as a dashed or faded line said "something is missing here"
+  // about the ordinary behaviour of any slow sensor, and made a working
+  // chart look broken. It is the last recorded value; draw it as one.
   const last = points[points.length - 1]!;
-  const lastX = x(last.at);
-  const lastY = y(last.value);
-  const held = at > last.at ? `M ${lastX.toFixed(1)} ${lastY.toFixed(1)} H ${x(at).toFixed(1)}` : "";
-  const stale = staleAfter !== undefined && at - last.at > staleAfter;
+  commands.push(`H ${x(t1).toFixed(1)}`);
 
-  // The playhead marker is gone: the window is trailing, so x(at) always
-  // evaluated to the right edge of the box. A full-height line permanently
-  // on the border said nothing the border did not, and the ink is better
-  // spent on the scale caption beside the chart.
+  const playheadX = x(at);
+  // Scan back rather than filter: `windowAround` only ever hands over
+  // points at or before `at`, but this module is also called directly,
+  // and a copy of the window per row per frame is not free at 64x.
+  let current = last;
+  for (let i = points.length - 1; i >= 0; i--) {
+    if (points[i]!.at <= at) {
+      current = points[i]!;
+      break;
+    }
+  }
+
   return svg`
     <svg
       class="spark"
@@ -198,20 +200,18 @@ export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
         stroke-linejoin="round"
         vector-effect="non-scaling-stroke"
       />
-      ${held
-        ? svg`<path
-            class="spark-held"
-            d=${held}
-            fill="none"
-            stroke=${color}
-            stroke-width="1.5"
-            stroke-dasharray=${stale ? "2 2" : "0"}
-            opacity=${stale ? "0.6" : "1"}
-            vector-effect="non-scaling-stroke"
-          />`
-        : nothing}
+      <line
+        x1=${playheadX.toFixed(1)}
+        y1="0"
+        x2=${playheadX.toFixed(1)}
+        y2=${HEIGHT}
+        stroke="currentColor"
+        stroke-width="1"
+        opacity="0.5"
+        vector-effect="non-scaling-stroke"
+      />
       <path
-        d="M ${lastX.toFixed(1)} ${lastY.toFixed(1)} L ${lastX.toFixed(1)} ${lastY.toFixed(1)}"
+        d="M ${playheadX.toFixed(1)} ${y(current.value).toFixed(1)} L ${playheadX.toFixed(1)} ${y(current.value).toFixed(1)}"
         stroke=${color}
         stroke-width="5"
         stroke-linecap="round"

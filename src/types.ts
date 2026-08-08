@@ -346,7 +346,7 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   speed?: number;
   show_dayticks?: boolean;
   show_graph?: boolean;
-  /** Hours of history shown behind the playhead. */
+  /** Width of the sparkline's window in hours, centred on the playhead. */
   graph_hours?: number;
   /**
    * The right-hand readings block. Empty by default — the card is not

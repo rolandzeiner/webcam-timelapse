@@ -287,12 +287,12 @@ export function stalenessThreshold(points: HistoryPoint[], floorMs = 5_400_000):
 }
 
 /**
- * Points inside the window of `hours` ending at `at`, for the sparkline —
- * plus the reading already in effect when the window opens.
+ * Points inside a window centred on `at`, for the sparkline — plus the
+ * reading already in effect when the window opens.
  *
- * Trailing, not centred: `graph_hours` is documented as history *behind*
- * the playhead, and it has to match the scale `sparkline` draws or the
- * two disagree about which points are on canvas.
+ * Centred to match the scale `sparkline` draws. The two have to agree
+ * about which points are on canvas, so this is not an independent
+ * choice — see the framing note there.
  *
  * That anchor carries more weight than it looks. The series is step /
  * hold-last-known and the recorder stores only *changes*, so a slow gauge
@@ -314,8 +314,9 @@ export function windowAround(
   at: number,
   hours: number,
 ): HistoryPoint[] {
-  const to = at;
-  const from = to - hours * 3_600_000;
+  const half = (hours * 3_600_000) / 2;
+  const from = at - half;
+  const to = at + half;
 
   const inside = points.filter((p) => p.at >= from && p.at <= to);
 

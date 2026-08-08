@@ -378,7 +378,7 @@ export class WebcamTimelapseCard extends LitElement {
       if (row.time_attribute) timeAttributes[row.entity] = row.time_attribute;
     }
 
-    // The whole graph window sits behind the playhead, and the playhead
+    // Half of a graph window sits behind the playhead, and the playhead
     // can be parked on the oldest frame in the archive. A row asking for
     // a window wider than the archive would otherwise get a graph that
     // truncates at the fetch boundary instead of filling.
@@ -394,7 +394,7 @@ export class WebcamTimelapseCard extends LitElement {
         // Cover the whole archive so scrubbing to the oldest frame still
         // resolves a reading; +1 day of slack for the retention boundary.
         days:
-          (this.index.retention_days || 14) + 1 + Math.ceil(graphHours / 24),
+          (this.index.retention_days || 14) + 1 + Math.ceil(graphHours / 48),
         timeAttributes,
       },
     );
@@ -1108,7 +1108,6 @@ export class WebcamTimelapseCard extends LitElement {
             color,
             label: `${name} history`,
             quantum: stats.quantum,
-            staleAfter: stats.staleAfter,
           })
         : null;
 
