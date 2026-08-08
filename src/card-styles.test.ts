@@ -389,6 +389,33 @@ describe("readout icon alignment", () => {
   });
 });
 
+describe("sparkline scale caption", () => {
+  it("keeps the labels out of the SVG", () => {
+    // The chart is preserveAspectRatio="none", so an in-chart <text>
+    // would be stretched horizontally by whatever width the block
+    // happens to be — content-driven in the corner layout, near
+    // full-bleed in the stacked one. The caption has to be HTML.
+    const spark = cardSource.slice(cardSource.indexOf("sparkline({"));
+    expect(spark).not.toMatch(/<text/);
+    expect(cardSource).toMatch(/class="spark-scale"/);
+  });
+
+  it("pushes the two ends apart", () => {
+    // How far it moved reads against the chart's vertical extent, how
+    // long over against its horizontal one. Each label sits on the axis
+    // it describes, or neither means anything.
+    expect(declarationsFor(".spark-scale")).toMatch(
+      /justify-content:\s*space-between/,
+    );
+  });
+
+  it("does not wrap the caption onto a second line", () => {
+    // The block is sized by its content and sits over a photograph. A
+    // caption that wrapped would grow the scrim rather than truncate.
+    expect(declarationsFor(".spark-scale")).toMatch(/white-space:\s*nowrap/);
+  });
+});
+
 describe("folding a readings block away", () => {
   it("keeps the eye a large enough pointer target", () => {
     // ha-icon-button defaults to 48px, which would dwarf a block only a

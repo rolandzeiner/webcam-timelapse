@@ -20,6 +20,10 @@
   "track": {
     "label": "Position auf der Zeitleiste"
   },
+  "spark": {
+    "range": "Spanne {v}",
+    "flat": "Unverändert"
+  },
   "error": {
     "no_camera": "Bitte wähle in der Kartenkonfiguration eine Kamera aus."
   },

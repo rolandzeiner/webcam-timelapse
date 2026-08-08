@@ -58,20 +58,25 @@ import {
   fetchOverlayHistory,
   type HistoryPoint,
   resolveAt,
-  stalenessThreshold,
+  seriesStats,
   windowAround,
 } from "./overlay-history";
 import {
   checkCardVersionWS,
   renderVersionBanner,
 } from "./shared-render";
-import { sparkline } from "./sparkline";
+import { extentOf, sparkline } from "./sparkline";
 import type {
   HomeAssistant,
   LovelaceCardEditor,
   WebcamTimelapseCardConfig,
 } from "./types";
-import { prefersReducedMotion, safeImageUri } from "./utils";
+import {
+  formatExtent,
+  formatSpan,
+  prefersReducedMotion,
+  safeImageUri,
+} from "./utils";
 
 const SPEEDS = [1, 2, 4, 8, 16, 32, 64] as const;
 /** Speed a card starts at when config says nothing usable. */
@@ -1063,7 +1068,8 @@ export class WebcamTimelapseCard extends LitElement {
     const at = slot * 1000;
     const rendered = rows.map((row) => {
       const points = this.history.get(row.entity) ?? [];
-      const reading = resolveAt(points, at, stalenessThreshold(points));
+      const stats = seriesStats(points);
+      const reading = resolveAt(points, at, stats.staleAfter);
       const name =
         row.name ??
         (this.hass?.states[row.entity]?.attributes.friendly_name as
@@ -1092,16 +1098,39 @@ export class WebcamTimelapseCard extends LitElement {
       // half of the archive, and a stale one lost it entirely. Whether
       // there is anything to draw is sparkline's call, not this one's.
       const graphHours = row.graph_hours ?? this.config?.graph_hours ?? 24;
-      const graph =
-        row.graph && this.config?.show_graph !== false
-          ? sparkline({
-              points: windowAround(points, at, graphHours),
-              at,
-              hours: graphHours,
-              color,
-              label: `${name} history`,
-            })
-          : null;
+      const drawGraph = row.graph === true && this.config?.show_graph !== false;
+      const windowed = drawGraph ? windowAround(points, at, graphHours) : [];
+      const graph = drawGraph
+        ? sparkline({
+            points: windowed,
+            at,
+            hours: graphHours,
+            color,
+            label: `${name} history`,
+            quantum: stats.quantum,
+            staleAfter: stats.staleAfter,
+          })
+        : null;
+
+      // The caption is the chart's units, and without it the chart is an
+      // interval scale with no origin and no unit — redrawn every frame,
+      // per row. Two of these sit side by side over one picture with a
+      // forty-fold difference in vertical gain and a thirty-fold one in
+      // time base, both filling the same 34px box. Saying how far the
+      // gauge moved and over how long is what makes them comparable, and
+      // it is the only thing the autoscale destroys that the numeric
+      // readout beside it does not already carry.
+      const extent = graph === null ? 0 : extentOf(windowed);
+      const scale = graph === null
+        ? nothing
+        : html`<div class="spark-scale">
+            <span
+              >${extent === 0
+                ? this.t("spark.flat")
+                : this.t("spark.range", `${formatExtent(extent)}${unit ? ` ${unit}` : ""}`)}</span
+            >
+            <span>${formatSpan(graphHours)}</span>
+          </div>`;
 
       // ha-state-icon rather than a configured icon string: it resolves
       // the entity's own icon and falls back to the device-class default,
@@ -1141,7 +1170,9 @@ export class WebcamTimelapseCard extends LitElement {
               >`
             : nothing}
         </div>
-        ${graph ? html`<div class="spark-wrap">${graph}</div>` : nothing}
+        ${graph
+          ? html`<div class="spark-wrap">${graph}${scale}</div>`
+          : nothing}
       `;
     });
 

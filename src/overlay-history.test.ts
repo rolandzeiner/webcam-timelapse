@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   type HistoryPoint,
   resolveAt,
+  seriesStats,
   stalenessThreshold,
   windowAround,
 } from "./overlay-history";
-import { safeImageUri } from "./utils";
+import { formatExtent, formatSpan, safeImageUri } from "./utils";
 
 const HOUR = 3_600_000;
 const T0 = Date.UTC(2026, 7, 1, 12, 0, 0);
@@ -159,6 +160,97 @@ describe("windowAround", () => {
     expect(windowAround(steady, twoDaysLater, 24)).toEqual([
       { at: twoDaysLater - 24 * HOUR, value: 253.336 },
     ]);
+  });
+});
+
+describe("seriesStats", () => {
+  it("reads the quantum off the series' own deltas", () => {
+    const millimetres: HistoryPoint[] = Array.from({ length: 20 }, (_, i) => ({
+      at: T0 + i * HOUR,
+      value: 253.336 + i * 0.001,
+    }));
+    expect(seriesStats(millimetres).quantum).toBeCloseTo(0.001, 6);
+  });
+
+  it("survives binary floating point", () => {
+    // 253.336 − 253.335 is 0.0009999999998, and flooring that to a 1-2-5
+    // value lands a whole decade low. This is the case that makes a
+    // naive smallest-delta estimator useless on real sensor data.
+    const drifting: HistoryPoint[] = [
+      { at: T0, value: 253.335 },
+      { at: T0 + HOUR, value: 253.336 },
+      { at: T0 + 2 * HOUR, value: 253.337 },
+      { at: T0 + 3 * HOUR, value: 253.338 },
+    ];
+    expect(seriesStats(drifting).quantum).toBeCloseTo(0.001, 6);
+  });
+
+  it("ignores one hair-splitting delta among many", () => {
+    // The tenth percentile, not the minimum: a single anomalous reading
+    // would otherwise define the quantum for the whole series and defeat
+    // the floor that depends on it.
+    const mostlyWhole: HistoryPoint[] = Array.from({ length: 30 }, (_, i) => ({
+      at: T0 + i * HOUR,
+      value: 100 + i,
+    }));
+    mostlyWhole.push({ at: T0 + 30 * HOUR, value: 130.0001 });
+    expect(seriesStats(mostlyWhole).quantum).toBeGreaterThan(0.5);
+  });
+
+  it("reports no quantum for a series that never moved", () => {
+    const flat: HistoryPoint[] = [
+      { at: T0, value: 7 },
+      { at: T0 + HOUR, value: 7 },
+    ];
+    expect(seriesStats(flat).quantum).toBe(0);
+    expect(seriesStats([]).quantum).toBe(0);
+  });
+
+  it("computes once per series identity", () => {
+    // The whole point: this used to run inside the row loop on every
+    // rendered frame, sorting the entire fetched history each time.
+    expect(seriesStats(hourly)).toBe(seriesStats(hourly));
+  });
+
+  it("carries the same staleness threshold as before", () => {
+    expect(seriesStats(hourly).staleAfter).toBe(stalenessThreshold(hourly));
+  });
+});
+
+describe("formatExtent", () => {
+  it("keeps two significant digits", () => {
+    expect(formatExtent(0.009)).toBe("0.009");
+    expect(formatExtent(0.0094)).toBe("0.0094");
+    expect(formatExtent(1.234)).toBe("1.2");
+  });
+
+  it("does not eat trailing zeros outside a decimal", () => {
+    // "40".replace(/0+$/, "") is "4" — a whole order of magnitude, from
+    // a lazy strip. Worth a test of its own.
+    expect(formatExtent(40)).toBe("40");
+    expect(formatExtent(9)).toBe("9");
+  });
+
+  it("rounds large extents to whole units", () => {
+    expect(formatExtent(1234)).toBe("1234");
+  });
+
+  it("has something to say about nothing", () => {
+    expect(formatExtent(0)).toBe("0");
+    expect(formatExtent(Number.NaN)).toBe("0");
+  });
+});
+
+describe("formatSpan", () => {
+  it("picks the unit from the size of the window", () => {
+    expect(formatSpan(0.5)).toBe("30 min");
+    expect(formatSpan(24)).toBe("24 h");
+    expect(formatSpan(720)).toBe("30 d");
+  });
+
+  it("switches to days before the hours get silly", () => {
+    expect(formatSpan(47)).toBe("47 h");
+    expect(formatSpan(48)).toBe("2 d");
   });
 });
 

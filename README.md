@@ -233,6 +233,37 @@ recorder only stores changes, so such a window can be genuinely empty — the ca
 carries the reading that was already in effect into it and holds the line flat,
 rather than dropping the graph and implying the sensor is dead.
 
+### Reading the charts
+
+Each chart is scaled to whatever happened inside its own window, so the line
+shows you the shape of the last however-many hours and nothing about how big
+that shape is. Two labels underneath supply the rest: how far the gauge moved,
+and over how long.
+
+```
+Range 0.009 m                    30 d
+```
+
+Without them a millimetre of groundwater and half a metre of river draw the
+same picture. Read the shape off the line and the size off the label.
+
+**Set `decimals` to what the sensor actually resolves** on any row with a chart.
+A groundwater gauge reporting millimetres but printed at one decimal shows the
+same number for a month while the chart beside it climbs — the number and the
+chart end up telling different stories, and the number is the one you will
+believe. `decimals: 3` puts them back in agreement.
+
+Very small movements are drawn small. The card works out the finest step a
+sensor actually reports and refuses to stretch one or two of them across the
+full height of the box, so a gauge idling on its last digit looks like it is
+idling rather than like it is swinging.
+
+The line runs solid to the last real measurement, then flat from there to the
+moment you are looking at. If that reading is old enough to count as stale, the
+flat part is dashed — the same threshold that dims the number above it. A dot
+marks the measurement itself, so you can always see how much of the line was
+measured and how much is being held.
+
 `overlay_title` sits above the readings as a heading for the block. Leaving it
 empty or omitting it renders nothing, which is the default look.
 
@@ -259,8 +290,9 @@ corner whether or not a second block is beside it. A card with only
 
 On a narrow card the two stack at the top of the picture instead, with the
 right-hand block above the left one — there is no room for two blocks and the
-playback controls along the bottom edge. Sparklines are hidden at that width,
-as they are for a single block.
+playback controls along the bottom edge. Sparklines stay: a chart that vanished
+at some widths read as a dead sensor, which costs more than a cramped chart
+does.
 
 Use `time_attribute` for sensors whose real measurement time lives in an
 attribute. It is off by default because asking for attributes makes the

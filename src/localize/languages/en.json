@@ -20,6 +20,10 @@
   "track": {
     "label": "Timeline position"
   },
+  "spark": {
+    "range": "Range {v}",
+    "flat": "No change"
+  },
   "error": {
     "no_camera": "You need to pick a camera in the card configuration."
   },

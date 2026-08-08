@@ -326,6 +326,26 @@ export const cardStyles = css`
     height: 34px;
   }
 
+  /* The chart's units. Lives in HTML rather than inside the SVG because
+     the SVG is preserveAspectRatio="none" — an in-chart <text> would be
+     stretched horizontally by whatever width the block happens to be, and
+     that width is content-driven in the corner layout and near
+     full-bleed in the stacked one.
+
+     Ends pushed apart: how far it moved reads against the chart's
+     vertical extent, how long over reads against its horizontal one, so
+     each label sits on the axis it describes. */
+  .spark-scale {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 1px;
+    font-size: var(--ha-font-size-xs, 0.7rem);
+    line-height: 1.2;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+  }
+
   .readout-at {
     font-size: var(--ha-font-size-xs, 0.7rem);
     color: rgba(255, 255, 255, 0.6);

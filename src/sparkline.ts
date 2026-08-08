@@ -10,7 +10,7 @@
  * Pure module — takes numbers, returns an SVG template.
  */
 
-import { svg, type SVGTemplateResult } from "lit";
+import { nothing, svg, type SVGTemplateResult } from "lit";
 
 import type { HistoryPoint } from "./overlay-history";
 
@@ -27,6 +27,41 @@ export interface SparklineOptions {
   color: string;
   /** Accessible summary; the SVG is otherwise aria-hidden. */
   label: string;
+  /**
+   * The smallest change the series resolves, from `seriesStats`.
+   *
+   * Floors the plotted range. Without it the y scale is degenerate: any
+   * non-zero variation, however small, is stretched to the full height of
+   * the box, so a gauge jittering on its last digit is drawn exactly like
+   * one that moved a metre. Absent or 0, no floor is applied.
+   */
+  quantum?: number;
+  /**
+   * Milliseconds after which the held-forward tail is drawn as an
+   * estimate rather than as measurement. From `seriesStats`, so the chart
+   * and the dimmed numeric readout agree on what counts as stale.
+   */
+  staleAfter?: number;
+}
+
+/** The smallest 1-2-5 × 10^k value at or above `raw`. */
+function niceStep(raw: number): number {
+  if (!Number.isFinite(raw) || raw <= 0) return 1;
+  const decade = Math.pow(10, Math.floor(Math.log10(raw)));
+  const leading = raw / decade;
+  return (leading > 5 ? 10 : leading > 2 ? 5 : leading > 1 ? 2 : 1) * decade;
+}
+
+/** How far the series actually moved inside the window. */
+export function extentOf(points: HistoryPoint[]): number {
+  if (points.length === 0) return 0;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const point of points) {
+    if (point.value < min) min = point.value;
+    if (point.value > max) max = point.value;
+  }
+  return max - min;
 }
 
 /**
@@ -44,7 +79,7 @@ export interface SparklineOptions {
  * anchor point is usually the single point in question.
  */
 export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
-  const { points, at, hours, color, label } = options;
+  const { points, at, hours, color, label, quantum = 0, staleAfter } = options;
   if (points.length === 0) return null;
 
   // The window trails the playhead rather than straddling it. `hours` is
@@ -63,19 +98,57 @@ export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
     if (point.value < min) min = point.value;
     if (point.value > max) max = point.value;
   }
-  // A flat series has zero range. Dividing by it would send every point
-  // to Infinity and the line would vanish, and scaling against a floor of
-  // 1 pins the line to the bottom of the box — which reads as "bottomed
-  // out" rather than "unchanged". Centring is the honest rendering.
-  const flat = max === min;
-  const range = max - min;
+  const observed = max - min;
+  const mid = (min + max) / 2;
+
+  // Floor the plotted range at four quantisation steps.
+  //
+  // Scaling to the window's own extremes makes rendered amplitude a step
+  // function of real variation: zero for a flat series, full height for
+  // every other one, with nothing between. A groundwater gauge whose
+  // window holds a single 1 mm tick was drawn at the same height as a
+  // river that swung 40 cm — the same ink for a four-hundredth of the
+  // movement. Four steps means full height starts to mean "at least four
+  // distinguishable levels", so the picture and the last printed digit
+  // finally agree about whether anything happened.
+  //
+  // The relative term keeps float noise on a large-magnitude sensor from
+  // blowing the domain open; 253 m of datum offset is a lot of mantissa.
+  const floor = Math.max(4 * quantum, Math.abs(mid) * 1e-9);
+  const wanted = Math.max(observed, floor) || 1;
+
+  let lo = mid - wanted / 2;
+  let hi = mid + wanted / 2;
+
+  // Round outward to 1-2-5 bounds, so the scale only moves when the data
+  // crosses a round number instead of on every frame.
+  //
+  // Recomputing the domain from the window extremes each frame means an
+  // extreme falling off the left edge instantly rescales everything still
+  // on screen. During replay the viewer sees the gauge moving and the
+  // axis moving at once, with no way to tell them apart — a 40 cm peak
+  // leaving a window can change every remaining point's height five-fold
+  // between one frame and the next. Rounding also stops the line touching
+  // both edges every time, which makes how much of the box it fills mean
+  // something.
+  //
+  // A genuinely flat series skips this and stays exactly centred: it is
+  // the one case where the midpoint is the whole message.
+  if (observed > 0) {
+    const step = niceStep(wanted / 4);
+    lo = Math.floor(lo / step) * step;
+    hi = Math.ceil(hi / step) * step;
+    if (!(hi > lo)) {
+      lo = mid - wanted / 2;
+      hi = mid + wanted / 2;
+    }
+  }
+  const range = hi - lo || 1;
 
   const x = (time: number): number =>
     PADDING + ((time - t0) / span) * (WIDTH - PADDING * 2);
   const y = (value: number): number =>
-    flat
-      ? HEIGHT / 2
-      : HEIGHT - PADDING - ((value - min) / range) * (HEIGHT - PADDING * 2);
+    HEIGHT - PADDING - ((value - lo) / range) * (HEIGHT - PADDING * 2);
 
   // Step, not a smooth curve. These are discrete readings held until the
   // next one; a curve through them would imply intermediate values that
@@ -90,12 +163,25 @@ export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
       commands.push(`H ${px.toFixed(1)}`, `V ${py.toFixed(1)}`);
     }
   });
+  // The hold-forward is its own path, not the last leg of this one.
+  //
+  // Everything up to the final reading is measurement. From there to the
+  // playhead is the hold-last-known rule being applied forward, and how
+  // much to trust it depends entirely on how long ago that reading was.
+  // Drawn as one continuous stroke there was no way to tell a value taken
+  // a minute ago from one taken three days ago — the chart asserting more
+  // than it knows, which is the thing the no-interpolation rule exists to
+  // prevent, quietly dropped at the right-hand edge.
   const last = points[points.length - 1]!;
-  commands.push(`H ${x(t1).toFixed(1)}`);
+  const lastX = x(last.at);
+  const lastY = y(last.value);
+  const held = at > last.at ? `M ${lastX.toFixed(1)} ${lastY.toFixed(1)} H ${x(at).toFixed(1)}` : "";
+  const stale = staleAfter !== undefined && at - last.at > staleAfter;
 
-  const playheadX = x(at);
-  const playheadValue = points.filter((p) => p.at <= at).pop() ?? last;
-
+  // The playhead marker is gone: the window is trailing, so x(at) always
+  // evaluated to the right edge of the box. A full-height line permanently
+  // on the border said nothing the border did not, and the ink is better
+  // spent on the scale caption beside the chart.
   return svg`
     <svg
       class="spark"
@@ -112,21 +198,24 @@ export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
         stroke-linejoin="round"
         vector-effect="non-scaling-stroke"
       />
-      <line
-        x1=${playheadX.toFixed(1)}
-        y1="0"
-        x2=${playheadX.toFixed(1)}
-        y2=${HEIGHT}
-        stroke="currentColor"
-        stroke-width="1"
-        opacity="0.5"
+      ${held
+        ? svg`<path
+            class="spark-held"
+            d=${held}
+            fill="none"
+            stroke=${color}
+            stroke-width="1.5"
+            stroke-dasharray=${stale ? "2 2" : "0"}
+            opacity=${stale ? "0.6" : "1"}
+            vector-effect="non-scaling-stroke"
+          />`
+        : nothing}
+      <path
+        d="M ${lastX.toFixed(1)} ${lastY.toFixed(1)} L ${lastX.toFixed(1)} ${lastY.toFixed(1)}"
+        stroke=${color}
+        stroke-width="5"
+        stroke-linecap="round"
         vector-effect="non-scaling-stroke"
-      />
-      <circle
-        cx=${playheadX.toFixed(1)}
-        cy=${y(playheadValue.value).toFixed(1)}
-        r="2.5"
-        fill=${color}
       />
     </svg>
   `;
