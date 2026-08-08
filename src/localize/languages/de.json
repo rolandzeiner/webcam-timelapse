@@ -34,7 +34,7 @@
     "title": "Titel",
     "show_dayticks": "Tagesmarkierungen anzeigen",
     "show_graph": "Diagramme anzeigen",
-    "show_sun": "Nacht in Diagrammen markieren",
+    "show_sun": "Nacht markieren",
     "playback": "Wiedergabe",
     "autoplay": "Automatisch abspielen",
     "speed": "Geschwindigkeit",
@@ -61,7 +61,7 @@
       "overlay_title": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
       "overlay_title_left": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
       "show_icon": "Verwendet das Symbol der Entität aus Home Assistant.",
-      "show_sun": "Hinterlegt die Stunden zwischen Sonnenuntergang und Sonnenaufgang, basierend auf deinem Home-Assistant-Standort. Wird bei zu breiten Zeitfenstern ausgeblendet."
+      "show_sun": "Hinterlegt die Stunden zwischen Sonnenuntergang und Sonnenaufgang in den Diagrammen und in der Zeitleiste, basierend auf deinem Home-Assistant-Standort. Wird ausgeblendet, sobald die Streifen zu fein werden."
     },
     "deflicker": "Helligkeit glätten",
     "show_icon": "Symbol anzeigen",

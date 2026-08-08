@@ -294,14 +294,14 @@ describe("sparkline", () => {
 
   it("shades the night behind the line", () => {
     const points: HistoryPoint[] = [{ at: T0 - 6 * HOUR, value: 253.336 }];
-    const night = { from: T0 - 10 * HOUR, to: T0 - 2 * HOUR };
+    // Fractions of the window, which is what nightBands hands over.
     const drawn = sparkline({
       points,
       at: T0,
       hours: 24,
       color: "#20b2aa",
       label: "test",
-      nights: [night],
+      nights: [{ left: 0.1, width: 0.3 }],
     });
 
     expect(nightBandsOf(drawn)).toBe(1);
@@ -311,27 +311,25 @@ describe("sparkline", () => {
     expect(nightIsBehindTheLine(drawn)).toBe(true);
   });
 
-  it("drops the bands when they are too narrow to read", () => {
-    // Thirty nights across a 30-day window is two units each — hatching
-    // in front of the data rather than context behind it. The check is on
-    // the widest band, not on the window in hours, so it holds at any
-    // latitude including where a night runs twenty hours.
+  it("draws exactly the bands it is handed", () => {
+    // Whether a window is too wide to shade is nightBands' judgement, not
+    // this module's — one definition, so the chart and the scrubber
+    // cannot come to different conclusions. Here that means no filtering:
+    // what arrives gets drawn.
     const points: HistoryPoint[] = [{ at: T0 - 6 * HOUR, value: 253.336 }];
-    const nights = Array.from({ length: 30 }, (_, i) => ({
-      from: T0 - (30 - i) * 24 * HOUR,
-      to: T0 - (30 - i) * 24 * HOUR + 9 * HOUR,
-    }));
-
-    const wide = sparkline({
-      points, at: T0, hours: 24, color: "#20b2aa", label: "test",
-      nights: [{ from: T0 - 10 * HOUR, to: T0 - 2 * HOUR }],
+    const drawn = sparkline({
+      points,
+      at: T0,
+      hours: 24,
+      color: "#20b2aa",
+      label: "test",
+      nights: [
+        { left: 0, width: 0.2 },
+        { left: 0.5, width: 0.2 },
+      ],
     });
-    const dense = sparkline({
-      points, at: T0, hours: 720, color: "#20b2aa", label: "test", nights,
-    });
 
-    expect(nightBandsOf(wide)).toBe(1);
-    expect(nightBandsOf(dense)).toBe(0);
+    expect(nightBandsOf(drawn)).toBe(2);
   });
 
   it("widens the time scale with the hours option", () => {

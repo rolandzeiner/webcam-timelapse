@@ -174,6 +174,56 @@ export function nightSpans(
   return clip(spans, from, to);
 }
 
+/**
+ * A night span as a fraction of the window it was asked about.
+ *
+ * Fractions rather than pixels or percent, because the two things that
+ * draw these — a 234-unit viewBox and a full-width track — agree on
+ * nothing else.
+ */
+export interface NightBand {
+  /** 0 at the start of the window, 1 at the end. */
+  left: number;
+  width: number;
+}
+
+/**
+ * Narrowest a band may be drawn, as a fraction of the width.
+ *
+ * Below roughly this the bands stop reading as night and start reading
+ * as hatching over whatever they sit behind: thirty nights across thirty
+ * days is a band every few pixels. One definition for both the chart and
+ * the scrubber, so the two cannot drift into disagreeing about when a
+ * window is too wide to shade.
+ */
+export const MIN_NIGHT_FRACTION = 4 / 234;
+
+/**
+ * Night across `[from, to]`, ready to position, or nothing when the
+ * window is too wide for the bands to mean anything.
+ *
+ * The check is on the widest band rather than on the window's length, so
+ * it calibrates itself — it holds at a latitude where a night runs
+ * twenty hours just as well as at one where it runs eight.
+ */
+export function nightBands(
+  from: number,
+  to: number,
+  latitude: number,
+  longitude: number,
+): NightBand[] {
+  const span = to - from;
+  if (!(span > 0)) return [];
+
+  const bands = nightSpans(from, to, latitude, longitude).map((night) => ({
+    left: (night.from - from) / span,
+    width: (night.to - night.from) / span,
+  }));
+
+  const widest = bands.reduce((most, band) => Math.max(most, band.width), 0);
+  return widest >= MIN_NIGHT_FRACTION ? bands : [];
+}
+
 /** Append, merging into the previous span when the two touch. */
 function add(spans: NightSpan[], from: number, to: number): void {
   if (to <= from) return;

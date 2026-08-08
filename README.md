@@ -146,7 +146,7 @@ autoplay: false
 speed: 8                 # 1 | 2 | 4 | 8 | 16 | 32 | 64 (default 32)
 show_dayticks: true
 show_graph: true
-show_sun: false          # shade night behind the graphs
+show_sun: false          # shade night behind the graphs and the scrubber
 graph_hours: 24
 deflicker: 50            # 0 turns it off
 entities: []
@@ -274,8 +274,10 @@ speeds during playback, and the slower one reads as stuck rather than as slow.
 
 ### Night on the charts
 
-`show_sun: true` shades the hours between sunset and sunrise behind every
-chart, so a dip in the readings can be read against whether it was dark.
+`show_sun: true` shades the hours between sunset and sunrise behind every chart
+**and behind the scrubber**, so a dip in the readings can be read against
+whether it was dark, and the dark stretches of the archive are visible before
+you scrub into them.
 
 ```yaml
 show_sun: true
@@ -293,9 +295,13 @@ that, but it is commonly excluded from the recorder for being chatty, and a
 card that shaded the recent half of a window and left the older half blank
 would look broken for no visible reason.
 
-The shading disappears on wide windows. Thirty nights across thirty days is a
-band every few pixels, which reads as hatching over the chart rather than as
-night behind it.
+The shading disappears when the bands get too fine. Thirty nights across thirty
+days is a band every few pixels, which reads as hatching over the chart rather
+than as night behind it — so a wide `graph_hours`, or an archive spanning
+months, drops it rather than turning the chart into a comb.
+
+It follows `show_sun` alone, not `show_dayticks`: turning the ruler off says
+nothing about wanting the dark stretches unmarked.
 
 `overlay_title` sits above the readings as a heading for the block. Leaving it
 empty or omitting it renders nothing, which is the default look.

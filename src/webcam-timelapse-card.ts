@@ -66,7 +66,7 @@ import {
   renderVersionBanner,
 } from "./shared-render";
 import { extentOf, sparkline } from "./sparkline";
-import { type NightSpan, nightSpans } from "./sun";
+import { type NightBand, nightBands } from "./sun";
 import type {
   HomeAssistant,
   LovelaceCardEditor,
@@ -137,7 +137,7 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private folded = new Set<ReadoutSide>();
 
   /** Not @state: derived from the playhead, never a reason to re-render. */
-  private nightCache?: { key: string; spans: NightSpan[] };
+  private nightCache?: { key: string; bands: NightBand[] };
 
   private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
@@ -1207,20 +1207,32 @@ export class WebcamTimelapseCard extends LitElement {
    * only changes when the playhead does. Rebuilding it per row per frame
    * would repeat the same work six times over.
    */
-  private nightsAround(at: number, hours: number): NightSpan[] {
+  private nightsAround(at: number, hours: number): NightBand[] {
     const half = (hours * 3_600_000) / 2;
+    return this.nightsBetween(at - half, at + half);
+  }
+
+  /**
+   * Night across an arbitrary window, memoised on the window itself.
+   *
+   * Every graphed row asks for the same window at the same moment, and
+   * the scrubber asks for the archive's, so the cache key is the window
+   * and not the caller. One entry is enough in practice: the rows all
+   * share a window and the scrubber's changes only when the archive does.
+   */
+  private nightsBetween(from: number, to: number): NightBand[] {
     const latitude = this.hass?.config?.latitude;
     const longitude = this.hass?.config?.longitude;
     if (latitude === undefined || longitude === undefined) return [];
 
-    const key = `${at}|${hours}|${latitude}|${longitude}`;
+    const key = `${from}|${to}|${latitude}|${longitude}`;
     if (this.nightCache?.key !== key) {
       this.nightCache = {
         key,
-        spans: nightSpans(at - half, at + half, latitude, longitude),
+        bands: nightBands(from, to, latitude, longitude),
       };
     }
-    return this.nightCache.spans;
+    return this.nightCache.bands;
   }
 
   /**
@@ -1392,6 +1404,17 @@ export class WebcamTimelapseCard extends LitElement {
       ? this.rulerFor()
       : { days: [] as DayTick[], times: [] as TimeTick[] };
 
+    // Independent of show_dayticks: night is context for the footage, not
+    // part of the ruler, and someone who turned the ruler off has not
+    // said anything about wanting the dark stretches unmarked.
+    const nights =
+      this.config?.show_sun === true && this.index.t0 !== null
+        ? this.nightsBetween(
+            this.index.t0 * 1000,
+            (this.index.t0 + last * this.index.step) * 1000,
+          )
+        : [];
+
     return html`
       <div class="timeline">
         ${ticks
@@ -1407,6 +1430,19 @@ export class WebcamTimelapseCard extends LitElement {
           : nothing}
 
         <div class="track">
+          ${nights.length > 0
+            ? html`<div class="nights" aria-hidden="true">
+                ${nights.map(
+                  (band) =>
+                    html`<span
+                      class="night"
+                      style="left:${(band.left * 100).toFixed(3)}%;width:${(
+                        band.width * 100
+                      ).toFixed(3)}%"
+                    ></span>`,
+                )}
+              </div>`
+            : nothing}
           ${ticks
             ? html`<div class="marks" aria-hidden="true">
                 ${times.map(

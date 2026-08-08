@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { nightSpans } from "./sun";
+import { nightBands, nightSpans } from "./sun";
 
 const DAY = 86_400_000;
 
@@ -106,5 +106,74 @@ describe("nightSpans", () => {
     expect(nightSpans(now, now + DAY, Number.NaN, 15)).toEqual([]);
     // Wider than any archive; the loop guard rather than a real answer.
     expect(nightSpans(now, now + 900 * DAY, WIESELBURG.lat, WIESELBURG.lon)).toEqual([]);
+  });
+});
+
+describe("nightBands", () => {
+  const NOON = Date.parse("2026-08-08T12:00:00Z");
+
+  it("positions each band as a fraction of the window", () => {
+    const bands = nightBands(
+      NOON - DAY,
+      NOON + DAY,
+      WIESELBURG.lat,
+      WIESELBURG.lon,
+    );
+
+    expect(bands.length).toBeGreaterThan(0);
+    for (const band of bands) {
+      expect(band.left).toBeGreaterThanOrEqual(0);
+      expect(band.width).toBeGreaterThan(0);
+      expect(band.left + band.width).toBeLessThanOrEqual(1.000001);
+    }
+  });
+
+  it("gives roughly a third of a summer window to night", () => {
+    const bands = nightBands(
+      NOON - DAY,
+      NOON + DAY,
+      WIESELBURG.lat,
+      WIESELBURG.lon,
+    );
+    const dark = bands.reduce((sum, band) => sum + band.width, 0);
+    // Early August at 48°N: a shade over nine hours of darkness a day.
+    expect(dark).toBeGreaterThan(0.35);
+    expect(dark).toBeLessThan(0.45);
+  });
+
+  it("drops the lot when the bands would be too fine to read", () => {
+    // Thirty nights across thirty days is a band every few pixels —
+    // hatching over whatever it sits behind rather than context under it.
+    // This is the one place that judgement is made, for both the charts
+    // and the scrubber.
+    const wide = nightBands(NOON - DAY, NOON + DAY, WIESELBURG.lat, WIESELBURG.lon);
+    const dense = nightBands(
+      NOON - 90 * DAY,
+      NOON + 90 * DAY,
+      WIESELBURG.lat,
+      WIESELBURG.lon,
+    );
+
+    expect(wide.length).toBeGreaterThan(0);
+    expect(dense).toEqual([]);
+  });
+
+  it("keeps polar night as one band covering everything", () => {
+    // The merge matters more here than anywhere: unmerged, this is a row
+    // of day-wide bands whose individual widths could each fall under the
+    // legibility floor and take the whole thing off screen.
+    const midwinter = Date.parse("2026-12-21T12:00:00Z");
+    const bands = nightBands(
+      midwinter - 5 * DAY,
+      midwinter + 5 * DAY,
+      69.65,
+      18.96,
+    );
+
+    expect(bands).toEqual([{ left: 0, width: 1 }]);
+  });
+
+  it("refuses a window with no width", () => {
+    expect(nightBands(NOON, NOON, WIESELBURG.lat, WIESELBURG.lon)).toEqual([]);
   });
 });

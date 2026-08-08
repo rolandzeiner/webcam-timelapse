@@ -459,6 +459,37 @@ export const cardStyles = css`
   /* Behind the bar, not beside it. Paint order is DOM order — the marks
      render before the rail — because a z-index here would re-enter the
      stacking competition .layers exists to contain. */
+  /* Night behind the scrubber, in the same faint-band language the charts
+     use — learned once, read in both places. First child of .track, so
+     paint order puts it under the marks, the rail and the fill without
+     anyone reaching for z-index.
+
+     Deliberately not a curve of solar elevation. A sine would be prettier
+     and would say less: the scrubber is a control, and what it owes the
+     viewer is which stretches of the archive are dark frames not worth
+     scrubbing to. Elevation is not that, and a ripple through a bar that
+     already carries day ticks, gap runs and a fill would read as texture
+     rather than as information. */
+  .nights {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* currentColor, not a fixed tone: unlike the overlay bands this sits on
+     the card surface, which follows the Home Assistant theme and may be
+     light. Tying it to the text colour means night darkens a light theme
+     and lifts a dark one, which is the only direction that works on
+     each. Fainter than the chart's for the same reason — there is no
+     black scrim here to compete with. */
+  .night {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: currentColor;
+    opacity: 0.07;
+  }
+
   .marks {
     position: absolute;
     inset: 0;

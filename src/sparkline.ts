@@ -13,7 +13,7 @@
 import { svg, type SVGTemplateResult } from "lit";
 
 import type { HistoryPoint } from "./overlay-history";
-import type { NightSpan } from "./sun";
+import type { NightBand } from "./sun";
 
 const WIDTH = 240;
 const HEIGHT = 44;
@@ -38,25 +38,14 @@ export interface SparklineOptions {
    */
   quantum?: number;
   /**
-   * Stretches of night to shade behind the line, in epoch ms.
+   * Night to shade behind the line, as fractions of this same window.
    *
-   * Clipped to the window here, so the caller can hand over whole nights
-   * without trimming them. Empty or absent draws nothing.
+   * Already clipped and already vetted for legibility by `nightBands`,
+   * which is where that judgement lives so the chart and the scrubber
+   * cannot come to different conclusions about it.
    */
-  nights?: NightSpan[];
+  nights?: NightBand[];
 }
-
-/**
- * Narrowest a night band may be drawn, in viewBox units of 234.
- *
- * Below about this the bands stop reading as night and start reading as
- * hatching over the chart — a 30-day window puts thirty of them at two
- * units each, which is a picket fence in front of the data. The check is
- * on the widest band rather than on the window in hours so it calibrates
- * itself: it holds at any latitude, including where a "night" is twenty
- * hours long or does not end at all.
- */
-const MIN_NIGHT_WIDTH = 4;
 
 /** The smallest 1-2-5 × 10^k value at or above `raw`. */
 function niceStep(raw: number): number {
@@ -196,15 +185,11 @@ export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
   // stay on top of it. Paint order is document order — reaching for
   // z-index here would pull the chart into the stacking competition the
   // stage's own rules exist to keep it out of.
-  const bands = nights
-    .map((night) => {
-      const left = x(Math.max(night.from, t0));
-      const right = x(Math.min(night.to, t1));
-      return { left, width: right - left };
-    })
-    .filter((band) => band.width > 0);
-  const widest = bands.reduce((most, band) => Math.max(most, band.width), 0);
-  const visibleBands = widest >= MIN_NIGHT_WIDTH ? bands : [];
+  const interior = WIDTH - PADDING * 2;
+  const visibleBands = nights.map((night) => ({
+    left: PADDING + night.left * interior,
+    width: night.width * interior,
+  }));
 
   const playheadX = x(at);
   // Scan back rather than filter: `windowAround` only ever hands over

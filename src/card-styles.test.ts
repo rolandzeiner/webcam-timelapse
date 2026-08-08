@@ -389,6 +389,43 @@ describe("readout icon alignment", () => {
   });
 });
 
+describe("night shading", () => {
+  it("paints the scrubber's night under everything on the track", () => {
+    // Paint order is document order, same as the marks. A z-index here
+    // would pull the track into the stacking competition .layers exists
+    // to contain.
+    const track = cardSource.slice(cardSource.indexOf('<div class="track">'));
+    expect(track.indexOf('class="nights"')).toBeLessThan(
+      track.indexOf('class="marks"'),
+    );
+    expect(track.indexOf('class="nights"')).toBeLessThan(
+      track.indexOf('class="rail"'),
+    );
+  });
+
+  it("does not tie night to the ruler toggle", () => {
+    // Different questions. Someone who turned the day markers off has
+    // said nothing about wanting the dark stretches unmarked.
+    expect(cardSource).toMatch(
+      /const nights =\s*this\.config\?\.show_sun === true/,
+    );
+  });
+
+  it("keeps night off unless it is asked for", () => {
+    // Strict === true, so an absent key is off. Shading is right for a
+    // camera pointed outdoors and noise for one pointed at a wall, and
+    // the card cannot tell which it has.
+    expect(cardSource).not.toMatch(/show_sun !== false/);
+    expect(cardSource).toMatch(/show_sun: false/);
+  });
+
+  it("follows the theme's own colour on the scrubber", () => {
+    // Unlike the overlay bands this sits on the card surface, which may
+    // be light. A fixed white would vanish there.
+    expect(declarationsFor(".night")).toMatch(/background:\s*currentColor/);
+  });
+});
+
 describe("sparkline scale caption", () => {
   it("keeps the labels out of the SVG", () => {
     // The chart is preserveAspectRatio="none", so an in-chart <text>
