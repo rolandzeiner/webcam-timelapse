@@ -20,9 +20,9 @@ const PADDING = 3;
 
 export interface SparklineOptions {
   points: HistoryPoint[];
-  /** Epoch ms of the playhead, drawn as a vertical marker. */
+  /** Epoch ms of the playhead, drawn as a vertical marker at the right edge. */
   at: number;
-  /** Window width in hours; sets the horizontal scale. */
+  /** Hours of history behind the playhead; sets the horizontal scale. */
   hours: number;
   color: string;
   /** Accessible summary; the SVG is otherwise aria-hidden. */
@@ -47,10 +47,15 @@ export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
   const { points, at, hours, color, label } = options;
   if (points.length === 0) return null;
 
-  const half = (hours * 3_600_000) / 2;
-  const t0 = at - half;
-  const t1 = at + half;
-  const span = t1 - t0 || 1;
+  // The window trails the playhead rather than straddling it. `hours` is
+  // documented as "history behind the playhead", and for a wide window
+  // the difference is the whole chart: a centred 720h window spent half
+  // its width on a future that, at live, is always the flat hold-forward
+  // line — so a slow gauge read as frozen while showing only 15 of the
+  // 30 days it was asked for.
+  const t1 = at;
+  const span = hours * 3_600_000 || 1;
+  const t0 = t1 - span;
 
   let min = Infinity;
   let max = -Infinity;
@@ -58,14 +63,19 @@ export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
     if (point.value < min) min = point.value;
     if (point.value > max) max = point.value;
   }
-  // A flat series has zero range; without this the line would divide by
-  // zero and vanish. Centring it is the honest rendering of "unchanged".
-  const range = max - min || 1;
+  // A flat series has zero range. Dividing by it would send every point
+  // to Infinity and the line would vanish, and scaling against a floor of
+  // 1 pins the line to the bottom of the box — which reads as "bottomed
+  // out" rather than "unchanged". Centring is the honest rendering.
+  const flat = max === min;
+  const range = max - min;
 
   const x = (time: number): number =>
     PADDING + ((time - t0) / span) * (WIDTH - PADDING * 2);
   const y = (value: number): number =>
-    HEIGHT - PADDING - ((value - min) / range) * (HEIGHT - PADDING * 2);
+    flat
+      ? HEIGHT / 2
+      : HEIGHT - PADDING - ((value - min) / range) * (HEIGHT - PADDING * 2);
 
   // Step, not a smooth curve. These are discrete readings held until the
   // next one; a curve through them would imply intermediate values that

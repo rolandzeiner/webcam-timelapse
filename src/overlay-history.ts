@@ -115,7 +115,14 @@ export async function fetchOverlayHistory(
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         entity_ids: entityIds,
-        minimal_response: true,
+        // `minimal_response` and attributes are mutually exclusive in
+        // practice: under it the recorder emits attributes on the *first*
+        // state of each entity only (sensor is not in its
+        // NEED_ATTRIBUTE_DOMAINS), so every later row lost its
+        // `time_attribute` and fell back to last_updated without saying
+        // so — the feature worked for exactly one point in the series
+        // while still being billed the ~25× payload.
+        minimal_response: !wantsAttributes,
         no_attributes: !wantsAttributes,
         significant_changes_only: true,
       });
@@ -214,8 +221,12 @@ export function stalenessThreshold(points: HistoryPoint[], floorMs = 5_400_000):
 }
 
 /**
- * Points inside a window centred on `at`, for the sparkline — plus the
- * reading already in effect when the window opens.
+ * Points inside the window of `hours` ending at `at`, for the sparkline —
+ * plus the reading already in effect when the window opens.
+ *
+ * Trailing, not centred: `graph_hours` is documented as history *behind*
+ * the playhead, and it has to match the scale `sparkline` draws or the
+ * two disagree about which points are on canvas.
  *
  * That anchor carries more weight than it looks. The series is step /
  * hold-last-known and the recorder stores only *changes*, so a slow gauge
@@ -237,9 +248,8 @@ export function windowAround(
   at: number,
   hours: number,
 ): HistoryPoint[] {
-  const half = (hours * 3_600_000) / 2;
-  const from = at - half;
-  const to = at + half;
+  const to = at;
+  const from = to - hours * 3_600_000;
 
   const inside = points.filter((p) => p.at >= from && p.at <= to);
 

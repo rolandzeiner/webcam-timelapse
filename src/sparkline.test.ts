@@ -50,18 +50,32 @@ describe("sparkline", () => {
     expect(path).toMatch(/H [\d.]+$/);
   });
 
-  it("holds a flat series at a constant level", () => {
+  it("centres a flat series instead of pinning it to the floor", () => {
     // max === min, so the range guard kicks in. The line must stay level
-    // rather than divide by zero and vanish.
+    // rather than divide by zero and vanish — and it must sit mid-box
+    // (22 of the 44-high viewBox). Scaling against a floor of 1 put it at
+    // y=41, hard on the bottom edge, which reads as a gauge that has
+    // bottomed out rather than one that simply has not moved.
     const flat: HistoryPoint[] = [
+      { at: T0 - 2 * HOUR, value: 253.336 },
+      { at: T0 - HOUR, value: 253.336 },
       { at: T0, value: 253.336 },
-      { at: T0 + HOUR, value: 253.336 },
-      { at: T0 + 2 * HOUR, value: 253.336 },
     ];
-    const levels = levelsOf(pathOf(draw(flat, T0 + HOUR, 24)));
+    const levels = levelsOf(pathOf(draw(flat, T0, 24)));
     expect(levels.length).toBeGreaterThan(0);
-    expect(new Set(levels).size).toBe(1);
-    expect(levels.every(Number.isFinite)).toBe(true);
+    expect(levels.every((level) => level === 22)).toBe(true);
+  });
+
+  it("puts the playhead at the right edge, not the middle", () => {
+    // `graph_hours` is documented as history *behind* the playhead. A
+    // centred window spent half its width on the future — at live, always
+    // the flat hold-forward line — so a wide window showed half the
+    // history it was asked for and read as frozen next to a fast gauge.
+    const startX = (points: HistoryPoint[]): number =>
+      Number(pathOf(draw(points, T0, 24)).match(/^M ([\d.]+)/)?.[1]);
+
+    expect(startX([{ at: T0, value: 253.336 }])).toBeCloseTo(237, 0);
+    expect(startX([{ at: T0 - 24 * HOUR, value: 253.336 }])).toBeCloseTo(3, 0);
   });
 
   it("steps rather than ramping between readings", () => {
@@ -95,11 +109,16 @@ describe("sparkline", () => {
     expect(draw(points, T0, 24)).not.toBeNull();
   });
 
-  it("draws even when no reading is in effect yet", () => {
-    // The playhead sits before the gauge's first ever reading — the case
-    // for any sensor added after the archive started. There is honestly
-    // no *value* at that instant, but there is plenty of history, and the
-    // chart is the thing that shows it.
+  it("draws nothing before the gauge's first ever reading", () => {
+    // The playhead sits before the first reading — the case for a sensor
+    // added after the archive started. Under a trailing window there is
+    // honestly nothing behind the playhead: the whole series is in the
+    // future, and drawing it would show readings that had not been taken
+    // yet. No chart is the right answer, and it agrees with resolveAt.
+    //
+    // The regression this file exists for is the *steady* gauge above,
+    // where the window is empty but a value was in effect throughout —
+    // that one still draws, via the anchor.
     const points: HistoryPoint[] = [
       { at: T0, value: 253.336 },
       { at: T0 + 2 * HOUR, value: 253.34 },
@@ -107,7 +126,8 @@ describe("sparkline", () => {
     const at = T0 - HOUR;
 
     expect(resolveAt(points, at, 2 * HOUR)).toBeNull();
-    expect(draw(windowAround(points, at, 24), at, 24)).not.toBeNull();
+    expect(windowAround(points, at, 24)).toEqual([]);
+    expect(draw(windowAround(points, at, 24), at, 24)).toBeNull();
   });
 
   it("widens the time scale with the hours option", () => {
