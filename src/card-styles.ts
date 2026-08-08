@@ -195,17 +195,60 @@ export const cardStyles = css`
     left: 8px;
   }
 
+  /* Folded to the eye alone. The scrim shrinks with it — a block that
+     kept its padding would leave a dark square on the picture, which is
+     the thing folding it away was meant to clear. */
+  .readout.folded {
+    padding: 2px;
+  }
+
+  /* Heading and fold control on one line. The heading is optional, so
+     the row is justified from the end: with no title the eye still
+     lands on the block's trailing edge instead of its leading one. */
+  .readout-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+
   /* Opt-in heading for the readings block. Only rendered when the config
      carries a non-empty string, so the default look is unchanged. */
   .readout-title {
     font-size: var(--ha-font-size-s, 0.85rem);
     font-weight: var(--ha-font-weight-medium, 600);
     color: rgba(255, 255, 255, 0.95);
-    margin-bottom: 2px;
-    /* The readout block is right-aligned against the frame; a heading
-       that hugged the same edge would drift away from the labels it
-       introduces. */
+    /* Takes the slack so the eye is pushed to the far edge, and keeps
+       the heading over the labels it introduces: the block is
+       right-aligned against the frame, and a heading that hugged the
+       same edge would drift away from them. */
+    flex: 1;
     text-align: left;
+  }
+
+  /* Sized down hard from the 48px default — this sits inside an overlay
+     that is only a few rows tall, and the pill's 40px would dominate the
+     block it belongs to. 28px still clears the 24px WCAG 2.5.8 minimum.
+
+     Quiet until wanted: it matches .readout-name's weight so it reads as
+     part of the block's furniture rather than competing with the values,
+     and comes up to full white on hover and focus like the rows do. */
+  .readout-fold {
+    flex: none;
+    color: rgba(255, 255, 255, 0.75);
+    --mdc-icon-button-size: 28px;
+    --mdc-icon-size: 17px;
+  }
+
+  /* :focus-within, not :focus-visible. ha-icon-button puts outline:none
+     on its host and keeps focus on the button inside its shadow root, so
+     a :focus-visible rule aimed at the host never matches. The ring
+     itself comes from mwc-icon-button either way — this is only the
+     colour coming up to meet the hover state. */
+  .readout-fold:hover,
+  .readout-fold:focus-within {
+    color: #fff;
   }
 
   .readout-row {

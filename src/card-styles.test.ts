@@ -389,6 +389,68 @@ describe("readout icon alignment", () => {
   });
 });
 
+describe("folding a readings block away", () => {
+  it("keeps the eye a large enough pointer target", () => {
+    // ha-icon-button defaults to 48px, which would dwarf a block only a
+    // few rows tall — but shrinking it is exactly where WCAG 2.5.8 gets
+    // broken, so the floor is pinned here rather than remembered.
+    const size = Number(
+      declarationsFor(".readout-fold").match(
+        /--mdc-icon-button-size:\s*(\d+)px/,
+      )?.[1],
+    );
+    expect(size).toBeGreaterThanOrEqual(24);
+    expect(size).toBeLessThan(40);
+  });
+
+  it("sheds the block's padding once folded", () => {
+    // A folded block that kept its padding would leave a dark square on
+    // the picture — the thing folding it away was meant to clear.
+    expect(declarationsFor(".readout.folded")).toMatch(/padding:\s*2px/);
+  });
+
+  it("puts the eye on the trailing edge with or without a heading", () => {
+    // The heading is optional. Justified from the end, a title-less block
+    // still lands the eye on the block's trailing edge instead of its
+    // leading one; the title takes the slack when there is one.
+    expect(declarationsFor(".readout-head")).toMatch(
+      /justify-content:\s*flex-end/,
+    );
+    expect(declarationsFor(".readout-title")).toMatch(/flex:\s*1/);
+  });
+
+  it("names the action on the icon, not the state", () => {
+    // A visible block offers "hide": the crossed-out eye is where you are
+    // going, not where you are. The other way round is the toggle trap
+    // where the control describes itself and everyone presses it twice.
+    expect(cardSource).toMatch(
+      /folded \? "mdi:eye-outline" : "mdi:eye-off-outline"/,
+    );
+  });
+
+  it("tells assistive tech whether the block is open", () => {
+    expect(cardSource).toMatch(/aria-expanded=\$\{folded \? "false" : "true"\}/);
+  });
+
+  it("keeps the fold out of the stage's click handler", () => {
+    // .readout-fold is inside .readout but outside .readout-row, so
+    // without its own veto every fold would also open the camera's
+    // more-info dialog behind the block.
+    expect(cardSource).toMatch(/classList\.contains\("readout-fold"\)/);
+  });
+
+  it("skips the per-row work for a folded block", () => {
+    // resolveAt and windowAround run for every row on every frame, and at
+    // 32x that is the card's hottest loop. The early return is the point
+    // — a hidden block should cost nothing to play past.
+    const body = cardSource.slice(cardSource.indexOf("private renderReadout("));
+    const guard = body.indexOf("this.folded.has(group.side)");
+    const work = body.indexOf("const reading = resolveAt(");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(work);
+  });
+});
+
 describe("timeline markup order", () => {
   it("renders dates, then the bar, then clock times", () => {
     const dates = cardSource.indexOf('class="band dates"');

@@ -27,6 +27,7 @@ import {
   overlayEntities,
   overlayGroups,
   type OverlayGroup,
+  type ReadoutSide,
 } from "./overlay-groups";
 import {
   dayTicks,
@@ -118,6 +119,16 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private indexError: string | undefined;
   @state() private frameError: string | undefined;
   @state() private history = new Map<string, HistoryPoint[]>();
+  /**
+   * Readings blocks the viewer has folded away, by side.
+   *
+   * Deliberately not persisted. The blocks are an overlay on a picture,
+   * and hiding one is a "let me look at this frame" gesture rather than a
+   * setting — a card that came back folded would look broken to the next
+   * person at the dashboard, with the only clue a 24px eye in the corner.
+   * Replaced rather than mutated, because Lit compares by identity.
+   */
+  @state() private folded = new Set<ReadoutSide>();
 
   private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
@@ -1035,6 +1046,18 @@ export class WebcamTimelapseCard extends LitElement {
    * 12:05 measurement.
    */
   private renderReadout(slot: number, group: OverlayGroup): TemplateResult {
+    const classes = `readout ${group.side === "left" ? "left" : ""}`;
+
+    // Folded blocks return before any of the per-row work below. That is
+    // not just tidiness: resolveAt and windowAround run for every row on
+    // every frame, and at 32x that is the card's hottest loop. A hidden
+    // block should cost nothing to play past.
+    if (this.folded.has(group.side)) {
+      return html`<div class="${classes} folded">
+        ${this.renderFoldToggle(group.side, true)}
+      </div>`;
+    }
+
     const rows = group.entities;
 
     const at = slot * 1000;
@@ -1125,12 +1148,48 @@ export class WebcamTimelapseCard extends LitElement {
     // The side is a modifier on the same element, not a separate one:
     // .readout-row has to stay where it is for onStageClick to keep
     // telling a reading apart from the picture behind it.
-    return html`<div class="readout ${group.side === "left" ? "left" : ""}">
-      ${group.title
-        ? html`<div class="readout-title">${group.title}</div>`
-        : nothing}
+    return html`<div class=${classes}>
+      <div class="readout-head">
+        ${group.title
+          ? html`<div class="readout-title">${group.title}</div>`
+          : nothing}
+        ${this.renderFoldToggle(group.side, false)}
+      </div>
       ${rendered}
     </div>`;
+  }
+
+  /**
+   * The eye that folds a readings block away and brings it back.
+   *
+   * The icon names the state you are moving to, not the one you are in:
+   * a crossed-out eye on a visible block reads as "hide this", which is
+   * what pressing it does. Labelling it the other way round is the
+   * classic toggle trap — the control describes itself instead of its
+   * effect, and everyone presses it twice to find out.
+   *
+   * A folded block collapses to this button alone rather than vanishing.
+   * Something has to stay on the picture or the readings are gone for
+   * good, and the control that removed them is the honest handle for
+   * getting them back.
+   */
+  private renderFoldToggle(side: ReadoutSide, folded: boolean): TemplateResult {
+    const label = this.t(folded ? "actions.show_readings" : "actions.hide_readings");
+    return html`<ha-icon-button
+      class="readout-fold"
+      .label=${label}
+      aria-expanded=${folded ? "false" : "true"}
+      @click=${() => this.toggleFold(side)}
+    >
+      <ha-icon icon=${folded ? "mdi:eye-outline" : "mdi:eye-off-outline"}></ha-icon>
+    </ha-icon-button>`;
+  }
+
+  /** Replaced, not mutated — Lit's dirty check on `folded` is by identity. */
+  private toggleFold(side: ReadoutSide): void {
+    const next = new Set(this.folded);
+    if (!next.delete(side)) next.add(side);
+    this.folded = next;
   }
 
   /**
@@ -1208,7 +1267,8 @@ export class WebcamTimelapseCard extends LitElement {
       (node) =>
         node instanceof HTMLElement &&
         (node.classList.contains("controls") ||
-          node.classList.contains("readout-row")),
+          node.classList.contains("readout-row") ||
+          node.classList.contains("readout-fold")),
     );
     if (aimedElsewhere) return;
     if (this.config) this.fireMoreInfo(this.config.camera_entity);

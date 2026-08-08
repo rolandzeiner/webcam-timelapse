@@ -50,7 +50,7 @@
     "remove": "Remove",
     "helper": {
       "camera_entity": "Only cameras created by this integration have an archive to scrub.",
-      "graph_hours": "How much history the sparkline shows around the playhead.",
+      "graph_hours": "How much history the sparkline shows behind the playhead.",
       "autoplay": "Ignored when your system asks for reduced motion.",
       "deflicker": "Evens out cloud-driven brightness jumps during playback. 0 turns it off.",
       "overlay_title": "Shown above the readings. Leave empty for no heading.",
@@ -64,6 +64,8 @@
   },
   "actions": {
     "show_camera": "Show camera details",
-    "show_entity": "Show details for {v}"
+    "show_entity": "Show details for {v}",
+    "hide_readings": "Hide readings",
+    "show_readings": "Show readings"
   }
 }

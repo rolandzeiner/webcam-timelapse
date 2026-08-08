@@ -266,6 +266,17 @@ Use `time_attribute` for sensors whose real measurement time lives in an
 attribute. It is off by default because asking for attributes makes the
 history request about 25× larger.
 
+### Getting a block out of the way
+
+Every block carries an eye in its corner. Press it to fold the readings away
+and see the picture underneath, and press it again to bring them back. The
+block shrinks to the eye alone rather than disappearing, so there is always
+something to press. Each block folds on its own.
+
+Folding is not saved. Reload the dashboard and both blocks are back — a card
+that reopened folded would look broken to whoever walks up to it next, with
+one small eye as the only clue.
+
 ## Smoothing cloud flicker
 
 Passing cloud makes one frame brighter than the next, and at playback speed
