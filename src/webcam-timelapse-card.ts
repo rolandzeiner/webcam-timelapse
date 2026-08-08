@@ -66,6 +66,7 @@ import {
   renderVersionBanner,
 } from "./shared-render";
 import { extentOf, sparkline } from "./sparkline";
+import { type NightSpan, nightSpans } from "./sun";
 import type {
   HomeAssistant,
   LovelaceCardEditor,
@@ -135,6 +136,9 @@ export class WebcamTimelapseCard extends LitElement {
    */
   @state() private folded = new Set<ReadoutSide>();
 
+  /** Not @state: derived from the playhead, never a reason to re-render. */
+  private nightCache?: { key: string; spans: NightSpan[] };
+
   private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
   /**
@@ -189,6 +193,7 @@ export class WebcamTimelapseCard extends LitElement {
       speed: DEFAULT_SPEED,
       show_dayticks: true,
       show_graph: true,
+      show_sun: false,
       graph_hours: 24,
       deflicker: 50,
       ...config,
@@ -1100,6 +1105,10 @@ export class WebcamTimelapseCard extends LitElement {
       const graphHours = row.graph_hours ?? this.config?.graph_hours ?? 24;
       const drawGraph = row.graph === true && this.config?.show_graph !== false;
       const windowed = drawGraph ? windowAround(points, at, graphHours) : [];
+      const nights =
+        drawGraph && this.config?.show_sun === true
+          ? this.nightsAround(at, graphHours)
+          : [];
       const graph = drawGraph
         ? sparkline({
             points: windowed,
@@ -1108,6 +1117,7 @@ export class WebcamTimelapseCard extends LitElement {
             color,
             label: `${name} history`,
             quantum: stats.quantum,
+            nights,
           })
         : null;
 
@@ -1187,6 +1197,30 @@ export class WebcamTimelapseCard extends LitElement {
       </div>
       ${rendered}
     </div>`;
+  }
+
+  /**
+   * Night spans covering one chart's window.
+   *
+   * Memoised on the window and the location, because every graphed row on
+   * the card asks for the same span at the same moment and the answer
+   * only changes when the playhead does. Rebuilding it per row per frame
+   * would repeat the same work six times over.
+   */
+  private nightsAround(at: number, hours: number): NightSpan[] {
+    const half = (hours * 3_600_000) / 2;
+    const latitude = this.hass?.config?.latitude;
+    const longitude = this.hass?.config?.longitude;
+    if (latitude === undefined || longitude === undefined) return [];
+
+    const key = `${at}|${hours}|${latitude}|${longitude}`;
+    if (this.nightCache?.key !== key) {
+      this.nightCache = {
+        key,
+        spans: nightSpans(at - half, at + half, latitude, longitude),
+      };
+    }
+    return this.nightCache.spans;
   }
 
   /**

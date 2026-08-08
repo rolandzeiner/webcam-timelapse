@@ -146,6 +146,7 @@ autoplay: false
 speed: 8                 # 1 | 2 | 4 | 8 | 16 | 32 | 64 (default 32)
 show_dayticks: true
 show_graph: true
+show_sun: false          # shade night behind the graphs
 graph_hours: 24
 deflicker: 50            # 0 turns it off
 entities: []
@@ -270,6 +271,31 @@ The timestamp beside the number is what tells you how long ago it was taken.
 **Give every charted row the same `graph_hours`** unless you have a reason not
 to. Two charts side by side on different windows scroll past at different
 speeds during playback, and the slower one reads as stuck rather than as slow.
+
+### Night on the charts
+
+`show_sun: true` shades the hours between sunset and sunrise behind every
+chart, so a dip in the readings can be read against whether it was dark.
+
+```yaml
+show_sun: true
+```
+
+Off by default — it is the right context for a camera pointed outdoors and
+noise for one pointed at a workshop wall, and the card cannot tell which it is
+looking at.
+
+Sunrise and sunset come from the latitude and longitude in your Home Assistant
+settings, the same place the sun integration takes them from. Nothing is read
+from `sun.sun`: that entity publishes only the *next* sunrise and sunset, and
+the chart routinely asks about last Tuesday. Its recorded history would answer
+that, but it is commonly excluded from the recorder for being chatty, and a
+card that shaded the recent half of a window and left the older half blank
+would look broken for no visible reason.
+
+The shading disappears on wide windows. Thirty nights across thirty days is a
+band every few pixels, which reads as hatching over the chart rather than as
+night behind it.
 
 `overlay_title` sits above the readings as a heading for the block. Leaving it
 empty or omitting it renders nothing, which is the default look.

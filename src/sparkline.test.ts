@@ -43,6 +43,45 @@ function pathsOf(result: unknown): string[] {
 }
 
 
+/**
+ * The static text of a template and everything nested inside it.
+ *
+ * Classes are static attributes rather than interpolated values, so they
+ * live in `strings` and are invisible to a walk over `values` alone.
+ */
+function markupOf(result: unknown): string {
+  // Repeated marks arrive as an array of templates rather than as one
+  // template, so a walk that only recurses into objects carrying
+  // `values` goes straight past them.
+  if (Array.isArray(result)) return result.map(markupOf).join("");
+
+  const node = result as { strings?: readonly string[]; values?: unknown[] };
+  if (!Array.isArray(node?.values) || !node.strings) return "";
+
+  // Interleaved, not concatenated. Appending all the static text and then
+  // all the nested text reproduces the right characters in the wrong
+  // order, which silently defeats any assertion about paint order — and
+  // paint order is the whole reason the night bands sit where they do.
+  let markup = "";
+  node.strings.forEach((text, index) => {
+    markup += text;
+    const value = node.values?.[index];
+    if (value && typeof value === "object") markup += markupOf(value);
+  });
+  return markup;
+}
+
+/** How many night bands the chart drew. */
+function nightBandsOf(result: unknown): number {
+  return markupOf(result).split('class="spark-night"').length - 1;
+}
+
+/** True when the night bands are emitted before the line that sits on them. */
+function nightIsBehindTheLine(result: unknown): boolean {
+  const markup = markupOf(result);
+  return markup.indexOf('class="spark-night"') < markup.indexOf("<path");
+}
+
 /** Every `V y` command in a path, in order. */
 function levelsOf(path: string): number[] {
   return [...path.matchAll(/V (-?[\d.]+)/g)].map((m) => Number(m[1]));
@@ -251,6 +290,48 @@ describe("sparkline", () => {
 
     expect(levelsOf(fresh)).toEqual(levelsOf(long));
     expect(JSON.stringify([fresh, long])).not.toContain("2 2");
+  });
+
+  it("shades the night behind the line", () => {
+    const points: HistoryPoint[] = [{ at: T0 - 6 * HOUR, value: 253.336 }];
+    const night = { from: T0 - 10 * HOUR, to: T0 - 2 * HOUR };
+    const drawn = sparkline({
+      points,
+      at: T0,
+      hours: 24,
+      color: "#20b2aa",
+      label: "test",
+      nights: [night],
+    });
+
+    expect(nightBandsOf(drawn)).toBe(1);
+    // Behind, not over: paint order is document order, and a z-index here
+    // would pull the chart into the stacking competition it is kept out
+    // of. Context belongs under the data either way.
+    expect(nightIsBehindTheLine(drawn)).toBe(true);
+  });
+
+  it("drops the bands when they are too narrow to read", () => {
+    // Thirty nights across a 30-day window is two units each — hatching
+    // in front of the data rather than context behind it. The check is on
+    // the widest band, not on the window in hours, so it holds at any
+    // latitude including where a night runs twenty hours.
+    const points: HistoryPoint[] = [{ at: T0 - 6 * HOUR, value: 253.336 }];
+    const nights = Array.from({ length: 30 }, (_, i) => ({
+      from: T0 - (30 - i) * 24 * HOUR,
+      to: T0 - (30 - i) * 24 * HOUR + 9 * HOUR,
+    }));
+
+    const wide = sparkline({
+      points, at: T0, hours: 24, color: "#20b2aa", label: "test",
+      nights: [{ from: T0 - 10 * HOUR, to: T0 - 2 * HOUR }],
+    });
+    const dense = sparkline({
+      points, at: T0, hours: 720, color: "#20b2aa", label: "test", nights,
+    });
+
+    expect(nightBandsOf(wide)).toBe(1);
+    expect(nightBandsOf(dense)).toBe(0);
   });
 
   it("widens the time scale with the hours option", () => {

@@ -326,6 +326,17 @@ export const cardStyles = css`
     height: 34px;
   }
 
+  /* Night behind the line. Deliberately faint: it is context for the
+     reading, not a series of its own, and it has to stay readable over
+     an arbitrary photograph in both a bright frame and a dark one.
+     currentColor picks up .spark-wrap's white, so it darkens nothing —
+     it lifts the night, which is the only direction that works on a
+     scrim that is already black. */
+  .spark-night {
+    fill: currentColor;
+    opacity: 0.12;
+  }
+
   /* The chart's units. Lives in HTML rather than inside the SVG because
      the SVG is preserveAspectRatio="none" — an in-chart <text> would be
      stretched horizontally by whatever width the block happens to be, and

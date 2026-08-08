@@ -38,7 +38,12 @@ export interface HomeAssistant {
   language?: string;
   locale?: { language?: string };
   themes?: { darkMode?: boolean } & Record<string, unknown>;
-  config?: { time_zone?: string } & Record<string, unknown>;
+  config?: {
+    time_zone?: string;
+    /** The home's coordinates, as the sun integration uses them. */
+    latitude?: number;
+    longitude?: number;
+  } & Record<string, unknown>;
   localize?: (key: string, ...args: unknown[]) => string;
   callWS?<T = unknown>(msg: { type: string; [key: string]: unknown }): Promise<T>;
 }
@@ -346,6 +351,14 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   speed?: number;
   show_dayticks?: boolean;
   show_graph?: boolean;
+  /**
+   * Shade the hours between sunset and sunrise on every chart.
+   *
+   * Off by default: it is the right context for an outdoor camera and
+   * pure noise for one pointed at a workshop wall, and the card cannot
+   * tell which it is looking at.
+   */
+  show_sun?: boolean;
   /** Width of the sparkline's window in hours, centred on the playhead. */
   graph_hours?: number;
   /**
