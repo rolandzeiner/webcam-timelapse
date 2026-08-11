@@ -151,7 +151,7 @@ export const cardStyles = css`
     right: 8px;
     top: 8px;
     letter-spacing: 0.06em;
-    font-weight: var(--ha-font-weight-medium, 600);
+    font-weight: var(--ha-font-weight-medium, 500);
   }
 
   .badge.live {
@@ -217,7 +217,7 @@ export const cardStyles = css`
      carries a non-empty string, so the default look is unchanged. */
   .readout-title {
     font-size: var(--ha-font-size-s, 0.85rem);
-    font-weight: var(--ha-font-weight-medium, 600);
+    font-weight: var(--ha-font-weight-medium, 500);
     color: rgba(255, 255, 255, 0.95);
     /* Takes the slack so the eye is pushed to the far edge, and keeps
        the heading over the labels it introduces: the block is
@@ -296,7 +296,7 @@ export const cardStyles = css`
 
   .readout-value {
     margin-left: auto;
-    font-weight: var(--ha-font-weight-medium, 600);
+    font-weight: var(--ha-font-weight-medium, 500);
   }
 
   .readout-row.stale .readout-value {
