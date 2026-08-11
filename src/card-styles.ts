@@ -105,7 +105,7 @@ export const cardStyles = css`
   }
 
   .empty .detail {
-    font-size: var(--ha-font-size-s, 0.8rem);
+    font-size: var(--ha-font-size-s, 12px);
     opacity: 0.75;
     max-width: 34ch;
   }
@@ -119,7 +119,7 @@ export const cardStyles = css`
     padding: 16px;
     text-align: center;
     color: var(--wtl-muted);
-    font-size: var(--ha-font-size-m, 0.9rem);
+    font-size: var(--ha-font-size-m, 14px);
   }
 
   /* --- overlays ---------------------------------------------------- */
@@ -135,7 +135,7 @@ export const cardStyles = css`
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.55);
     color: #fff;
-    font-size: var(--ha-font-size-s, 0.8rem);
+    font-size: var(--ha-font-size-s, 12px);
     /* Digits must not shift width as the clock ticks. */
     font-variant-numeric: tabular-nums;
     backdrop-filter: blur(2px);
@@ -216,7 +216,7 @@ export const cardStyles = css`
   /* Opt-in heading for the readings block. Only rendered when the config
      carries a non-empty string, so the default look is unchanged. */
   .readout-title {
-    font-size: var(--ha-font-size-s, 0.85rem);
+    font-size: var(--ha-font-size-s, 12px);
     font-weight: var(--ha-font-weight-medium, 500);
     color: rgba(255, 255, 255, 0.95);
     /* Takes the slack so the eye is pushed to the far edge, and keeps
@@ -257,7 +257,7 @@ export const cardStyles = css`
     gap: 8px;
     cursor: pointer;
     border-radius: 4px;
-    font-size: var(--ha-font-size-s, 0.85rem);
+    font-size: var(--ha-font-size-s, 12px);
     /* Pinned so the icon has a known box to be centred against. With an
        inherited line-height the row's height varies with the theme, and
        a centred icon drifts off the text by however much it differs. */
@@ -351,14 +351,14 @@ export const cardStyles = css`
     justify-content: space-between;
     gap: 8px;
     margin-top: 1px;
-    font-size: var(--ha-font-size-xs, 0.7rem);
+    font-size: var(--ha-font-size-xs, 10px);
     line-height: 1.2;
     color: rgba(255, 255, 255, 0.6);
     white-space: nowrap;
   }
 
   .readout-at {
-    font-size: var(--ha-font-size-xs, 0.7rem);
+    font-size: var(--ha-font-size-xs, 10px);
     color: rgba(255, 255, 255, 0.6);
   }
 
@@ -615,7 +615,7 @@ export const cardStyles = css`
     position: absolute;
     left: 0;
     transform: translateX(-50%);
-    font-size: var(--ha-font-size-xs, 0.7rem);
+    font-size: var(--ha-font-size-xs, 10px);
     line-height: 1;
     color: var(--wtl-muted);
     white-space: nowrap;
@@ -652,7 +652,7 @@ export const cardStyles = css`
   .ent-hint {
     margin: 0 0 12px;
     color: var(--wtl-muted);
-    font-size: var(--ha-font-size-s, 0.875rem);
+    font-size: var(--ha-font-size-s, 12px);
   }
 
   /* The heading applies to the whole readings block, not to any one row,
@@ -695,7 +695,7 @@ export const cardStyles = css`
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: var(--ha-font-size-s, 0.875rem);
+    font-size: var(--ha-font-size-s, 12px);
     color: var(--wtl-muted);
   }
 
@@ -718,7 +718,7 @@ export const cardStyles = css`
     padding: 8px 12px;
     background: var(--warning-color, #ffa726);
     color: #000;
-    font-size: var(--ha-font-size-s, 0.85rem);
+    font-size: var(--ha-font-size-s, 12px);
   }
 
   .banner button {
