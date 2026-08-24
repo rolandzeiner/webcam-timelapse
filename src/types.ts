@@ -106,16 +106,39 @@ interface HaSelectorElement extends HTMLElement {
 // configs as of HA 2026. The canonical (and longer) list lives in
 // `frontend/src/data/selector.ts`; this covers every variant the
 // Skill Demo card surfaces in its showcase editor.
+export interface DeviceSelectorFilter {
+  integration?: string;
+  manufacturer?: string;
+  model?: string;
+  model_id?: string;
+}
+
+// Entity picker filter. Keys inside one object are ANDed; a list of objects
+// is ORed. Matching is exact, case-sensitive string equality. `device` needs
+// HA 2026.8+ — older frontends ignore the key, so the picker simply narrows
+// less rather than erroring, which is safe under this repo's HA floor.
+export interface EntitySelectorFilter {
+  integration?: string;
+  domain?: string | string[];
+  device_class?: string | string[];
+  supported_features?: string[];
+  unit_of_measurement?: string | string[];
+  device?: DeviceSelectorFilter;
+}
+
+// Filters belong under `filter`. The flat `domain` / `integration` /
+// `device_class` keys are deprecated upstream (LegacyEntitySelector) and are
+// dropped without warning when a `filter` key is present, so never mix them.
+export interface EntitySelectorConfig {
+  filter?: EntitySelectorFilter | ReadonlyArray<EntitySelectorFilter>;
+  multiple?: boolean;
+  reorder?: boolean;
+  include_entities?: string[];
+  exclude_entities?: string[];
+}
+
 export type HASelector =
-  | {
-      entity: {
-        domain?: string | string[];
-        integration?: string;
-        device_class?: string | string[];
-        multiple?: boolean;
-        filter?: Record<string, unknown>;
-      };
-    }
+  | { entity: EntitySelectorConfig }
   | { area: { multiple?: boolean } }
   | { floor: { multiple?: boolean } }
   | { label: { multiple?: boolean } }
