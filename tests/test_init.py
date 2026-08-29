@@ -25,7 +25,9 @@ async def test_setup_registers_device_and_platforms(
     assert await setup_entry(hass, entry)
     assert entry.state is ConfigEntryState.LOADED
 
-    device = dr.async_get(hass).async_get_device({(DOMAIN, entry.entry_id)})
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, entry.entry_id), entry.entry_id
+    )
     assert device is not None
     assert device.name == "Test Cam"
     assert device.sw_version == INTEGRATION_VERSION
