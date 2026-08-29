@@ -389,6 +389,132 @@ describe("readout icon alignment", () => {
   });
 });
 
+describe("night shading", () => {
+  it("paints the scrubber's night under everything on the track", () => {
+    // Paint order is document order, same as the marks. A z-index here
+    // would pull the track into the stacking competition .layers exists
+    // to contain.
+    const track = cardSource.slice(cardSource.indexOf('<div class="track">'));
+    expect(track.indexOf('class="nights"')).toBeLessThan(
+      track.indexOf('class="marks"'),
+    );
+    expect(track.indexOf('class="nights"')).toBeLessThan(
+      track.indexOf('class="rail"'),
+    );
+  });
+
+  it("does not tie night to the ruler toggle", () => {
+    // Different questions. Someone who turned the day markers off has
+    // said nothing about wanting the dark stretches unmarked.
+    expect(cardSource).toMatch(
+      /const nights =\s*this\.config\?\.show_sun === true/,
+    );
+  });
+
+  it("keeps night off unless it is asked for", () => {
+    // Strict === true, so an absent key is off. Shading is right for a
+    // camera pointed outdoors and noise for one pointed at a wall, and
+    // the card cannot tell which it has.
+    expect(cardSource).not.toMatch(/show_sun !== false/);
+    expect(cardSource).toMatch(/show_sun: false/);
+  });
+
+  it("follows the theme's own colour on the scrubber", () => {
+    // Unlike the overlay bands this sits on the card surface, which may
+    // be light. A fixed white would vanish there.
+    expect(declarationsFor(".night")).toMatch(/background:\s*currentColor/);
+  });
+});
+
+describe("sparkline scale caption", () => {
+  it("keeps the labels out of the SVG", () => {
+    // The chart is preserveAspectRatio="none", so an in-chart <text>
+    // would be stretched horizontally by whatever width the block
+    // happens to be — content-driven in the corner layout, near
+    // full-bleed in the stacked one. The caption has to be HTML.
+    const spark = cardSource.slice(cardSource.indexOf("sparkline({"));
+    expect(spark).not.toMatch(/<text/);
+    expect(cardSource).toMatch(/class="spark-scale"/);
+  });
+
+  it("pushes the two ends apart", () => {
+    // How far it moved reads against the chart's vertical extent, how
+    // long over against its horizontal one. Each label sits on the axis
+    // it describes, or neither means anything.
+    expect(declarationsFor(".spark-scale")).toMatch(
+      /justify-content:\s*space-between/,
+    );
+  });
+
+  it("does not wrap the caption onto a second line", () => {
+    // The block is sized by its content and sits over a photograph. A
+    // caption that wrapped would grow the scrim rather than truncate.
+    expect(declarationsFor(".spark-scale")).toMatch(/white-space:\s*nowrap/);
+  });
+});
+
+describe("folding a readings block away", () => {
+  it("keeps the eye a large enough pointer target", () => {
+    // ha-icon-button defaults to 48px, which would dwarf a block only a
+    // few rows tall — but shrinking it is exactly where WCAG 2.5.8 gets
+    // broken, so the floor is pinned here rather than remembered.
+    const size = Number(
+      declarationsFor(".readout-fold").match(
+        /--mdc-icon-button-size:\s*(\d+)px/,
+      )?.[1],
+    );
+    expect(size).toBeGreaterThanOrEqual(24);
+    expect(size).toBeLessThan(40);
+  });
+
+  it("sheds the block's padding once folded", () => {
+    // A folded block that kept its padding would leave a dark square on
+    // the picture — the thing folding it away was meant to clear.
+    expect(declarationsFor(".readout.folded")).toMatch(/padding:\s*2px/);
+  });
+
+  it("puts the eye on the trailing edge with or without a heading", () => {
+    // The heading is optional. Justified from the end, a title-less block
+    // still lands the eye on the block's trailing edge instead of its
+    // leading one; the title takes the slack when there is one.
+    expect(declarationsFor(".readout-head")).toMatch(
+      /justify-content:\s*flex-end/,
+    );
+    expect(declarationsFor(".readout-title")).toMatch(/flex:\s*1/);
+  });
+
+  it("names the action on the icon, not the state", () => {
+    // A visible block offers "hide": the crossed-out eye is where you are
+    // going, not where you are. The other way round is the toggle trap
+    // where the control describes itself and everyone presses it twice.
+    expect(cardSource).toMatch(
+      /folded \? "mdi:eye-outline" : "mdi:eye-off-outline"/,
+    );
+  });
+
+  it("tells assistive tech whether the block is open", () => {
+    expect(cardSource).toMatch(/aria-expanded=\$\{folded \? "false" : "true"\}/);
+  });
+
+  it("keeps the fold out of the stage's click handler", () => {
+    // .readout-fold is inside .readout but outside .readout-row, so
+    // without its own veto every fold would also open the camera's
+    // more-info dialog behind the block.
+    expect(cardSource).toMatch(/classList\.contains\("readout-fold"\)/);
+  });
+
+  it("skips the per-row work for a folded block", () => {
+    // resolveAt and windowAround run for every row on every frame, and at
+    // 32x that is the card's hottest loop. The early return is the point
+    // — a hidden block should cost nothing to play past.
+    const body = cardSource.slice(cardSource.indexOf("private renderReadout("));
+    const guard = body.indexOf("this.folded.has(group.side)");
+    const work = body.indexOf("const reading = resolveAt(");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(work);
+  });
+});
+
 describe("timeline markup order", () => {
   it("renders dates, then the bar, then clock times", () => {
     const dates = cardSource.indexOf('class="band dates"');

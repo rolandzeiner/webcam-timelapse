@@ -146,6 +146,7 @@ autoplay: false
 speed: 8                 # 1 | 2 | 4 | 8 | 16 | 32 | 64 (default 32)
 show_dayticks: true
 show_graph: true
+show_sun: false          # shade night behind the graphs and the scrubber
 graph_hours: 24
 deflicker: 50            # 0 turns it off
 entities: []
@@ -206,7 +207,7 @@ smooth line between two hourly readings would invent a number nobody measured.
 | `unit` | Defaults to the entity's own unit |
 | `decimals` | Decimal places. Default 1 |
 | `color` | Any CSS colour |
-| `graph` | Draw a sparkline behind the playhead |
+| `graph` | Draw a sparkline around the playhead |
 | `graph_hours` | Override the card's `graph_hours` for this row |
 | `show_icon` | Show the entity's own icon before its label |
 | `time_attribute` | Read the measurement time from this attribute instead of the state's last-changed time |
@@ -215,23 +216,92 @@ smooth line between two hourly readings would invent a number nobody measured.
 device-class default when none is set explicitly — so it follows the entity
 rather than duplicating an icon name in the card config.
 
-`graph_hours` per row exists because one window rarely suits every gauge on the
-same card. A river level moves every few minutes and reads well over the
-card-wide 24 hours; a groundwater gauge moves millimetres a day and stays a flat
-line until you give it weeks:
+`graph_hours` per row exists for the occasional gauge that needs a different
+window from everything else on the card — a monthly trend beside a daily one,
+say:
 
 ```yaml
-graph_hours: 24                   # the card default
+graph_hours: 24                   # the card default, and what most rows want
 entities_left:
   - entity: sensor.grundwasserspiegel
     graph: true
-    graph_hours: 720              # 30 days, so the trend is visible at all
+    graph_hours: 720              # 30 days
 ```
+
+Reach for it sparingly. Charts on different windows move past at different
+speeds while the timelapse plays, and side by side that reads as one of them
+being broken rather than as one of them being slower.
 
 A slow gauge still draws even when it has not changed inside the window. The
 recorder only stores changes, so such a window can be genuinely empty — the card
 carries the reading that was already in effect into it and holds the line flat,
 rather than dropping the graph and implying the sensor is dead.
+
+### Reading the charts
+
+Each chart is scaled to whatever happened inside its own window, so the line
+shows you the shape of the last however-many hours and nothing about how big
+that shape is. Two labels underneath supply the rest: how far the gauge moved,
+and over how long.
+
+```
+Range 0.009 m                    30 d
+```
+
+Without them a millimetre of groundwater and half a metre of river draw the
+same picture. Read the shape off the line and the size off the label.
+
+**Set `decimals` to what the sensor actually resolves** on any row with a chart.
+A groundwater gauge reporting millimetres but printed at one decimal shows the
+same number for a month while the chart beside it climbs — the number and the
+chart end up telling different stories, and the number is the one you will
+believe. `decimals: 3` puts them back in agreement.
+
+Very small movements are drawn small. The card works out the finest step a
+sensor actually reports and refuses to stretch one or two of them across the
+full height of the box, so a gauge idling on its last digit looks like it is
+idling rather than like it is swinging.
+
+The marker down the middle is the moment you are looking at, and the dot on it
+is the value in effect right then. A gauge that has not reported since its last
+reading simply carries that reading forward as a flat line — it is the value
+that was in effect, not a gap, and it is drawn like any other part of the line.
+The timestamp beside the number is what tells you how long ago it was taken.
+
+**Give every charted row the same `graph_hours`** unless you have a reason not
+to. Two charts side by side on different windows scroll past at different
+speeds during playback, and the slower one reads as stuck rather than as slow.
+
+### Night on the charts
+
+`show_sun: true` shades the hours between sunset and sunrise behind every chart
+**and behind the scrubber**, so a dip in the readings can be read against
+whether it was dark, and the dark stretches of the archive are visible before
+you scrub into them.
+
+```yaml
+show_sun: true
+```
+
+Off by default — it is the right context for a camera pointed outdoors and
+noise for one pointed at a workshop wall, and the card cannot tell which it is
+looking at.
+
+Sunrise and sunset come from the latitude and longitude in your Home Assistant
+settings, the same place the sun integration takes them from. Nothing is read
+from `sun.sun`: that entity publishes only the *next* sunrise and sunset, and
+the chart routinely asks about last Tuesday. Its recorded history would answer
+that, but it is commonly excluded from the recorder for being chatty, and a
+card that shaded the recent half of a window and left the older half blank
+would look broken for no visible reason.
+
+The shading disappears when the bands get too fine. Thirty nights across thirty
+days is a band every few pixels, which reads as hatching over the chart rather
+than as night behind it — so a wide `graph_hours`, or an archive spanning
+months, drops it rather than turning the chart into a comb.
+
+It follows `show_sun` alone, not `show_dayticks`: turning the ruler off says
+nothing about wanting the dark stretches unmarked.
 
 `overlay_title` sits above the readings as a heading for the block. Leaving it
 empty or omitting it renders nothing, which is the default look.
@@ -259,12 +329,24 @@ corner whether or not a second block is beside it. A card with only
 
 On a narrow card the two stack at the top of the picture instead, with the
 right-hand block above the left one — there is no room for two blocks and the
-playback controls along the bottom edge. Sparklines are hidden at that width,
-as they are for a single block.
+playback controls along the bottom edge. Sparklines stay: a chart that vanished
+at some widths read as a dead sensor, which costs more than a cramped chart
+does.
 
 Use `time_attribute` for sensors whose real measurement time lives in an
 attribute. It is off by default because asking for attributes makes the
 history request about 25× larger.
+
+### Getting a block out of the way
+
+Every block carries an eye in its corner. Press it to fold the readings away
+and see the picture underneath, and press it again to bring them back. The
+block shrinks to the eye alone rather than disappearing, so there is always
+something to press. Each block folds on its own.
+
+Folding is not saved. Reload the dashboard and both blocks are back — a card
+that reopened folded would look broken to whoever walks up to it next, with
+one small eye as the only clue.
 
 ## Smoothing cloud flicker
 

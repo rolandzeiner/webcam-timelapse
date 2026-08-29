@@ -97,7 +97,9 @@ export class WebcamTimelapseCardEditor
         // Pinned to this integration: pointing the card at any other
         // camera would give it a live image but no archive to scrub.
         selector: {
-          entity: { domain: "camera", integration: "webcam_timelapse" },
+          entity: {
+            filter: { domain: "camera", integration: "webcam_timelapse" },
+          },
         },
       },
       { name: "title", selector: { text: {} } },
@@ -106,6 +108,7 @@ export class WebcamTimelapseCardEditor
         schema: [
           { name: "show_dayticks", selector: { boolean: {} } },
           { name: "show_graph", selector: { boolean: {} } },
+          { name: "show_sun", selector: { boolean: {} } },
         ],
       },
       {

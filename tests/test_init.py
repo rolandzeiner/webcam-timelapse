@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_NAME, CONF_URL
 from homeassistant.core import HomeAssistant
@@ -23,7 +25,9 @@ async def test_setup_registers_device_and_platforms(
     assert await setup_entry(hass, entry)
     assert entry.state is ConfigEntryState.LOADED
 
-    device = dr.async_get(hass).async_get_device({(DOMAIN, entry.entry_id)})
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, entry.entry_id), entry.entry_id
+    )
     assert device is not None
     assert device.name == "Test Cam"
     assert device.sw_version == INTEGRATION_VERSION
@@ -129,3 +133,23 @@ async def test_options_update_reloads_the_entry(
 
     assert entry.state is ConfigEntryState.LOADED
     assert entry.runtime_data.retention_days == 3
+
+
+async def test_setup_uses_no_deprecated_ha_api(
+    hass: HomeAssistant, mock_fetch: AsyncMock, caplog: pytest.LogCaptureFixture
+) -> None:
+    """HA reports deprecated API use to the logger, not via warnings.
+
+    `frame.report_usage` logs through `_LOGGER.warning`
+    (homeassistant/helpers/frame.py:393) and never calls `warnings.warn`,
+    so pytest.ini's `error::DeprecationWarning` cannot see it. This is the
+    check that covers that channel.
+    """
+    caplog.set_level(logging.WARNING)
+    entry = make_entry()
+    assert await setup_entry(hass, entry)
+
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+
+    assert "Detected that custom integration" not in caplog.text

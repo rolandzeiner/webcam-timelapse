@@ -38,7 +38,12 @@ export interface HomeAssistant {
   language?: string;
   locale?: { language?: string };
   themes?: { darkMode?: boolean } & Record<string, unknown>;
-  config?: { time_zone?: string } & Record<string, unknown>;
+  config?: {
+    time_zone?: string;
+    /** The home's coordinates, as the sun integration uses them. */
+    latitude?: number;
+    longitude?: number;
+  } & Record<string, unknown>;
   localize?: (key: string, ...args: unknown[]) => string;
   callWS?<T = unknown>(msg: { type: string; [key: string]: unknown }): Promise<T>;
 }
@@ -101,16 +106,39 @@ interface HaSelectorElement extends HTMLElement {
 // configs as of HA 2026. The canonical (and longer) list lives in
 // `frontend/src/data/selector.ts`; this covers every variant the
 // Skill Demo card surfaces in its showcase editor.
+export interface DeviceSelectorFilter {
+  integration?: string;
+  manufacturer?: string;
+  model?: string;
+  model_id?: string;
+}
+
+// Entity picker filter. Keys inside one object are ANDed; a list of objects
+// is ORed. Matching is exact, case-sensitive string equality. `device` needs
+// HA 2026.8+ — older frontends ignore the key, so the picker simply narrows
+// less rather than erroring, which is safe under this repo's HA floor.
+export interface EntitySelectorFilter {
+  integration?: string;
+  domain?: string | string[];
+  device_class?: string | string[];
+  supported_features?: string[];
+  unit_of_measurement?: string | string[];
+  device?: DeviceSelectorFilter;
+}
+
+// Filters belong under `filter`. The flat `domain` / `integration` /
+// `device_class` keys are deprecated upstream (LegacyEntitySelector) and are
+// dropped without warning when a `filter` key is present, so never mix them.
+export interface EntitySelectorConfig {
+  filter?: EntitySelectorFilter | ReadonlyArray<EntitySelectorFilter>;
+  multiple?: boolean;
+  reorder?: boolean;
+  include_entities?: string[];
+  exclude_entities?: string[];
+}
+
 export type HASelector =
-  | {
-      entity: {
-        domain?: string | string[];
-        integration?: string;
-        device_class?: string | string[];
-        multiple?: boolean;
-        filter?: Record<string, unknown>;
-      };
-    }
+  | { entity: EntitySelectorConfig }
   | { area: { multiple?: boolean } }
   | { floor: { multiple?: boolean } }
   | { label: { multiple?: boolean } }
@@ -346,7 +374,15 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   speed?: number;
   show_dayticks?: boolean;
   show_graph?: boolean;
-  /** Hours of history shown behind the playhead. */
+  /**
+   * Shade the hours between sunset and sunrise on every chart.
+   *
+   * Off by default: it is the right context for an outdoor camera and
+   * pure noise for one pointed at a workshop wall, and the card cannot
+   * tell which it is looking at.
+   */
+  show_sun?: boolean;
+  /** Width of the sparkline's window in hours, centred on the playhead. */
   graph_hours?: number;
   /**
    * The right-hand readings block. Empty by default — the card is not

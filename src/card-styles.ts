@@ -105,7 +105,7 @@ export const cardStyles = css`
   }
 
   .empty .detail {
-    font-size: var(--ha-font-size-s, 0.8rem);
+    font-size: var(--ha-font-size-s, 12px);
     opacity: 0.75;
     max-width: 34ch;
   }
@@ -119,7 +119,7 @@ export const cardStyles = css`
     padding: 16px;
     text-align: center;
     color: var(--wtl-muted);
-    font-size: var(--ha-font-size-m, 0.9rem);
+    font-size: var(--ha-font-size-m, 14px);
   }
 
   /* --- overlays ---------------------------------------------------- */
@@ -135,7 +135,7 @@ export const cardStyles = css`
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.55);
     color: #fff;
-    font-size: var(--ha-font-size-s, 0.8rem);
+    font-size: var(--ha-font-size-s, 12px);
     /* Digits must not shift width as the clock ticks. */
     font-variant-numeric: tabular-nums;
     backdrop-filter: blur(2px);
@@ -151,7 +151,7 @@ export const cardStyles = css`
     right: 8px;
     top: 8px;
     letter-spacing: 0.06em;
-    font-weight: var(--ha-font-weight-medium, 600);
+    font-weight: var(--ha-font-weight-medium, 500);
   }
 
   .badge.live {
@@ -195,17 +195,60 @@ export const cardStyles = css`
     left: 8px;
   }
 
+  /* Folded to the eye alone. The scrim shrinks with it — a block that
+     kept its padding would leave a dark square on the picture, which is
+     the thing folding it away was meant to clear. */
+  .readout.folded {
+    padding: 2px;
+  }
+
+  /* Heading and fold control on one line. The heading is optional, so
+     the row is justified from the end: with no title the eye still
+     lands on the block's trailing edge instead of its leading one. */
+  .readout-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+
   /* Opt-in heading for the readings block. Only rendered when the config
      carries a non-empty string, so the default look is unchanged. */
   .readout-title {
-    font-size: var(--ha-font-size-s, 0.85rem);
-    font-weight: var(--ha-font-weight-medium, 600);
+    font-size: var(--ha-font-size-s, 12px);
+    font-weight: var(--ha-font-weight-medium, 500);
     color: rgba(255, 255, 255, 0.95);
-    margin-bottom: 2px;
-    /* The readout block is right-aligned against the frame; a heading
-       that hugged the same edge would drift away from the labels it
-       introduces. */
+    /* Takes the slack so the eye is pushed to the far edge, and keeps
+       the heading over the labels it introduces: the block is
+       right-aligned against the frame, and a heading that hugged the
+       same edge would drift away from them. */
+    flex: 1;
     text-align: left;
+  }
+
+  /* Sized down hard from the 48px default — this sits inside an overlay
+     that is only a few rows tall, and the pill's 40px would dominate the
+     block it belongs to. 28px still clears the 24px WCAG 2.5.8 minimum.
+
+     Quiet until wanted: it matches .readout-name's weight so it reads as
+     part of the block's furniture rather than competing with the values,
+     and comes up to full white on hover and focus like the rows do. */
+  .readout-fold {
+    flex: none;
+    color: rgba(255, 255, 255, 0.75);
+    --mdc-icon-button-size: 28px;
+    --mdc-icon-size: 17px;
+  }
+
+  /* :focus-within, not :focus-visible. ha-icon-button puts outline:none
+     on its host and keeps focus on the button inside its shadow root, so
+     a :focus-visible rule aimed at the host never matches. The ring
+     itself comes from mwc-icon-button either way — this is only the
+     colour coming up to meet the hover state. */
+  .readout-fold:hover,
+  .readout-fold:focus-within {
+    color: #fff;
   }
 
   .readout-row {
@@ -214,7 +257,7 @@ export const cardStyles = css`
     gap: 8px;
     cursor: pointer;
     border-radius: 4px;
-    font-size: var(--ha-font-size-s, 0.85rem);
+    font-size: var(--ha-font-size-s, 12px);
     /* Pinned so the icon has a known box to be centred against. With an
        inherited line-height the row's height varies with the theme, and
        a centred icon drifts off the text by however much it differs. */
@@ -253,7 +296,7 @@ export const cardStyles = css`
 
   .readout-value {
     margin-left: auto;
-    font-weight: var(--ha-font-weight-medium, 600);
+    font-weight: var(--ha-font-weight-medium, 500);
   }
 
   .readout-row.stale .readout-value {
@@ -283,8 +326,39 @@ export const cardStyles = css`
     height: 34px;
   }
 
+  /* Night behind the line. Deliberately faint: it is context for the
+     reading, not a series of its own, and it has to stay readable over
+     an arbitrary photograph in both a bright frame and a dark one.
+     currentColor picks up .spark-wrap's white, so it darkens nothing —
+     it lifts the night, which is the only direction that works on a
+     scrim that is already black. */
+  .spark-night {
+    fill: currentColor;
+    opacity: 0.12;
+  }
+
+  /* The chart's units. Lives in HTML rather than inside the SVG because
+     the SVG is preserveAspectRatio="none" — an in-chart <text> would be
+     stretched horizontally by whatever width the block happens to be, and
+     that width is content-driven in the corner layout and near
+     full-bleed in the stacked one.
+
+     Ends pushed apart: how far it moved reads against the chart's
+     vertical extent, how long over reads against its horizontal one, so
+     each label sits on the axis it describes. */
+  .spark-scale {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 1px;
+    font-size: var(--ha-font-size-xs, 10px);
+    line-height: 1.2;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+  }
+
   .readout-at {
-    font-size: var(--ha-font-size-xs, 0.7rem);
+    font-size: var(--ha-font-size-xs, 10px);
     color: rgba(255, 255, 255, 0.6);
   }
 
@@ -385,6 +459,37 @@ export const cardStyles = css`
   /* Behind the bar, not beside it. Paint order is DOM order — the marks
      render before the rail — because a z-index here would re-enter the
      stacking competition .layers exists to contain. */
+  /* Night behind the scrubber, in the same faint-band language the charts
+     use — learned once, read in both places. First child of .track, so
+     paint order puts it under the marks, the rail and the fill without
+     anyone reaching for z-index.
+
+     Deliberately not a curve of solar elevation. A sine would be prettier
+     and would say less: the scrubber is a control, and what it owes the
+     viewer is which stretches of the archive are dark frames not worth
+     scrubbing to. Elevation is not that, and a ripple through a bar that
+     already carries day ticks, gap runs and a fill would read as texture
+     rather than as information. */
+  .nights {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* currentColor, not a fixed tone: unlike the overlay bands this sits on
+     the card surface, which follows the Home Assistant theme and may be
+     light. Tying it to the text colour means night darkens a light theme
+     and lifts a dark one, which is the only direction that works on
+     each. Fainter than the chart's for the same reason — there is no
+     black scrim here to compete with. */
+  .night {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: currentColor;
+    opacity: 0.07;
+  }
+
   .marks {
     position: absolute;
     inset: 0;
@@ -510,7 +615,7 @@ export const cardStyles = css`
     position: absolute;
     left: 0;
     transform: translateX(-50%);
-    font-size: var(--ha-font-size-xs, 0.7rem);
+    font-size: var(--ha-font-size-xs, 10px);
     line-height: 1;
     color: var(--wtl-muted);
     white-space: nowrap;
@@ -547,7 +652,7 @@ export const cardStyles = css`
   .ent-hint {
     margin: 0 0 12px;
     color: var(--wtl-muted);
-    font-size: var(--ha-font-size-s, 0.875rem);
+    font-size: var(--ha-font-size-s, 12px);
   }
 
   /* The heading applies to the whole readings block, not to any one row,
@@ -590,7 +695,7 @@ export const cardStyles = css`
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: var(--ha-font-size-s, 0.875rem);
+    font-size: var(--ha-font-size-s, 12px);
     color: var(--wtl-muted);
   }
 
@@ -613,7 +718,7 @@ export const cardStyles = css`
     padding: 8px 12px;
     background: var(--warning-color, #ffa726);
     color: #000;
-    font-size: var(--ha-font-size-s, 0.85rem);
+    font-size: var(--ha-font-size-s, 12px);
   }
 
   .banner button {

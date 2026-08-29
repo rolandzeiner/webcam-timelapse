@@ -33,6 +33,9 @@ rules:
   docs-actions:
     status: done
     comment: README "Actions" documents all four, including the capture_now overwrite refusal.
+  docs-conditions:
+    status: exempt
+    comment: This integration does not have any conditions.
   docs-high-level-description:
     status: done
   docs-installation-instructions:
@@ -40,6 +43,9 @@ rules:
   docs-removal-instructions:
     status: done
     comment: README "Remove the integration" covers per-entry frame deletion and HACS removal.
+  docs-triggers:
+    status: exempt
+    comment: This integration does not have any triggers.
   entity-event-setup:
     status: exempt
     comment: Coordinator pattern; no entity subscribes to events directly.

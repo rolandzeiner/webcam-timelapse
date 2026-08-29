@@ -27,6 +27,7 @@ import {
   overlayEntities,
   overlayGroups,
   type OverlayGroup,
+  type ReadoutSide,
 } from "./overlay-groups";
 import {
   dayTicks,
@@ -57,20 +58,26 @@ import {
   fetchOverlayHistory,
   type HistoryPoint,
   resolveAt,
-  stalenessThreshold,
+  seriesStats,
   windowAround,
 } from "./overlay-history";
 import {
   checkCardVersionWS,
   renderVersionBanner,
 } from "./shared-render";
-import { sparkline } from "./sparkline";
+import { extentOf, sparkline } from "./sparkline";
+import { type NightBand, nightBands } from "./sun";
 import type {
   HomeAssistant,
   LovelaceCardEditor,
   WebcamTimelapseCardConfig,
 } from "./types";
-import { prefersReducedMotion, safeImageUri } from "./utils";
+import {
+  formatExtent,
+  formatSpan,
+  prefersReducedMotion,
+  safeImageUri,
+} from "./utils";
 
 const SPEEDS = [1, 2, 4, 8, 16, 32, 64] as const;
 /** Speed a card starts at when config says nothing usable. */
@@ -118,6 +125,19 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private indexError: string | undefined;
   @state() private frameError: string | undefined;
   @state() private history = new Map<string, HistoryPoint[]>();
+  /**
+   * Readings blocks the viewer has folded away, by side.
+   *
+   * Deliberately not persisted. The blocks are an overlay on a picture,
+   * and hiding one is a "let me look at this frame" gesture rather than a
+   * setting — a card that came back folded would look broken to the next
+   * person at the dashboard, with the only clue a 24px eye in the corner.
+   * Replaced rather than mutated, because Lit compares by identity.
+   */
+  @state() private folded = new Set<ReadoutSide>();
+
+  /** Not @state: derived from the playhead, never a reason to re-render. */
+  private nightCache?: { key: string; bands: NightBand[] };
 
   private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
@@ -173,6 +193,7 @@ export class WebcamTimelapseCard extends LitElement {
       speed: DEFAULT_SPEED,
       show_dayticks: true,
       show_graph: true,
+      show_sun: false,
       graph_hours: 24,
       deflicker: 50,
       ...config,
@@ -1035,12 +1056,25 @@ export class WebcamTimelapseCard extends LitElement {
    * 12:05 measurement.
    */
   private renderReadout(slot: number, group: OverlayGroup): TemplateResult {
+    const classes = `readout ${group.side === "left" ? "left" : ""}`;
+
+    // Folded blocks return before any of the per-row work below. That is
+    // not just tidiness: resolveAt and windowAround run for every row on
+    // every frame, and at 32x that is the card's hottest loop. A hidden
+    // block should cost nothing to play past.
+    if (this.folded.has(group.side)) {
+      return html`<div class="${classes} folded">
+        ${this.renderFoldToggle(group.side, true)}
+      </div>`;
+    }
+
     const rows = group.entities;
 
     const at = slot * 1000;
     const rendered = rows.map((row) => {
       const points = this.history.get(row.entity) ?? [];
-      const reading = resolveAt(points, at, stalenessThreshold(points));
+      const stats = seriesStats(points);
+      const reading = resolveAt(points, at, stats.staleAfter);
       const name =
         row.name ??
         (this.hass?.states[row.entity]?.attributes.friendly_name as
@@ -1069,16 +1103,43 @@ export class WebcamTimelapseCard extends LitElement {
       // half of the archive, and a stale one lost it entirely. Whether
       // there is anything to draw is sparkline's call, not this one's.
       const graphHours = row.graph_hours ?? this.config?.graph_hours ?? 24;
-      const graph =
-        row.graph && this.config?.show_graph !== false
-          ? sparkline({
-              points: windowAround(points, at, graphHours),
-              at,
-              hours: graphHours,
-              color,
-              label: `${name} history`,
-            })
-          : null;
+      const drawGraph = row.graph === true && this.config?.show_graph !== false;
+      const windowed = drawGraph ? windowAround(points, at, graphHours) : [];
+      const nights =
+        drawGraph && this.config?.show_sun === true
+          ? this.nightsAround(at, graphHours)
+          : [];
+      const graph = drawGraph
+        ? sparkline({
+            points: windowed,
+            at,
+            hours: graphHours,
+            color,
+            label: `${name} history`,
+            quantum: stats.quantum,
+            nights,
+          })
+        : null;
+
+      // The caption is the chart's units, and without it the chart is an
+      // interval scale with no origin and no unit — redrawn every frame,
+      // per row. Two of these sit side by side over one picture with a
+      // forty-fold difference in vertical gain and a thirty-fold one in
+      // time base, both filling the same 34px box. Saying how far the
+      // gauge moved and over how long is what makes them comparable, and
+      // it is the only thing the autoscale destroys that the numeric
+      // readout beside it does not already carry.
+      const extent = graph === null ? 0 : extentOf(windowed);
+      const scale = graph === null
+        ? nothing
+        : html`<div class="spark-scale">
+            <span
+              >${extent === 0
+                ? this.t("spark.flat")
+                : this.t("spark.range", `${formatExtent(extent)}${unit ? ` ${unit}` : ""}`)}</span
+            >
+            <span>${formatSpan(graphHours)}</span>
+          </div>`;
 
       // ha-state-icon rather than a configured icon string: it resolves
       // the entity's own icon and falls back to the device-class default,
@@ -1118,19 +1179,93 @@ export class WebcamTimelapseCard extends LitElement {
               >`
             : nothing}
         </div>
-        ${graph ? html`<div class="spark-wrap">${graph}</div>` : nothing}
+        ${graph
+          ? html`<div class="spark-wrap">${graph}${scale}</div>`
+          : nothing}
       `;
     });
 
     // The side is a modifier on the same element, not a separate one:
     // .readout-row has to stay where it is for onStageClick to keep
     // telling a reading apart from the picture behind it.
-    return html`<div class="readout ${group.side === "left" ? "left" : ""}">
-      ${group.title
-        ? html`<div class="readout-title">${group.title}</div>`
-        : nothing}
+    return html`<div class=${classes}>
+      <div class="readout-head">
+        ${group.title
+          ? html`<div class="readout-title">${group.title}</div>`
+          : nothing}
+        ${this.renderFoldToggle(group.side, false)}
+      </div>
       ${rendered}
     </div>`;
+  }
+
+  /**
+   * Night spans covering one chart's window.
+   *
+   * Memoised on the window and the location, because every graphed row on
+   * the card asks for the same span at the same moment and the answer
+   * only changes when the playhead does. Rebuilding it per row per frame
+   * would repeat the same work six times over.
+   */
+  private nightsAround(at: number, hours: number): NightBand[] {
+    const half = (hours * 3_600_000) / 2;
+    return this.nightsBetween(at - half, at + half);
+  }
+
+  /**
+   * Night across an arbitrary window, memoised on the window itself.
+   *
+   * Every graphed row asks for the same window at the same moment, and
+   * the scrubber asks for the archive's, so the cache key is the window
+   * and not the caller. One entry is enough in practice: the rows all
+   * share a window and the scrubber's changes only when the archive does.
+   */
+  private nightsBetween(from: number, to: number): NightBand[] {
+    const latitude = this.hass?.config?.latitude;
+    const longitude = this.hass?.config?.longitude;
+    if (latitude === undefined || longitude === undefined) return [];
+
+    const key = `${from}|${to}|${latitude}|${longitude}`;
+    if (this.nightCache?.key !== key) {
+      this.nightCache = {
+        key,
+        bands: nightBands(from, to, latitude, longitude),
+      };
+    }
+    return this.nightCache.bands;
+  }
+
+  /**
+   * The eye that folds a readings block away and brings it back.
+   *
+   * The icon names the state you are moving to, not the one you are in:
+   * a crossed-out eye on a visible block reads as "hide this", which is
+   * what pressing it does. Labelling it the other way round is the
+   * classic toggle trap — the control describes itself instead of its
+   * effect, and everyone presses it twice to find out.
+   *
+   * A folded block collapses to this button alone rather than vanishing.
+   * Something has to stay on the picture or the readings are gone for
+   * good, and the control that removed them is the honest handle for
+   * getting them back.
+   */
+  private renderFoldToggle(side: ReadoutSide, folded: boolean): TemplateResult {
+    const label = this.t(folded ? "actions.show_readings" : "actions.hide_readings");
+    return html`<ha-icon-button
+      class="readout-fold"
+      .label=${label}
+      aria-expanded=${folded ? "false" : "true"}
+      @click=${() => this.toggleFold(side)}
+    >
+      <ha-icon icon=${folded ? "mdi:eye-outline" : "mdi:eye-off-outline"}></ha-icon>
+    </ha-icon-button>`;
+  }
+
+  /** Replaced, not mutated — Lit's dirty check on `folded` is by identity. */
+  private toggleFold(side: ReadoutSide): void {
+    const next = new Set(this.folded);
+    if (!next.delete(side)) next.add(side);
+    this.folded = next;
   }
 
   /**
@@ -1208,7 +1343,8 @@ export class WebcamTimelapseCard extends LitElement {
       (node) =>
         node instanceof HTMLElement &&
         (node.classList.contains("controls") ||
-          node.classList.contains("readout-row")),
+          node.classList.contains("readout-row") ||
+          node.classList.contains("readout-fold")),
     );
     if (aimedElsewhere) return;
     if (this.config) this.fireMoreInfo(this.config.camera_entity);
@@ -1268,6 +1404,17 @@ export class WebcamTimelapseCard extends LitElement {
       ? this.rulerFor()
       : { days: [] as DayTick[], times: [] as TimeTick[] };
 
+    // Independent of show_dayticks: night is context for the footage, not
+    // part of the ruler, and someone who turned the ruler off has not
+    // said anything about wanting the dark stretches unmarked.
+    const nights =
+      this.config?.show_sun === true && this.index.t0 !== null
+        ? this.nightsBetween(
+            this.index.t0 * 1000,
+            (this.index.t0 + last * this.index.step) * 1000,
+          )
+        : [];
+
     return html`
       <div class="timeline">
         ${ticks
@@ -1283,6 +1430,19 @@ export class WebcamTimelapseCard extends LitElement {
           : nothing}
 
         <div class="track">
+          ${nights.length > 0
+            ? html`<div class="nights" aria-hidden="true">
+                ${nights.map(
+                  (band) =>
+                    html`<span
+                      class="night"
+                      style="left:${(band.left * 100).toFixed(3)}%;width:${(
+                        band.width * 100
+                      ).toFixed(3)}%"
+                    ></span>`,
+                )}
+              </div>`
+            : nothing}
           ${ticks
             ? html`<div class="marks" aria-hidden="true">
                 ${times.map(

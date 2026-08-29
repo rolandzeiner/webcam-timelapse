@@ -20,6 +20,10 @@
   "track": {
     "label": "Timeline position"
   },
+  "spark": {
+    "range": "Range {v}",
+    "flat": "No change"
+  },
   "error": {
     "no_camera": "You need to pick a camera in the card configuration."
   },
@@ -30,6 +34,7 @@
     "title": "Title",
     "show_dayticks": "Show day markers",
     "show_graph": "Show graphs",
+    "show_sun": "Mark night",
     "playback": "Playback",
     "autoplay": "Play automatically",
     "speed": "Speed",
@@ -55,7 +60,8 @@
       "deflicker": "Evens out cloud-driven brightness jumps during playback. 0 turns it off.",
       "overlay_title": "Shown above the readings. Leave empty for no heading.",
       "overlay_title_left": "Shown above the readings. Leave empty for no heading.",
-      "show_icon": "Uses the entity's own icon from Home Assistant."
+      "show_icon": "Uses the entity's own icon from Home Assistant.",
+      "show_sun": "Shades the hours between sunset and sunrise on the graphs and the scrubber, using your Home Assistant location. Hidden when the bands get too fine to read."
     },
     "deflicker": "Smooth brightness",
     "show_icon": "Show icon",
@@ -64,6 +70,8 @@
   },
   "actions": {
     "show_camera": "Show camera details",
-    "show_entity": "Show details for {v}"
+    "show_entity": "Show details for {v}",
+    "hide_readings": "Hide readings",
+    "show_readings": "Show readings"
   }
 }

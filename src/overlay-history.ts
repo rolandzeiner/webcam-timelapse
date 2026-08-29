@@ -115,7 +115,14 @@ export async function fetchOverlayHistory(
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         entity_ids: entityIds,
-        minimal_response: true,
+        // `minimal_response` and attributes are mutually exclusive in
+        // practice: under it the recorder emits attributes on the *first*
+        // state of each entity only (sensor is not in its
+        // NEED_ATTRIBUTE_DOMAINS), so every later row lost its
+        // `time_attribute` and fell back to last_updated without saying
+        // so — the feature worked for exactly one point in the series
+        // while still being billed the ~25× payload.
+        minimal_response: !wantsAttributes,
         no_attributes: !wantsAttributes,
         significant_changes_only: true,
       });
@@ -202,6 +209,72 @@ export function resolveAt(
  * minute very much is. Twice the median observed interval, floored so a
  * sparse series does not flag everything.
  */
+/**
+ * The largest 1-2-5 × 10^k value at or below `raw`.
+ *
+ * Used to snap a measured quantum onto a round number. The epsilon is
+ * not decoration: consecutive readings of 253.336 and 253.335 differ by
+ * 0.0009999999998 in binary floating point, and flooring that lands a
+ * decade too low. Nudging up by a part per billion before flooring puts
+ * it back on 0.001 without letting anything genuinely smaller through.
+ */
+function snapDown(raw: number): number {
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  const nudged = raw * (1 + 1e-9);
+  const decade = Math.pow(10, Math.floor(Math.log10(nudged)));
+  const leading = nudged / decade;
+  return (leading >= 5 ? 5 : leading >= 2 ? 2 : 1) * decade;
+}
+
+/** Series-wide properties the chart needs but the playhead does not change. */
+export interface SeriesStats {
+  /**
+   * The smallest change this series actually resolves, or 0 when it
+   * cannot be told. Not the sensor's nominal precision — the *effective*
+   * one, after whatever the recorder's significant-change filtering did
+   * to it, which is the only quantum that matters for what gets drawn.
+   */
+  quantum: number;
+  /** Milliseconds after which a reading counts as stale. */
+  staleAfter: number;
+}
+
+/**
+ * Memoised per array identity.
+ *
+ * Both numbers are properties of the *series*, not of the playhead, but
+ * they were being recomputed inside the row loop on every rendered
+ * frame — and `stalenessThreshold` sorts the whole fetched history to
+ * get there. With a 45-day fetch at a few minutes' cadence that is tens
+ * of thousands of elements sorted per row per frame, at up to 64x. A
+ * fetch builds a fresh array, so identity is exactly the right key: one
+ * computation per fetch, and the entry goes when the array does.
+ */
+const statsCache = new WeakMap<HistoryPoint[], SeriesStats>();
+
+export function seriesStats(points: HistoryPoint[]): SeriesStats {
+  const cached = statsCache.get(points);
+  if (cached) return cached;
+
+  // Tenth percentile rather than the minimum: one anomalous hair-splitting
+  // delta anywhere in six weeks would otherwise define the quantum for the
+  // whole series and defeat the floor it feeds.
+  const deltas: number[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const delta = Math.abs(points[i]!.value - points[i - 1]!.value);
+    if (delta > 0) deltas.push(delta);
+  }
+  deltas.sort((a, b) => a - b);
+  const percentile = deltas[Math.floor(deltas.length * 0.1)];
+
+  const stats: SeriesStats = {
+    quantum: percentile === undefined ? 0 : snapDown(percentile),
+    staleAfter: stalenessThreshold(points),
+  };
+  statsCache.set(points, stats);
+  return stats;
+}
+
 export function stalenessThreshold(points: HistoryPoint[], floorMs = 5_400_000): number {
   if (points.length < 3) return floorMs;
   const deltas: number[] = [];
@@ -216,6 +289,10 @@ export function stalenessThreshold(points: HistoryPoint[], floorMs = 5_400_000):
 /**
  * Points inside a window centred on `at`, for the sparkline — plus the
  * reading already in effect when the window opens.
+ *
+ * Centred to match the scale `sparkline` draws. The two have to agree
+ * about which points are on canvas, so this is not an independent
+ * choice — see the framing note there.
  *
  * That anchor carries more weight than it looks. The series is step /
  * hold-last-known and the recorder stores only *changes*, so a slow gauge

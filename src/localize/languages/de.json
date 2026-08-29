@@ -20,6 +20,10 @@
   "track": {
     "label": "Position auf der Zeitleiste"
   },
+  "spark": {
+    "range": "Spanne {v}",
+    "flat": "Unverändert"
+  },
   "error": {
     "no_camera": "Bitte wähle in der Kartenkonfiguration eine Kamera aus."
   },
@@ -30,6 +34,7 @@
     "title": "Titel",
     "show_dayticks": "Tagesmarkierungen anzeigen",
     "show_graph": "Diagramme anzeigen",
+    "show_sun": "Nacht markieren",
     "playback": "Wiedergabe",
     "autoplay": "Automatisch abspielen",
     "speed": "Geschwindigkeit",
@@ -55,7 +60,8 @@
       "deflicker": "Gleicht wolkenbedingte Helligkeitssprünge bei der Wiedergabe aus. 0 schaltet es ab.",
       "overlay_title": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
       "overlay_title_left": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
-      "show_icon": "Verwendet das Symbol der Entität aus Home Assistant."
+      "show_icon": "Verwendet das Symbol der Entität aus Home Assistant.",
+      "show_sun": "Hinterlegt die Stunden zwischen Sonnenuntergang und Sonnenaufgang in den Diagrammen und in der Zeitleiste, basierend auf deinem Home-Assistant-Standort. Wird ausgeblendet, sobald die Streifen zu fein werden."
     },
     "deflicker": "Helligkeit glätten",
     "show_icon": "Symbol anzeigen",
@@ -64,6 +70,8 @@
   },
   "actions": {
     "show_camera": "Kameradetails anzeigen",
-    "show_entity": "Details für {v} anzeigen"
+    "show_entity": "Details für {v} anzeigen",
+    "hide_readings": "Messwerte ausblenden",
+    "show_readings": "Messwerte einblenden"
   }
 }
