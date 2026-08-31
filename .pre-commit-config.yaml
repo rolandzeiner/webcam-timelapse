@@ -8,7 +8,7 @@
 # not at all.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.0 # == requirements_test.txt
+    rev: v0.16.5 # == requirements_test.txt
     hooks:
       - id: ruff
         args: [--fix]
@@ -18,7 +18,7 @@ repos:
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.0 # == requirements_test.txt
+    rev: v2.3.1 # == requirements_test.txt
     hooks:
       - id: mypy
         args: [--strict, --ignore-missing-imports]

@@ -98,7 +98,7 @@ jobs:
         # Pin the EXACT version. setup-uv stopped publishing rolling
         # major tags after v7 — `@v8` / `@v9` do not resolve and fail the
         # job with "unable to find version". Only `vX.Y.Z` tags exist.
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
       - name: Install dependencies
