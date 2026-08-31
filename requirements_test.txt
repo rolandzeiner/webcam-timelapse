@@ -15,7 +15,7 @@
 # cp314 wheels (verified 2026-05-07). Floors below track PHACC
 # 0.13.348's transitive `==` pins (pytest-cov==7.1.0,
 # pytest-asyncio==1.4.0) — they move with the PHACC floor.
-pytest-homeassistant-custom-component>=0.13.348,<0.14
+pytest-homeassistant-custom-component>=0.13.361,<0.14
 pytest-asyncio>=1.4.0,<2
 pytest-cov>=7.1.0,<8
 # Backs the `timeout` setting in pytest.ini — a hung async fixture must
@@ -38,8 +38,8 @@ pytest-timeout>=2.4,<3
 # outage — 0.16.0 was then adopted deliberately on 2026-07-25, on a branch, with
 # its ~80 findings reviewed and fixed. That is the whole point of the `==`: not
 # to stay old, but to choose when you move.
-mypy==2.3.0
-ruff==0.16.0
+mypy==2.3.1
+ruff==0.16.5
 # pycares is no longer relevant: PHACC 0.13.329 pulls in HA core
 # 2026.5.0, which pins aiodns 4.x; aiodns 4 uses the pycares 5 API
 # natively (no more `ares_query_a_result` reference), so the
