@@ -2,5 +2,7 @@
   "name": "Webcam Timelapse",
   "homeassistant": "2025.5.0",
   "hacs": "2.0.0",
-  "render_readme": true
+  "render_readme": true,
+  "filename": "webcam_timelapse.zip",
+  "zip_release": true
 }
