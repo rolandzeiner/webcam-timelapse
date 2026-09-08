@@ -5,17 +5,13 @@
   "description": "Scrubbable timelapse card for the Webcam Timelapse HA integration",
   "type": "module",
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "build:push": "rollup -c && ./scripts/dev-push.sh --quiet",
+    "build": "rolldown -c",
+    "dev": "rolldown -c -w",
+    "build:push": "rolldown -c && ./scripts/dev-push.sh --quiet",
     "test": "vitest run"
   },
   "devDependencies": {
-    "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-node-resolve": "^16.0.3",
-    "@rollup/plugin-swc": "0.4.1",
-    "@rollup/plugin-terser": "^1.0.0",
-    "rollup": "^4.63.1",
+    "rolldown": "1.2.7",
     "typescript": "7.0.2",
     "vitest": "4.1.11"
   },

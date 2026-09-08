@@ -1,6 +1,6 @@
 # Scaffold .gitignore for a HACS custom integration that ships:
 #   - a Python integration under custom_components/<domain>/
-#   - a Lit 3 + TypeScript Lovelace card built by Rollup
+#   - a Lit 3 + TypeScript Lovelace card built by Rolldown
 # This is the unified portfolio baseline — verified byte-identical
 # across the user's six *-austria repos as of 2026-05-08.
 #
@@ -67,7 +67,7 @@ node_modules/
 *.js.map
 
 # Bundler caches
-.rollup.cache/
+.rolldown.cache/
 .vite-cache/
 .parcel-cache/
 

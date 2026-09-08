@@ -43,9 +43,9 @@ pytest tests/                                     # 90% coverage floor, enforced
 mypy --strict --ignore-missing-imports custom_components/webcam_timelapse
 ruff check .
 ruff format --check .                             # `ruff check` ignores formatting
-npx tsc --noEmit                                  # card type-check, stricter than Rollup's
+npx tsc --noEmit                                  # card type-check; rolldown does not type-check
 npm test                                          # vitest: the pure card logic
-npm run build                                     # Rollup bundle
+npm run build                                     # Rolldown bundle
 ```
 
 Plus one check on the **oldest** Python this integration supports:
@@ -108,8 +108,26 @@ whose header freezes.
 formula wipes every existing install.
 
 **The card bundle is generated.** `custom_components/webcam_timelapse/www/*.js`
-comes from `src/` via Rollup — never hand-edit it. Commit the rebuilt bundle
+comes from `src/` via Rolldown — never hand-edit it. Commit the rebuilt bundle
 alongside the source change; HACS users never run `npm`.
+
+Rolldown does transpilation, minification, module resolution and JSON natively,
+so the card's whole `devDependencies` is `rolldown` + `typescript` + `vitest`;
+the `@rollup/plugin-*` stack and `@swc/core` were deleted in the 2026-09
+migration, not replaced. Three things in `rolldown.config.mjs` fail silently if
+you change them: the banner must be a **legal** comment (`/*! ... */`) with
+`comments: { legal: true }` or the minifier strips it; **`dropConsole` stays
+`false`** (rolldown's option is a boolean, not terser's per-method array, and
+the calls it would remove sit in `catch` blocks); and **decorators are not
+configured** — rolldown reads `tsconfig.json` itself, and if that regresses,
+class fields overwrite Lit's accessors and reactivity dies while the build
+stays green. Rolldown does not type-check, so `npx tsc --noEmit` is the only
+gate between a type error and a shipped bundle.
+
+Note the bundle is excluded from the `end-of-file-fixer` / `trailing-whitespace`
+pre-commit hooks: rolldown emits no trailing newline where Rollup did, and a
+hook that "fixes" the file *after* the build leaves the committed bundle out of
+sync with a fresh one — which `validate.yml` asserts byte-for-byte.
 
 **Version sync is byte-identical.** `manifest.json` `version` and
 `src/const.ts` `CARD_VERSION` must match; `const.py` derives its value from the
