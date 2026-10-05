@@ -29,7 +29,7 @@ rules:
     comment: tests/test_config_flow.py covers user, reconfigure, options and reauth.
   dependency-transparency:
     status: done
-    comment: Pillow only, declared in manifest requirements with a loose lower bound.
+    comment: Pillow only. Home Assistant ships it, so hassfest forbids listing it in the manifest.
   docs-actions:
     status: done
     comment: README "Actions" documents all four, including the capture_now overwrite refusal.
