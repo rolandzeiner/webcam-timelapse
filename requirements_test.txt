@@ -15,7 +15,7 @@
 # cp314 wheels (verified 2026-05-07). Floors below track PHACC
 # 0.13.348's transitive `==` pins (pytest-cov==7.1.0,
 # pytest-asyncio==1.4.0) — they move with the PHACC floor.
-pytest-homeassistant-custom-component>=0.13.361,<0.14
+pytest-homeassistant-custom-component>=0.13.367,<0.14
 pytest-asyncio>=1.4.0,<2
 pytest-cov>=7.1.0,<8
 # Backs the `timeout` setting in pytest.ini — a hung async fixture must
