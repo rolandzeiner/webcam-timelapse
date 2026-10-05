@@ -19,6 +19,28 @@ strict = true
 ignore_missing_imports = true
 files = ["custom_components/webcam_timelapse"]
 
+# Home Assistant 2026.10 annotates its APIs with `probatio.Schema` and aliases
+# `voluptuous` to probatio at runtime. mypy cannot see that alias, and the real
+# voluptuous package is still installed (annotatedyaml and hass-nabucasa depend
+# on it), so every `vol.Schema` handed to Home Assistant looked like an
+# unrelated class. Skipping the import types `vol.*` as Any, which is what the
+# alias amounts to. Importing probatio directly would need Home Assistant 2026.9.
+[[tool.mypy.overrides]]
+module = "voluptuous.*"
+follow_imports = "skip"
+
+# Home Assistant 2026.10 moved `BinarySensorDeviceClass` and
+# `CameraEntityFeature` into each platform's `const.py` and re-imports them
+# without `__all__`, which strict mypy does not count as exported. Neither can
+# be imported from `.const` before 2026.10, so the imports have to keep
+# pointing at the packages.
+[[tool.mypy.overrides]]
+module = [
+    "homeassistant.components.binary_sensor",
+    "homeassistant.components.camera",
+]
+implicit_reexport = true
+
 [tool.coverage.run]
 source = ["custom_components/webcam_timelapse"]
 
