@@ -91,9 +91,10 @@ and the test environment has no manifest-resolution step to install it.
 
 ## Architecture notes worth knowing before you edit
 
-**`encode.py` and `frame_store.py` import nothing from `homeassistant`.** That
-is structural, not stylistic: everything in them does blocking work (a WebP
-encode, `os.scandir`, `unlink`), so every call must go through
+**`encode.py`, `frame_store.py`, `overlay.py` and `deflicker.py` import
+nothing from `homeassistant`.** That is structural, not stylistic: everything
+in them does blocking work (a WebP encode, `os.scandir`, `unlink`, drawing on
+a decoded frame), so every call must go through
 `hass.async_add_executor_job`. Keeping the modules HA-free makes an
 `await`-less call from async code visible on review rather than only as a
 blocking-call warning at runtime.
@@ -103,6 +104,32 @@ headers.** The card addresses frames densely as `t0 + i * step`, so a frame
 must sit exactly on the grid. Naming files after a response's `Last-Modified`
 looks equivalent and silently overwrites one file forever against any camera
 whose header freezes.
+
+**The video export draws the card's overlay a second time, in Python.**
+`overlay.py` ports the series maths of `src/overlay-history.ts` and
+`src/sparkline.ts`, and `deflicker.py` ports `src/deflicker.ts`, because the
+reading burned into a frame — and the brightness correction applied to it —
+has to match what the card shows for that frame. Change one side and change
+the other in the same commit; the Python tests carry the same cases as the
+TypeScript ones for that reason. The overlay's font, DejaVu Sans, is bundled
+in `fonts/` with its licence: Pillow's built-in face has no umlauts, `µ` or
+superscripts, and a Home Assistant container ships no system fonts. It is
+subset to Latin, Greek, Cyrillic and the common symbols, which keeps it at
+~220 KB, under the `check-added-large-files` limit. To regenerate it from the
+full DejaVu Sans:
+
+```bash
+pyftsubset DejaVuSans.ttf --output-file=custom_components/webcam_timelapse/fonts/DejaVuSans.ttf \
+  --unicodes="U+0020-007E,U+00A0-024F,U+0370-03FF,U+0400-04FF,U+2000-206F,U+2070-209F,U+20A0-20CF,U+2100-218F,U+2190-21FF,U+2200-22FF,U+25A0-25FF,U+FFFD" \
+  --layout-features='*' --name-IDs='*' --name-languages='*' --notdef-outline --glyph-names
+```
+
+**ffmpeg and the recorder are soft dependencies of the export.** Both are in
+`after_dependencies` and neither is imported at module level, so an install
+without them still loads and only the export reports the gap. The tests run
+the export against a few lines of Python standing in for ffmpeg, so they do
+not depend on which codecs a runner ships; one test drives the real binary
+and is skipped where it is not installed.
 
 **`unique_id` formulas are frozen.** Changing the entry-level or entity-level
 formula wipes every existing install.

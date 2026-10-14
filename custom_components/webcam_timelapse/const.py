@@ -131,3 +131,39 @@ FRAME_EXTENSION: Final = ".webp"
 # URL prefixes for the two static mounts registered in async_setup.
 CARD_URL_BASE: Final = "/webcam_timelapse"
 FRAMES_URL_BASE: Final = "/webcam_timelapse_frames"
+
+# --- Video export ---------------------------------------------------------
+
+DEFAULT_EXPORT_FPS: Final = 24
+MIN_EXPORT_FPS: Final = 1
+MAX_EXPORT_FPS: Final = 60
+# Matches the card's own default, so an export started without saying
+# otherwise looks like the playback it was started from.
+DEFAULT_EXPORT_DEFLICKER: Final = 50
+
+# Exports go to the media folder rather than next to the frames: a video is
+# a keepsake, not a cache, so it belongs where backups and the media
+# browser can see it — the opposite of everything in STORAGE_SUBDIR.
+EXPORT_SUBDIR: Final = "webcam_timelapse"
+EXPORT_EXTENSION: Final = ".mp4"
+
+# Refuse to start an export with less than this free on the target volume.
+# On a typical install that volume is the one Home Assistant's database
+# lives on, and a full disk there corrupts far more than one video.
+EXPORT_MIN_FREE_BYTES: Final = 500 * 1024 * 1024
+
+# x264 settings. `veryfast` is the knee on small ARM boards: roughly three
+# times the throughput of `medium` for about a tenth more bytes. CRF 23 is
+# x264's own default and visually clean on stills played back as video.
+EXPORT_X264_PRESET: Final = "veryfast"
+EXPORT_X264_CRF: Final = 23
+
+# Overlay sizes, as a percentage of the video's width. The readings default
+# keeps a three-sensor block under a third of the picture; the stamp's
+# keeps the date and time readable without competing with it.
+DEFAULT_EXPORT_READINGS_SIZE: Final = 30
+MIN_EXPORT_READINGS_SIZE: Final = 10
+MAX_EXPORT_READINGS_SIZE: Final = 80
+DEFAULT_EXPORT_TIMESTAMP_SIZE: Final = 15
+MIN_EXPORT_TIMESTAMP_SIZE: Final = 5
+MAX_EXPORT_TIMESTAMP_SIZE: Final = 50

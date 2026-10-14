@@ -46,6 +46,15 @@ export interface HomeAssistant {
   } & Record<string, unknown>;
   localize?: (key: string, ...args: unknown[]) => string;
   callWS?<T = unknown>(msg: { type: string; [key: string]: unknown }): Promise<T>;
+  /** The live WebSocket connection; only the subscribe call is used. */
+  connection?: {
+    subscribeMessage<T>(
+      callback: (message: T) => void,
+      msg: { type: string; [key: string]: unknown },
+    ): Promise<() => Promise<void> | void>;
+  };
+  /** Absolute URL for a path on this Home Assistant instance. */
+  hassUrl?: (path?: string) => string;
 }
 
 /** Marker every card config extends. */
@@ -410,6 +419,13 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   overlay_title_left?: string;
   /** Smooth cloud-driven brightness jumps during playback. 0 = off. */
   deflicker?: number;
+  /**
+   * Offer the video export under the timeline.
+   *
+   * On by default. A wall tablet that only ever shows the camera can
+   * turn it off and get the row back.
+   */
+  show_export?: boolean;
 }
 
 /**

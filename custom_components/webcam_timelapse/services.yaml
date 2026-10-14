@@ -29,3 +29,83 @@ resume_capture:
       selector:
         config_entry:
           integration: webcam_timelapse
+
+export_video:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: webcam_timelapse
+    start:
+      selector:
+        datetime:
+    end:
+      selector:
+        datetime:
+    fps:
+      default: 24
+      selector:
+        number:
+          min: 1
+          max: 60
+          mode: box
+    max_width:
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 7680
+          mode: box
+          unit_of_measurement: px
+    deflicker:
+      default: 50
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 5
+          mode: slider
+    timestamp:
+      default: true
+      selector:
+        boolean:
+    timestamp_size:
+      default: 15
+      selector:
+        number:
+          min: 5
+          max: 50
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+    overlay:
+      selector:
+        object:
+    readings_size:
+      default: 30
+      selector:
+        number:
+          min: 10
+          max: 80
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+    readings_position:
+      selector:
+        select:
+          options:
+            - left
+            - right
+            - top
+            - bottom
+          translation_key: readings_position
+    readings_position_left:
+      selector:
+        select:
+          options:
+            - left
+            - right
+            - top
+            - bottom
+          translation_key: readings_position

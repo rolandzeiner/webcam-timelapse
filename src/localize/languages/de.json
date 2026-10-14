@@ -61,17 +61,68 @@
       "overlay_title": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
       "overlay_title_left": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
       "show_icon": "Verwendet das Symbol der Entität aus Home Assistant.",
-      "show_sun": "Hinterlegt die Stunden zwischen Sonnenuntergang und Sonnenaufgang in den Diagrammen und in der Zeitleiste, basierend auf deinem Home-Assistant-Standort. Wird ausgeblendet, sobald die Streifen zu fein werden."
+      "show_sun": "Hinterlegt die Stunden zwischen Sonnenuntergang und Sonnenaufgang in den Diagrammen und in der Zeitleiste, basierend auf deinem Home-Assistant-Standort. Wird ausgeblendet, sobald die Streifen zu fein werden.",
+      "show_export": "Zeigt unter der Zeitleiste eine Export-Schaltfläche. Das Video wird von Home Assistant gerendert und im Medienordner gespeichert."
     },
     "deflicker": "Helligkeit glätten",
     "show_icon": "Symbol anzeigen",
     "overlay_title": "Überschrift",
-    "overlay_title_left": "Überschrift"
+    "overlay_title_left": "Überschrift",
+    "show_export": "Videoexport anbieten"
   },
   "actions": {
     "show_camera": "Kameradetails anzeigen",
     "show_entity": "Details für {v} anzeigen",
     "hide_readings": "Messwerte ausblenden",
     "show_readings": "Messwerte einblenden"
+  },
+  "export": {
+    "open": "Video exportieren",
+    "close": "Export schließen",
+    "from": "Von",
+    "to": "Bis",
+    "start_here": "Bei diesem Bild beginnen",
+    "end_here": "Bei diesem Bild enden",
+    "preset_hours": "Letzte {v} h",
+    "preset_days": "Letzte {v} T",
+    "preset_all": "Alles",
+    "fps": "Bilder pro Sekunde",
+    "timestamp": "Datum und Uhrzeit",
+    "readings": "Sensorwerte",
+    "summary": "{frames} Bilder, {length} Video",
+    "summary_empty": "Keine Bilder in diesem Zeitraum.",
+    "start": "Exportieren",
+    "cancel": "Abbrechen",
+    "preparing": "Wird vorbereitet…",
+    "running": "Bild {done} von {total} wird kodiert",
+    "done": "Video fertig",
+    "saved": "Gespeichert als {v}",
+    "download": "Herunterladen",
+    "cancelled": "Export abgebrochen.",
+    "band": "Für den Export gewählter Zeitraum",
+    "error": {
+      "export_running": "Für diese Kamera läuft bereits ein Export.",
+      "export_no_frames": "In diesem Zeitraum gibt es keine Bilder.",
+      "export_bad_range": "Das Ende des Zeitraums liegt vor seinem Anfang.",
+      "export_cancelled": "Export abgebrochen.",
+      "export_low_disk": "Im Medienordner ist nicht genug Speicherplatz frei.",
+      "export_ffmpeg_missing": "ffmpeg wurde auf diesem Home Assistant nicht gefunden, daher konnte das Video nicht kodiert werden.",
+      "export_ffmpeg_failed": "ffmpeg konnte das Video nicht kodieren. Details stehen im Home-Assistant-Protokoll.",
+      "export_failed": "Der Export ist fehlgeschlagen. Details stehen im Home-Assistant-Protokoll.",
+      "entry_not_loaded": "Diese Kamera ist gerade nicht geladen. Versuche es erneut, sobald sie gestartet ist.",
+      "unknown": "Der Export konnte nicht gestartet werden."
+    },
+    "size": "Größe",
+    "size_value": "{v} % der Breite",
+    "position": "Position",
+    "block_left": "Linker Block",
+    "block_right": "Rechter Block",
+    "positions": {
+      "left": "Links",
+      "right": "Rechts",
+      "top": "Oben",
+      "bottom": "Unten"
+    },
+    "folder": "Videos werden gespeichert in {v}"
   }
 }

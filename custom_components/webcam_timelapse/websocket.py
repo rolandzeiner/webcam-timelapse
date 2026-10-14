@@ -21,15 +21,20 @@ from homeassistant.components.websocket_api.decorators import (
     async_response,
     websocket_command,
 )
+from homeassistant.components.websocket_api.messages import event_message
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 
 from .const import CARD_VERSION, DOMAIN, FRAME_EXTENSION, FRAMES_URL_BASE
+from .export import EXPORT_FIELDS, ExportError, ExportOptions, async_get_exporter
 
 WS_TYPE_INDEX = f"{DOMAIN}/index"
 WS_TYPE_LUMA = f"{DOMAIN}/luma"
 WS_TYPE_CARD_VERSION = f"{DOMAIN}/card_version"
+WS_TYPE_EXPORT_START = f"{DOMAIN}/export/start"
+WS_TYPE_EXPORT_SUBSCRIBE = f"{DOMAIN}/export/subscribe"
+WS_TYPE_EXPORT_CANCEL = f"{DOMAIN}/export/cancel"
 
 
 @callback
@@ -46,6 +51,9 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     async_register_command(hass, websocket_index)
     async_register_command(hass, websocket_luma)
     async_register_command(hass, websocket_card_version)
+    async_register_command(hass, websocket_export_start)
+    async_register_command(hass, websocket_export_subscribe)
+    async_register_command(hass, websocket_export_cancel)
 
 
 @callback
@@ -203,3 +211,103 @@ async def websocket_card_version(
 ) -> None:
     """Return the bundled card version so the frontend can spot a stale tab."""
     connection.send_result(msg["id"], {"version": CARD_VERSION})
+
+
+# --- video export ----------------------------------------------------------
+#
+# Three commands rather than one long-running call. An export takes
+# minutes, and a dashboard is closed, backgrounded and reopened in less:
+# tying the encode to one request would kill it whenever the phone locked.
+# So `start` only starts, the work belongs to the config entry, and
+# `subscribe` can be attached — or re-attached — at any point to learn
+# where it stands and where the finished file is.
+
+
+@websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_EXPORT_START,
+        vol.Exclusive("entry_id", "target"): str,
+        vol.Exclusive("entity_id", "target"): str,
+        # Epoch seconds, inclusive at both ends: the card thinks in grid
+        # slots, and these are exactly the slot values it already holds.
+        vol.Optional("start"): vol.Any(None, vol.Coerce(float)),
+        vol.Optional("end"): vol.Any(None, vol.Coerce(float)),
+        **EXPORT_FIELDS,
+    }
+)
+@callback
+def websocket_export_start(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Start exporting a stretch of the archive as a video."""
+    entry = _resolve_entry(hass, connection, msg)
+    if entry is None:
+        return
+
+    exporter = async_get_exporter(hass, entry)
+    try:
+        exporter.async_start(
+            ExportOptions.from_request(msg, msg.get("start"), msg.get("end"))
+        )
+    except ExportError as err:
+        connection.send_error(msg["id"], err.translation_key or "unknown", str(err))
+        return
+    connection.send_result(msg["id"], exporter.status_payload())
+
+
+@websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_EXPORT_SUBSCRIBE,
+        vol.Exclusive("entry_id", "target"): str,
+        vol.Exclusive("entity_id", "target"): str,
+    }
+)
+@callback
+def websocket_export_subscribe(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Stream the export status for one config entry.
+
+    The current status is sent straight away, so a card that opens while
+    an export is running — or after one has finished — shows the right
+    thing without having started it.
+    """
+    entry = _resolve_entry(hass, connection, msg)
+    if entry is None:
+        return
+
+    exporter = async_get_exporter(hass, entry)
+
+    @callback
+    def _forward(status: dict[str, Any]) -> None:
+        connection.send_message(event_message(msg["id"], status))
+
+    connection.subscriptions[msg["id"]] = exporter.async_subscribe(_forward)
+    connection.send_result(msg["id"])
+    _forward(exporter.status_payload())
+
+
+@websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_EXPORT_CANCEL,
+        vol.Exclusive("entry_id", "target"): str,
+        vol.Exclusive("entity_id", "target"): str,
+    }
+)
+@callback
+def websocket_export_cancel(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Stop the export that is running for one config entry, if any."""
+    entry = _resolve_entry(hass, connection, msg)
+    if entry is None:
+        return
+    connection.send_result(
+        msg["id"], {"cancelled": async_get_exporter(hass, entry).async_cancel()}
+    )

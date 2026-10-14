@@ -17,42 +17,42 @@ switch(t){case Boolean:e=e?y:null;break;case Object:case Array:e=e==null?e:JSON.
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
 */
-const w=globalThis,T=e=>e,E=w.trustedTypes,ne=E?E.createPolicy(`lit-html`,{createHTML:e=>e}):void 0,re=`$lit$`,D=`lit$${Math.random().toFixed(9).slice(2)}$`,ie=`?`+D,ae=`<${ie}>`,O=document,k=()=>O.createComment(``),A=e=>e===null||typeof e!=`object`&&typeof e!=`function`,j=Array.isArray,oe=e=>j(e)||typeof e?.[Symbol.iterator]==`function`,se=`[ 	
-\f\r]`,M=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,ce=/-->/g,le=/>/g,N=RegExp(`>|${se}(?:([^\\s"'>=/]+)(${se}*=${se}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,`g`),ue=/'/g,de=/"/g,fe=/^(?:script|style|textarea|title)$/i,pe=e=>(t,...n)=>({_$litType$:e,strings:t,values:n}),P=pe(1),me=pe(2),F=Symbol.for(`lit-noChange`),I=Symbol.for(`lit-nothing`),he=/* @__PURE__ */ new WeakMap,L=O.createTreeWalker(O,129);function ge(e,t){if(!j(e)||!e.hasOwnProperty(`raw`))throw Error(`invalid template strings array`);return ne===void 0?t:ne.createHTML(t)}const _e=(e,t)=>{let n=e.length-1,r=[],i,a=t===2?`<svg>`:t===3?`<math>`:``,o=M;for(let t=0;t<n;t++){let n=e[t],s,c,l=-1,u=0;for(;u<n.length&&(o.lastIndex=u,c=o.exec(n),c!==null);)u=o.lastIndex,o===M?c[1]===`!--`?o=ce:c[1]===void 0?c[2]===void 0?c[3]!==void 0&&(o=N):(fe.test(c[2])&&(i=RegExp(`</`+c[2],`g`)),o=N):o=le:o===N?c[0]===`>`?(o=i??M,l=-1):c[1]===void 0?l=-2:(l=o.lastIndex-c[2].length,s=c[1],o=c[3]===void 0?N:c[3]===`"`?de:ue):o===de||o===ue?o=N:o===ce||o===le?o=M:(o=N,i=void 0);let d=o===N&&e[t+1].startsWith(`/>`)?` `:``;a+=o===M?n+ae:l>=0?(r.push(s),n.slice(0,l)+re+n.slice(l)+D+d):n+D+(l===-2?t:d)}return[ge(e,a+(e[n]||`<?>`)+(t===2?`</svg>`:t===3?`</math>`:``)),r]};var ve=class e{constructor({strings:t,_$litType$:n},r){let i;this.parts=[];let a=0,o=0,s=t.length-1,c=this.parts,[l,u]=_e(t,n);if(this.el=e.createElement(l,r),L.currentNode=this.el.content,n===2||n===3){let e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;(i=L.nextNode())!==null&&c.length<s;){if(i.nodeType===1){if(i.hasAttributes())for(let e of i.getAttributeNames())if(e.endsWith(re)){let t=u[o++],n=i.getAttribute(e).split(D),r=/([.?@])?(.*)/.exec(t);c.push({type:1,index:a,name:r[2],strings:n,ctor:r[1]===`.`?xe:r[1]===`?`?Se:r[1]===`@`?Ce:z}),i.removeAttribute(e)}else e.startsWith(D)&&(c.push({type:6,index:a}),i.removeAttribute(e));if(fe.test(i.tagName)){let e=i.textContent.split(D),t=e.length-1;if(t>0){i.textContent=E?E.emptyScript:``;for(let n=0;n<t;n++)i.append(e[n],k()),L.nextNode(),c.push({type:2,index:++a});i.append(e[t],k())}}}else if(i.nodeType===8){if(i.data===ie)c.push({type:2,index:a});else{let e=-1;for(;(e=i.data.indexOf(D,e+1))!==-1;)c.push({type:7,index:a}),e+=D.length-1}}a++}}static createElement(e,t){let n=O.createElement(`template`);return n.innerHTML=e,n}};function R(e,t,n=e,r){if(t===F)return t;let i=r===void 0?n._$Cl:n._$Co?.[r],a=A(t)?void 0:t._$litDirective$;return i?.constructor!==a&&(i?._$AO?.(!1),a===void 0?i=void 0:(i=new a(e),i._$AT(e,n,r)),r===void 0?n._$Cl=i:(n._$Co??=[])[r]=i),i!==void 0&&(t=R(e,i._$AS(e,t.values),i,r)),t}var ye=class{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){let{el:{content:t},parts:n}=this._$AD,r=(e?.creationScope??O).importNode(t,!0);L.currentNode=r;let i=L.nextNode(),a=0,o=0,s=n[0];for(;s!==void 0;){if(a===s.index){let t;s.type===2?t=new be(i,i.nextSibling,this,e):s.type===1?t=new s.ctor(i,s.name,s.strings,this,e):s.type===6&&(t=new we(i,this,e)),this._$AV.push(t),s=n[++o]}a!==s?.index&&(i=L.nextNode(),a++)}return L.currentNode=O,r}p(e){let t=0;for(let n of this._$AV)n!==void 0&&(n.strings===void 0?n._$AI(e[t]):(n._$AI(e,n,t),t+=n.strings.length-2)),t++}},be=class e{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,n,r){this.type=2,this._$AH=I,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=n,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode,t=this._$AM;return t!==void 0&&e?.nodeType===11&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=R(this,e,t),A(e)?e===I||e==null||e===``?(this._$AH!==I&&this._$AR(),this._$AH=I):e!==this._$AH&&e!==F&&this._(e):e._$litType$===void 0?e.nodeType===void 0?oe(e)?this.k(e):this._(e):this.T(e):this.$(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==I&&A(this._$AH)?this._$AA.nextSibling.data=e:this.T(O.createTextNode(e)),this._$AH=e}$(e){let{values:t,_$litType$:n}=e,r=typeof n==`number`?this._$AC(e):(n.el===void 0&&(n.el=ve.createElement(ge(n.h,n.h[0]),this.options)),n);if(this._$AH?._$AD===r)this._$AH.p(t);else{let e=new ye(r,this),n=e.u(this.options);e.p(t),this.T(n),this._$AH=e}}_$AC(e){let t=he.get(e.strings);return t===void 0&&he.set(e.strings,t=new ve(e)),t}k(t){j(this._$AH)||(this._$AH=[],this._$AR());let n=this._$AH,r,i=0;for(let a of t)i===n.length?n.push(r=new e(this.O(k()),this.O(k()),this,this.options)):r=n[i],r._$AI(a),i++;i<n.length&&(this._$AR(r&&r._$AB.nextSibling,i),n.length=i)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){let t=T(e).nextSibling;T(e).remove(),e=t}}setConnected(e){this._$AM===void 0&&(this._$Cv=e,this._$AP?.(e))}},z=class{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,n,r,i){this.type=1,this._$AH=I,this._$AN=void 0,this.element=e,this.name=t,this._$AM=r,this.options=i,n.length>2||n[0]!==``||n[1]!==``?(this._$AH=Array(n.length-1).fill(/* @__PURE__ */ new String),this.strings=n):this._$AH=I}_$AI(e,t=this,n,r){let i=this.strings,a=!1;if(i===void 0)e=R(this,e,t,0),a=!A(e)||e!==this._$AH&&e!==F,a&&(this._$AH=e);else{let r=e,o,s;for(e=i[0],o=0;o<i.length-1;o++)s=R(this,r[n+o],t,o),s===F&&(s=this._$AH[o]),a||=!A(s)||s!==this._$AH[o],s===I?e=I:e!==I&&(e+=(s??``)+i[o+1]),this._$AH[o]=s}a&&!r&&this.j(e)}j(e){e===I?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??``)}},xe=class extends z{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===I?void 0:e}},Se=class extends z{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==I)}},Ce=class extends z{constructor(e,t,n,r,i){super(e,t,n,r,i),this.type=5}_$AI(e,t=this){if((e=R(this,e,t,0)??I)===F)return;let n=this._$AH,r=e===I&&n!==I||e.capture!==n.capture||e.once!==n.once||e.passive!==n.passive,i=e!==I&&(n===I||r);r&&this.element.removeEventListener(this.name,this,n),i&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){typeof this._$AH==`function`?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}},we=class{constructor(e,t,n){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=n}get _$AU(){return this._$AM._$AU}_$AI(e){R(this,e)}};const Te=w.litHtmlPolyfillSupport;Te?.(ve,be),(w.litHtmlVersions??=[]).push(`3.3.3`);const Ee=(e,t,n)=>{let r=n?.renderBefore??t,i=r._$litPart$;if(i===void 0){let e=n?.renderBefore??null;r._$litPart$=i=new be(t.insertBefore(k(),e),e,void 0,n??{})}return i._$AI(e),i},De=globalThis
+const w=globalThis,T=e=>e,E=w.trustedTypes,ne=E?E.createPolicy(`lit-html`,{createHTML:e=>e}):void 0,re=`$lit$`,D=`lit$${Math.random().toFixed(9).slice(2)}$`,ie=`?`+D,ae=`<${ie}>`,O=document,k=()=>O.createComment(``),A=e=>e===null||typeof e!=`object`&&typeof e!=`function`,oe=Array.isArray,se=e=>oe(e)||typeof e?.[Symbol.iterator]==`function`,ce=`[ 	
+\f\r]`,j=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,le=/-->/g,ue=/>/g,M=RegExp(`>|${ce}(?:([^\\s"'>=/]+)(${ce}*=${ce}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,`g`),de=/'/g,fe=/"/g,pe=/^(?:script|style|textarea|title)$/i,me=e=>(t,...n)=>({_$litType$:e,strings:t,values:n}),N=me(1),he=me(2),P=Symbol.for(`lit-noChange`),F=Symbol.for(`lit-nothing`),ge=/* @__PURE__ */ new WeakMap,I=O.createTreeWalker(O,129);function _e(e,t){if(!oe(e)||!e.hasOwnProperty(`raw`))throw Error(`invalid template strings array`);return ne===void 0?t:ne.createHTML(t)}const ve=(e,t)=>{let n=e.length-1,r=[],i,a=t===2?`<svg>`:t===3?`<math>`:``,o=j;for(let t=0;t<n;t++){let n=e[t],s,c,l=-1,u=0;for(;u<n.length&&(o.lastIndex=u,c=o.exec(n),c!==null);)u=o.lastIndex,o===j?c[1]===`!--`?o=le:c[1]===void 0?c[2]===void 0?c[3]!==void 0&&(o=M):(pe.test(c[2])&&(i=RegExp(`</`+c[2],`g`)),o=M):o=ue:o===M?c[0]===`>`?(o=i??j,l=-1):c[1]===void 0?l=-2:(l=o.lastIndex-c[2].length,s=c[1],o=c[3]===void 0?M:c[3]===`"`?fe:de):o===fe||o===de?o=M:o===le||o===ue?o=j:(o=M,i=void 0);let d=o===M&&e[t+1].startsWith(`/>`)?` `:``;a+=o===j?n+ae:l>=0?(r.push(s),n.slice(0,l)+re+n.slice(l)+D+d):n+D+(l===-2?t:d)}return[_e(e,a+(e[n]||`<?>`)+(t===2?`</svg>`:t===3?`</math>`:``)),r]};var ye=class e{constructor({strings:t,_$litType$:n},r){let i;this.parts=[];let a=0,o=0,s=t.length-1,c=this.parts,[l,u]=ve(t,n);if(this.el=e.createElement(l,r),I.currentNode=this.el.content,n===2||n===3){let e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;(i=I.nextNode())!==null&&c.length<s;){if(i.nodeType===1){if(i.hasAttributes())for(let e of i.getAttributeNames())if(e.endsWith(re)){let t=u[o++],n=i.getAttribute(e).split(D),r=/([.?@])?(.*)/.exec(t);c.push({type:1,index:a,name:r[2],strings:n,ctor:r[1]===`.`?Se:r[1]===`?`?Ce:r[1]===`@`?we:R}),i.removeAttribute(e)}else e.startsWith(D)&&(c.push({type:6,index:a}),i.removeAttribute(e));if(pe.test(i.tagName)){let e=i.textContent.split(D),t=e.length-1;if(t>0){i.textContent=E?E.emptyScript:``;for(let n=0;n<t;n++)i.append(e[n],k()),I.nextNode(),c.push({type:2,index:++a});i.append(e[t],k())}}}else if(i.nodeType===8){if(i.data===ie)c.push({type:2,index:a});else{let e=-1;for(;(e=i.data.indexOf(D,e+1))!==-1;)c.push({type:7,index:a}),e+=D.length-1}}a++}}static createElement(e,t){let n=O.createElement(`template`);return n.innerHTML=e,n}};function L(e,t,n=e,r){if(t===P)return t;let i=r===void 0?n._$Cl:n._$Co?.[r],a=A(t)?void 0:t._$litDirective$;return i?.constructor!==a&&(i?._$AO?.(!1),a===void 0?i=void 0:(i=new a(e),i._$AT(e,n,r)),r===void 0?n._$Cl=i:(n._$Co??=[])[r]=i),i!==void 0&&(t=L(e,i._$AS(e,t.values),i,r)),t}var be=class{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){let{el:{content:t},parts:n}=this._$AD,r=(e?.creationScope??O).importNode(t,!0);I.currentNode=r;let i=I.nextNode(),a=0,o=0,s=n[0];for(;s!==void 0;){if(a===s.index){let t;s.type===2?t=new xe(i,i.nextSibling,this,e):s.type===1?t=new s.ctor(i,s.name,s.strings,this,e):s.type===6&&(t=new Te(i,this,e)),this._$AV.push(t),s=n[++o]}a!==s?.index&&(i=I.nextNode(),a++)}return I.currentNode=O,r}p(e){let t=0;for(let n of this._$AV)n!==void 0&&(n.strings===void 0?n._$AI(e[t]):(n._$AI(e,n,t),t+=n.strings.length-2)),t++}},xe=class e{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,n,r){this.type=2,this._$AH=F,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=n,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode,t=this._$AM;return t!==void 0&&e?.nodeType===11&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=L(this,e,t),A(e)?e===F||e==null||e===``?(this._$AH!==F&&this._$AR(),this._$AH=F):e!==this._$AH&&e!==P&&this._(e):e._$litType$===void 0?e.nodeType===void 0?se(e)?this.k(e):this._(e):this.T(e):this.$(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==F&&A(this._$AH)?this._$AA.nextSibling.data=e:this.T(O.createTextNode(e)),this._$AH=e}$(e){let{values:t,_$litType$:n}=e,r=typeof n==`number`?this._$AC(e):(n.el===void 0&&(n.el=ye.createElement(_e(n.h,n.h[0]),this.options)),n);if(this._$AH?._$AD===r)this._$AH.p(t);else{let e=new be(r,this),n=e.u(this.options);e.p(t),this.T(n),this._$AH=e}}_$AC(e){let t=ge.get(e.strings);return t===void 0&&ge.set(e.strings,t=new ye(e)),t}k(t){oe(this._$AH)||(this._$AH=[],this._$AR());let n=this._$AH,r,i=0;for(let a of t)i===n.length?n.push(r=new e(this.O(k()),this.O(k()),this,this.options)):r=n[i],r._$AI(a),i++;i<n.length&&(this._$AR(r&&r._$AB.nextSibling,i),n.length=i)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){let t=T(e).nextSibling;T(e).remove(),e=t}}setConnected(e){this._$AM===void 0&&(this._$Cv=e,this._$AP?.(e))}},R=class{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,n,r,i){this.type=1,this._$AH=F,this._$AN=void 0,this.element=e,this.name=t,this._$AM=r,this.options=i,n.length>2||n[0]!==``||n[1]!==``?(this._$AH=Array(n.length-1).fill(/* @__PURE__ */ new String),this.strings=n):this._$AH=F}_$AI(e,t=this,n,r){let i=this.strings,a=!1;if(i===void 0)e=L(this,e,t,0),a=!A(e)||e!==this._$AH&&e!==P,a&&(this._$AH=e);else{let r=e,o,s;for(e=i[0],o=0;o<i.length-1;o++)s=L(this,r[n+o],t,o),s===P&&(s=this._$AH[o]),a||=!A(s)||s!==this._$AH[o],s===F?e=F:e!==F&&(e+=(s??``)+i[o+1]),this._$AH[o]=s}a&&!r&&this.j(e)}j(e){e===F?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??``)}},Se=class extends R{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===F?void 0:e}},Ce=class extends R{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==F)}},we=class extends R{constructor(e,t,n,r,i){super(e,t,n,r,i),this.type=5}_$AI(e,t=this){if((e=L(this,e,t,0)??F)===P)return;let n=this._$AH,r=e===F&&n!==F||e.capture!==n.capture||e.once!==n.once||e.passive!==n.passive,i=e!==F&&(n===F||r);r&&this.element.removeEventListener(this.name,this,n),i&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){typeof this._$AH==`function`?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}},Te=class{constructor(e,t,n){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=n}get _$AU(){return this._$AM._$AU}_$AI(e){L(this,e)}};const Ee=w.litHtmlPolyfillSupport;Ee?.(ye,xe),(w.litHtmlVersions??=[]).push(`3.3.3`);const De=(e,t,n)=>{let r=n?.renderBefore??t,i=r._$litPart$;if(i===void 0){let e=n?.renderBefore??null;r._$litPart$=i=new xe(t.insertBefore(k(),e),e,void 0,n??{})}return i._$AI(e),i},Oe=globalThis
 /**
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
 */
-;var B=class extends C{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){let e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){let t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=Ee(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return F}};B._$litElement$=!0,B.finalized=!0,De.litElementHydrateSupport?.({LitElement:B});const Oe=De.litElementPolyfillSupport;Oe?.({LitElement:B}),(De.litElementVersions??=[]).push(`4.2.2`);
+;var z=class extends C{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){let e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){let t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=De(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return P}};z._$litElement$=!0,z.finalized=!0,Oe.litElementHydrateSupport?.({LitElement:z});const ke=Oe.litElementPolyfillSupport;ke?.({LitElement:z}),(Oe.litElementVersions??=[]).push(`4.2.2`);
 /**
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
 */
-const ke=e=>(t,n)=>{n===void 0?customElements.define(e,t):n.addInitializer(()=>{customElements.define(e,t)})},Ae={attribute:!0,type:String,converter:x,reflect:!1,hasChanged:S},je=(e=Ae,t,n)=>{
+const Ae=e=>(t,n)=>{n===void 0?customElements.define(e,t):n.addInitializer(()=>{customElements.define(e,t)})},je={attribute:!0,type:String,converter:x,reflect:!1,hasChanged:S},Me=(e=je,t,n)=>{
 /**
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
 */
-let{kind:r,metadata:i}=n,a=globalThis.litPropertyMetadata.get(i);if(a===void 0&&globalThis.litPropertyMetadata.set(i,a=/* @__PURE__ */ new Map),r===`setter`&&((e=Object.create(e)).wrapped=!0),a.set(n.name,e),r===`accessor`){let{name:r}=n;return{set(n){let i=t.get.call(this);t.set.call(this,n),this.requestUpdate(r,i,e,!0,n)},init(t){return t!==void 0&&this.C(r,void 0,e,t),t}}}if(r===`setter`){let{name:r}=n;return function(n){let i=this[r];t.call(this,n),this.requestUpdate(r,i,e,!0,n)}}throw Error(`Unsupported decorator location: `+r)};function V(e){return(t,n)=>typeof n==`object`?je(e,t,n):((e,t,n)=>{let r=t.hasOwnProperty(n);return t.constructor.createProperty(n,e),r?Object.getOwnPropertyDescriptor(t,n):void 0})(e,t,n)}
+let{kind:r,metadata:i}=n,a=globalThis.litPropertyMetadata.get(i);if(a===void 0&&globalThis.litPropertyMetadata.set(i,a=/* @__PURE__ */ new Map),r===`setter`&&((e=Object.create(e)).wrapped=!0),a.set(n.name,e),r===`accessor`){let{name:r}=n;return{set(n){let i=t.get.call(this);t.set.call(this,n),this.requestUpdate(r,i,e,!0,n)},init(t){return t!==void 0&&this.C(r,void 0,e,t),t}}}if(r===`setter`){let{name:r}=n;return function(n){let i=this[r];t.call(this,n),this.requestUpdate(r,i,e,!0,n)}}throw Error(`Unsupported decorator location: `+r)};function Ne(e){return(t,n)=>typeof n==`object`?Me(e,t,n):((e,t,n)=>{let r=t.hasOwnProperty(n);return t.constructor.createProperty(n,e),r?Object.getOwnPropertyDescriptor(t,n):void 0})(e,t,n)}
 /**
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
-*/function H(e){return V({...e,state:!0,attribute:!1})}
+*/function B(e){return Ne({...e,state:!0,attribute:!1})}
 /**
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
 */
-const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`object`&&Object.defineProperty(e,t,n),n);
+const Pe=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`object`&&Object.defineProperty(e,t,n),n);
 /**
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
-*/function Ne(e,t){return(n,r,i)=>{let a=t=>t.renderRoot?.querySelector(e)??null;if(t){let{get:e,set:t}=typeof r==`object`?n:i??(()=>{let e=Symbol();return{get(){return this[e]},set(t){this[e]=t}}})();return Me(n,r,{get(){let n=e.call(this);return n===void 0&&(n=a(this),(n!==null||this.hasUpdated)&&t.call(this,n)),n}})}return Me(n,r,{get(){return a(this)}})}}const Pe=c`
+*/function Fe(e,t){return(n,r,i)=>{let a=t=>t.renderRoot?.querySelector(e)??null;if(t){let{get:e,set:t}=typeof r==`object`?n:i??(()=>{let e=Symbol();return{get(){return this[e]},set(t){this[e]=t}}})();return Pe(n,r,{get(){let n=e.call(this);return n===void 0&&(n=a(this),(n!==null||this.hasUpdated)&&t.call(this,n)),n}})}return Pe(n,r,{get(){return a(this)}})}}const Ie=c`
   :host {
     --wtl-accent: var(--primary-color, #03a9f4);
     --wtl-surface: var(--card-background-color, #fff);
@@ -554,6 +554,24 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
     opacity: 0.07;
   }
 
+  /* The stretch of the timeline an export would cover. The same idiom
+     as the night bands — a tinted span behind the bar, placed by DOM
+     order rather than z-index — but in the accent colour and far
+     stronger: night is context, this is a selection the user made and
+     has to be able to see while dragging the playhead to its other end. */
+  .export-band {
+    position: absolute;
+    top: 50%;
+    height: 20px;
+    /* A one-frame selection still has to be findable on the bar. */
+    min-width: 3px;
+    transform: translateY(-50%);
+    border-radius: 3px;
+    background: var(--wtl-accent);
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
   .marks {
     position: absolute;
     inset: 0;
@@ -700,6 +718,235 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
     bottom: 0;
     font-weight: 500;
     color: var(--wtl-text);
+  }
+
+  /* --- video export ------------------------------------------------ */
+
+  /* Under the timeline, in normal flow. Deliberately not a button on the
+     control pill: the pill's width is what the narrow-layout breakpoints
+     above are derived from, and export is a once-in-a-while action that
+     does not belong among the transport controls anyway.
+
+     Every control here is a native element. Home Assistant's own
+     (ha-button, ha-switch, ha-select) are loaded lazily by whichever
+     core panel needs them first, so in a card they may or may not be
+     registered — and an unregistered custom element renders as nothing
+     at all, with no error. */
+  .export {
+    margin: 0 12px 10px;
+    font-size: var(--ha-font-size-s, 12px);
+  }
+
+  .export button,
+  .export-download {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .export button:focus-visible,
+  .export-download:focus-visible,
+  .export-check input:focus-visible {
+    outline: 2px solid var(--wtl-accent);
+    outline-offset: 2px;
+  }
+
+  /* Quiet until wanted, like the fold control on the readings. */
+  .export-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 4px 8px;
+    margin-left: -8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--wtl-muted);
+    --mdc-icon-size: 16px;
+  }
+
+  .export-toggle:hover,
+  .export-toggle[aria-expanded="true"] {
+    color: var(--wtl-text);
+  }
+
+  .export-panel {
+    display: grid;
+    gap: 12px;
+    margin-top: 4px;
+    padding: 12px;
+    border: 1px solid var(--wtl-divider);
+    border-radius: 8px;
+    color: var(--wtl-text);
+  }
+
+  /* From and To side by side while there is room, stacked when not. */
+  .export-ends {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px 16px;
+  }
+
+  .export-end {
+    display: grid;
+    gap: 4px;
+    justify-items: start;
+  }
+
+  .export-label {
+    color: var(--wtl-muted);
+  }
+
+  /* Digits must not shift width as the range is moved. */
+  .export-stamp {
+    font-size: var(--ha-font-size-m, 14px);
+    font-weight: var(--ha-font-weight-medium, 500);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .export-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+  }
+
+  .export-chip {
+    min-height: 28px;
+    padding: 4px 10px;
+    border: 1px solid var(--wtl-divider);
+    border-radius: 999px;
+    background: none;
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .export-chip:hover {
+    border-color: var(--wtl-muted);
+  }
+
+  /* The chosen frame rate. Border and tint, not colour alone, so it
+     still reads as selected in forced-colours and to anyone who cannot
+     tell the accent from the divider. */
+  .export-chip[aria-pressed="true"] {
+    border-color: var(--wtl-accent);
+    border-width: 2px;
+    padding: 3px 9px;
+    font-weight: var(--ha-font-weight-medium, 500);
+  }
+
+  .export-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    cursor: pointer;
+  }
+
+  .export-check input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--wtl-accent);
+  }
+
+  .export-summary {
+    color: var(--wtl-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Indented under its checkbox, so the size reads as belonging to it. */
+  .export-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+  }
+
+  /* Undoes the scrubber's rules, which style every range input in the
+     card: that one is stretched invisibly over the timeline track and
+     draws its own thumb. This one is an ordinary slider in a row. */
+  .export-size input[type="range"] {
+    position: static;
+    inset: auto;
+    width: 140px;
+    height: auto;
+    margin: 0;
+    background: none;
+    appearance: auto;
+    accent-color: var(--wtl-accent);
+  }
+
+  /* Fixed width, so the slider does not jump as the number grows a digit. */
+  .export-size-value {
+    min-width: 11ch;
+    color: var(--wtl-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The folder is for finding and tidying up old exports, so it is always
+     there — but quiet, and free to break anywhere in a long path. */
+  .export-folder {
+    color: var(--wtl-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .export-go,
+  .export-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--wtl-accent);
+    color: var(--text-primary-color, #fff);
+    font-weight: var(--ha-font-weight-medium, 500);
+    text-decoration: none;
+    --mdc-icon-size: 18px;
+  }
+
+  /* While an export runs the form is locked, and has to look it:
+     a control that ignores a press without saying why reads as a
+     broken card. */
+  .export-go:disabled,
+  .export-chip:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .export-chip:disabled:hover {
+    border-color: var(--wtl-divider);
+  }
+
+  .export-status {
+    display: grid;
+    gap: 8px;
+    justify-items: start;
+  }
+
+  .export-status .detail {
+    color: var(--wtl-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .export-error {
+    color: var(--wtl-gap);
+  }
+
+  .export-progress {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--wtl-divider);
+    overflow: hidden;
+  }
+
+  .export-progress span {
+    display: block;
+    height: 100%;
+    background: var(--wtl-accent);
   }
 
   /* --- editor ------------------------------------------------------ */
@@ -881,11 +1128,13 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
 
   @media (forced-colors: active) {
     .fill,
-    .gap-run {
+    .gap-run,
+    .export-band,
+    .export-progress span {
       forced-color-adjust: none;
     }
   }
-`;var Fe=/* @__PURE__ */ t({actions:()=>Ge,badge:()=>Le,controls:()=>Re,default:()=>Ke,editor:()=>We,empty:()=>Ie,error:()=>Ve,spark:()=>Be,track:()=>ze,version_reload:()=>Ue,version_update:()=>He}),Ie={no_frames:`No frames archived yet.`,first_soon:`The first one appears at the next capture.`,frame_failed:`This frame could not be loaded.`,index_failed:`Could not load the timeline.`},Le={live:`LIVE`,gap:`NO IMAGE`},Re={play:`Play`,pause:`Pause`,previous:`Previous frame`,next:`Next frame`,speed:`Playback speed {v}x`,now:`Jump to now`},ze={label:`Timeline position`},Be={range:`Range {v}`,flat:`No change`},Ve={no_camera:`You need to pick a camera in the card configuration.`},He=`This card was updated to {v}. Reload to pick up the new version.`,Ue=`Reload`,We={camera_entity:`Camera`,title:`Title`,show_dayticks:`Show day markers`,show_graph:`Show graphs`,show_sun:`Mark night`,playback:`Playback`,autoplay:`Play automatically`,speed:`Speed`,graph_hours:`Graph window`,overlay_right:`Overlay readings (right)`,overlay_right_hint:`Values shown over the image are read at the moment you scrub to, not the current ones.`,overlay_left:`Overlay readings (left)`,overlay_left_hint:`A second block on the other side of the picture. Leave it empty for one block on the right.`,add_entity:`Add entity`,entity:`Entity`,name:`Label`,unit:`Unit`,decimals:`Decimals`,color:`Colour`,graph:`Graph`,move_up:`Move up`,move_down:`Move down`,remove:`Remove`,helper:{camera_entity:`Only cameras created by this integration have an archive to scrub.`,graph_hours:`How much history the sparkline shows around the playhead.`,autoplay:`Ignored when your system asks for reduced motion.`,deflicker:`Evens out cloud-driven brightness jumps during playback. 0 turns it off.`,overlay_title:`Shown above the readings. Leave empty for no heading.`,overlay_title_left:`Shown above the readings. Leave empty for no heading.`,show_icon:`Uses the entity's own icon from Home Assistant.`,show_sun:`Shades the hours between sunset and sunrise on the graphs and the scrubber, using your Home Assistant location. Hidden when the bands get too fine to read.`},deflicker:`Smooth brightness`,show_icon:`Show icon`,overlay_title:`Heading`,overlay_title_left:`Heading`},Ge={show_camera:`Show camera details`,show_entity:`Show details for {v}`,hide_readings:`Hide readings`,show_readings:`Show readings`},Ke={empty:Ie,badge:Le,controls:Re,track:ze,spark:Be,error:Ve,version_update:He,version_reload:Ue,editor:We,actions:Ge},qe=/* @__PURE__ */ t({actions:()=>rt,badge:()=>Ye,controls:()=>Xe,default:()=>it,editor:()=>nt,empty:()=>Je,error:()=>$e,spark:()=>Qe,track:()=>Ze,version_reload:()=>tt,version_update:()=>et}),Je={no_frames:`Noch keine Bilder gespeichert.`,first_soon:`Das erste erscheint bei der nächsten Aufnahme.`,frame_failed:`Dieses Bild konnte nicht geladen werden.`,index_failed:`Die Zeitleiste konnte nicht geladen werden.`},Ye={live:`LIVE`,gap:`KEIN BILD`},Xe={play:`Abspielen`,pause:`Pause`,previous:`Vorheriges Bild`,next:`Nächstes Bild`,speed:`Wiedergabegeschwindigkeit {v}x`,now:`Zur Gegenwart springen`},Ze={label:`Position auf der Zeitleiste`},Qe={range:`Spanne {v}`,flat:`Unverändert`},$e={no_camera:`Bitte wähle in der Kartenkonfiguration eine Kamera aus.`},et=`Diese Karte wurde auf {v} aktualisiert. Lade neu, um die neue Version zu verwenden.`,tt=`Neu laden`,nt={camera_entity:`Kamera`,title:`Titel`,show_dayticks:`Tagesmarkierungen anzeigen`,show_graph:`Diagramme anzeigen`,show_sun:`Nacht markieren`,playback:`Wiedergabe`,autoplay:`Automatisch abspielen`,speed:`Geschwindigkeit`,graph_hours:`Diagramm-Zeitraum`,overlay_right:`Eingeblendete Messwerte (rechts)`,overlay_right_hint:`Die Werte über dem Bild gehören zu dem Zeitpunkt, zu dem du scrollst – nicht zur Gegenwart.`,overlay_left:`Eingeblendete Messwerte (links)`,overlay_left_hint:`Ein zweiter Block auf der anderen Seite des Bildes. Leer lassen, dann bleibt es bei einem Block rechts.`,add_entity:`Entität hinzufügen`,entity:`Entität`,name:`Bezeichnung`,unit:`Einheit`,decimals:`Nachkommastellen`,color:`Farbe`,graph:`Diagramm`,move_up:`Nach oben`,move_down:`Nach unten`,remove:`Entfernen`,helper:{camera_entity:`Nur Kameras dieser Integration haben ein Archiv zum Durchblättern.`,graph_hours:`Wie viel Verlauf die Sparkline rund um die Position zeigt.`,autoplay:`Wird ignoriert, wenn dein System reduzierte Bewegung anfordert.`,deflicker:`Gleicht wolkenbedingte Helligkeitssprünge bei der Wiedergabe aus. 0 schaltet es ab.`,overlay_title:`Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.`,overlay_title_left:`Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.`,show_icon:`Verwendet das Symbol der Entität aus Home Assistant.`,show_sun:`Hinterlegt die Stunden zwischen Sonnenuntergang und Sonnenaufgang in den Diagrammen und in der Zeitleiste, basierend auf deinem Home-Assistant-Standort. Wird ausgeblendet, sobald die Streifen zu fein werden.`},deflicker:`Helligkeit glätten`,show_icon:`Symbol anzeigen`,overlay_title:`Überschrift`,overlay_title_left:`Überschrift`},rt={show_camera:`Kameradetails anzeigen`,show_entity:`Details für {v} anzeigen`,hide_readings:`Messwerte ausblenden`,show_readings:`Messwerte einblenden`},it={empty:Je,badge:Ye,controls:Xe,track:Ze,spark:Qe,error:$e,version_update:et,version_reload:tt,editor:nt,actions:rt};const at={en:Fe,de:qe};function ot(e,t){let n=e.split(`.`).reduce((e,t)=>{if(e&&typeof e==`object`&&t in e)return e[t]},t);return typeof n==`string`?n:void 0}function U(e,t=void 0,n=``,r=``){let i=(t??`en`).toLowerCase().split(/[-_]/)[0]??`en`,a=at[i]??at.en??{},o=at.en??{},s=ot(e,a);return s===void 0&&(s=ot(e,o)),s===void 0&&(s=e),n!==``&&r!==``&&(s=s.replace(n,r)),s}function W(e,t,n,r){var i=arguments.length,a=i<3?t:r===null?r=Object.getOwnPropertyDescriptor(t,n):r,o;if(typeof Reflect==`object`&&typeof Reflect.decorate==`function`)a=Reflect.decorate(e,t,n,r);else for(var s=e.length-1;s>=0;s--)(o=e[s])&&(a=(i<3?o(a):i>3?o(t,n,a):o(t,n))||a);return i>3&&a&&Object.defineProperty(t,n,a),a}var G;const st=[1,2,4,8,16,32,64],ct=[{name:`overlay_title`,selector:{text:{}}}],lt=[{name:`overlay_title_left`,selector:{text:{}}}],ut=[{type:`grid`,schema:[{name:`name`,selector:{text:{}}},{name:`unit`,selector:{text:{}}},{name:`decimals`,selector:{number:{min:0,max:4,mode:`box`}}},{name:`graph_hours`,selector:{number:{min:1,max:8760,mode:`box`,unit_of_measurement:`h`}}},{name:`show_icon`,selector:{boolean:{}}},{name:`graph`,selector:{boolean:{}}}]}];let K=class extends B{static{G=this}constructor(...e){super(...e),this.computeLabel=e=>this.t(`editor.${e.name}`),this.computeHelper=e=>{let t=this.t(`editor.helper.${e.name}`);return t.startsWith(`editor.`)?void 0:t}}static{this.styles=Pe}setConfig(e){this.config=e}get uiLanguage(){return this.hass?.locale?.language??this.hass?.language??`en`}t(e){return U(e,this.uiLanguage)}get schema(){return[{name:`camera_entity`,required:!0,selector:{entity:{filter:{domain:`camera`,integration:`webcam_timelapse`}}}},{name:`title`,selector:{text:{}}},{type:`grid`,schema:[{name:`show_dayticks`,selector:{boolean:{}}},{name:`show_graph`,selector:{boolean:{}}},{name:`show_sun`,selector:{boolean:{}}}]},{type:`expandable`,name:`playback`,icon:`mdi:play-speed`,flatten:!0,schema:[{name:`autoplay`,selector:{boolean:{}}},{name:`speed`,selector:{select:{mode:`dropdown`,options:st.map(e=>({value:e,label:`${e}x`}))}}},{name:`deflicker`,selector:{number:{min:0,max:100,step:5,mode:`slider`}}},{name:`graph_hours`,selector:{number:{min:1,max:336,mode:`slider`,unit_of_measurement:`h`}}}]}]}onFormChange(e){e.stopPropagation(),this.emit({...this.config,...e.detail.value})}emit(e){this.dispatchEvent(new CustomEvent(`config-changed`,{detail:{config:e},bubbles:!0,composed:!0}))}static{this.ENTITY_KEY={right:`entities`,left:`entities_left`}}rows(e){return this.config?.[G.ENTITY_KEY[e]]??[]}updateRows(e,t){this.emit({...this.config,[G.ENTITY_KEY[e]]:t})}addRow(e){this.updateRows(e,[...this.rows(e),{entity:``}])}removeRow(e,t){this.updateRows(e,this.rows(e).filter((e,n)=>n!==t))}moveRow(e,t,n){let r=[...this.rows(e)],i=t+n;i<0||i>=r.length||([r[t],r[i]]=[r[i],r[t]],this.updateRows(e,r))}patchRow(e,t,n){let r=this.rows(e).map((e,r)=>r===t?{...e,...n}:e);this.updateRows(e,r)}renderRow(e,t,n){let r=t.name||t.entity||this.t(`editor.entity`);return P`
+`;var Le=/* @__PURE__ */ t({actions:()=>qe,badge:()=>ze,controls:()=>Be,default:()=>Ye,editor:()=>Ke,empty:()=>Re,error:()=>Ue,export:()=>Je,spark:()=>He,track:()=>Ve,version_reload:()=>Ge,version_update:()=>We}),Re={no_frames:`No frames archived yet.`,first_soon:`The first one appears at the next capture.`,frame_failed:`This frame could not be loaded.`,index_failed:`Could not load the timeline.`},ze={live:`LIVE`,gap:`NO IMAGE`},Be={play:`Play`,pause:`Pause`,previous:`Previous frame`,next:`Next frame`,speed:`Playback speed {v}x`,now:`Jump to now`},Ve={label:`Timeline position`},He={range:`Range {v}`,flat:`No change`},Ue={no_camera:`You need to pick a camera in the card configuration.`},We=`This card was updated to {v}. Reload to pick up the new version.`,Ge=`Reload`,Ke={camera_entity:`Camera`,title:`Title`,show_dayticks:`Show day markers`,show_graph:`Show graphs`,show_sun:`Mark night`,playback:`Playback`,autoplay:`Play automatically`,speed:`Speed`,graph_hours:`Graph window`,overlay_right:`Overlay readings (right)`,overlay_right_hint:`Values shown over the image are read at the moment you scrub to, not the current ones.`,overlay_left:`Overlay readings (left)`,overlay_left_hint:`A second block on the other side of the picture. Leave it empty for one block on the right.`,add_entity:`Add entity`,entity:`Entity`,name:`Label`,unit:`Unit`,decimals:`Decimals`,color:`Colour`,graph:`Graph`,move_up:`Move up`,move_down:`Move down`,remove:`Remove`,helper:{camera_entity:`Only cameras created by this integration have an archive to scrub.`,graph_hours:`How much history the sparkline shows around the playhead.`,autoplay:`Ignored when your system asks for reduced motion.`,deflicker:`Evens out cloud-driven brightness jumps during playback. 0 turns it off.`,overlay_title:`Shown above the readings. Leave empty for no heading.`,overlay_title_left:`Shown above the readings. Leave empty for no heading.`,show_icon:`Uses the entity's own icon from Home Assistant.`,show_sun:`Shades the hours between sunset and sunrise on the graphs and the scrubber, using your Home Assistant location. Hidden when the bands get too fine to read.`,show_export:`Shows an export button under the timeline. The video is rendered by Home Assistant and saved to the media folder.`},deflicker:`Smooth brightness`,show_icon:`Show icon`,overlay_title:`Heading`,overlay_title_left:`Heading`,show_export:`Offer video export`},qe={show_camera:`Show camera details`,show_entity:`Show details for {v}`,hide_readings:`Hide readings`,show_readings:`Show readings`},Je={open:`Export video`,close:`Close export`,from:`From`,to:`To`,start_here:`Start at this frame`,end_here:`End at this frame`,preset_hours:`Last {v} h`,preset_days:`Last {v} d`,preset_all:`Everything`,fps:`Frames per second`,timestamp:`Date and time`,readings:`Sensor readings`,summary:`{frames} frames, {length} of video`,summary_empty:`No frames in this range.`,start:`Export`,cancel:`Cancel`,preparing:`Preparing…`,running:`Encoding frame {done} of {total}`,done:`Video ready`,saved:`Saved as {v}`,download:`Download`,cancelled:`Export cancelled.`,band:`Range selected for export`,error:{export_running:`An export is already running for this camera.`,export_no_frames:`There are no frames in that range.`,export_bad_range:`The end of the range is before its start.`,export_cancelled:`Export cancelled.`,export_low_disk:`There is not enough free space in the media folder.`,export_ffmpeg_missing:`ffmpeg was not found on this Home Assistant, so the video could not be encoded.`,export_ffmpeg_failed:`ffmpeg could not encode the video. The Home Assistant log has the details.`,export_failed:`The export failed. The Home Assistant log has the details.`,entry_not_loaded:`This camera is not loaded right now. Try again once it has started.`,unknown:`The export could not be started.`},size:`Size`,size_value:`{v} % of the width`,position:`Position`,block_left:`Left block`,block_right:`Right block`,positions:{left:`Left`,right:`Right`,top:`Top`,bottom:`Bottom`},folder:`Videos are saved in {v}`},Ye={empty:Re,badge:ze,controls:Be,track:Ve,spark:He,error:Ue,version_update:We,version_reload:Ge,editor:Ke,actions:qe,export:Je},Xe=/* @__PURE__ */ t({actions:()=>ot,badge:()=>Qe,controls:()=>$e,default:()=>ct,editor:()=>at,empty:()=>Ze,error:()=>nt,export:()=>st,spark:()=>tt,track:()=>et,version_reload:()=>it,version_update:()=>rt}),Ze={no_frames:`Noch keine Bilder gespeichert.`,first_soon:`Das erste erscheint bei der nächsten Aufnahme.`,frame_failed:`Dieses Bild konnte nicht geladen werden.`,index_failed:`Die Zeitleiste konnte nicht geladen werden.`},Qe={live:`LIVE`,gap:`KEIN BILD`},$e={play:`Abspielen`,pause:`Pause`,previous:`Vorheriges Bild`,next:`Nächstes Bild`,speed:`Wiedergabegeschwindigkeit {v}x`,now:`Zur Gegenwart springen`},et={label:`Position auf der Zeitleiste`},tt={range:`Spanne {v}`,flat:`Unverändert`},nt={no_camera:`Bitte wähle in der Kartenkonfiguration eine Kamera aus.`},rt=`Diese Karte wurde auf {v} aktualisiert. Lade neu, um die neue Version zu verwenden.`,it=`Neu laden`,at={camera_entity:`Kamera`,title:`Titel`,show_dayticks:`Tagesmarkierungen anzeigen`,show_graph:`Diagramme anzeigen`,show_sun:`Nacht markieren`,playback:`Wiedergabe`,autoplay:`Automatisch abspielen`,speed:`Geschwindigkeit`,graph_hours:`Diagramm-Zeitraum`,overlay_right:`Eingeblendete Messwerte (rechts)`,overlay_right_hint:`Die Werte über dem Bild gehören zu dem Zeitpunkt, zu dem du scrollst – nicht zur Gegenwart.`,overlay_left:`Eingeblendete Messwerte (links)`,overlay_left_hint:`Ein zweiter Block auf der anderen Seite des Bildes. Leer lassen, dann bleibt es bei einem Block rechts.`,add_entity:`Entität hinzufügen`,entity:`Entität`,name:`Bezeichnung`,unit:`Einheit`,decimals:`Nachkommastellen`,color:`Farbe`,graph:`Diagramm`,move_up:`Nach oben`,move_down:`Nach unten`,remove:`Entfernen`,helper:{camera_entity:`Nur Kameras dieser Integration haben ein Archiv zum Durchblättern.`,graph_hours:`Wie viel Verlauf die Sparkline rund um die Position zeigt.`,autoplay:`Wird ignoriert, wenn dein System reduzierte Bewegung anfordert.`,deflicker:`Gleicht wolkenbedingte Helligkeitssprünge bei der Wiedergabe aus. 0 schaltet es ab.`,overlay_title:`Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.`,overlay_title_left:`Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.`,show_icon:`Verwendet das Symbol der Entität aus Home Assistant.`,show_sun:`Hinterlegt die Stunden zwischen Sonnenuntergang und Sonnenaufgang in den Diagrammen und in der Zeitleiste, basierend auf deinem Home-Assistant-Standort. Wird ausgeblendet, sobald die Streifen zu fein werden.`,show_export:`Zeigt unter der Zeitleiste eine Export-Schaltfläche. Das Video wird von Home Assistant gerendert und im Medienordner gespeichert.`},deflicker:`Helligkeit glätten`,show_icon:`Symbol anzeigen`,overlay_title:`Überschrift`,overlay_title_left:`Überschrift`,show_export:`Videoexport anbieten`},ot={show_camera:`Kameradetails anzeigen`,show_entity:`Details für {v} anzeigen`,hide_readings:`Messwerte ausblenden`,show_readings:`Messwerte einblenden`},st={open:`Video exportieren`,close:`Export schließen`,from:`Von`,to:`Bis`,start_here:`Bei diesem Bild beginnen`,end_here:`Bei diesem Bild enden`,preset_hours:`Letzte {v} h`,preset_days:`Letzte {v} T`,preset_all:`Alles`,fps:`Bilder pro Sekunde`,timestamp:`Datum und Uhrzeit`,readings:`Sensorwerte`,summary:`{frames} Bilder, {length} Video`,summary_empty:`Keine Bilder in diesem Zeitraum.`,start:`Exportieren`,cancel:`Abbrechen`,preparing:`Wird vorbereitet…`,running:`Bild {done} von {total} wird kodiert`,done:`Video fertig`,saved:`Gespeichert als {v}`,download:`Herunterladen`,cancelled:`Export abgebrochen.`,band:`Für den Export gewählter Zeitraum`,error:{export_running:`Für diese Kamera läuft bereits ein Export.`,export_no_frames:`In diesem Zeitraum gibt es keine Bilder.`,export_bad_range:`Das Ende des Zeitraums liegt vor seinem Anfang.`,export_cancelled:`Export abgebrochen.`,export_low_disk:`Im Medienordner ist nicht genug Speicherplatz frei.`,export_ffmpeg_missing:`ffmpeg wurde auf diesem Home Assistant nicht gefunden, daher konnte das Video nicht kodiert werden.`,export_ffmpeg_failed:`ffmpeg konnte das Video nicht kodieren. Details stehen im Home-Assistant-Protokoll.`,export_failed:`Der Export ist fehlgeschlagen. Details stehen im Home-Assistant-Protokoll.`,entry_not_loaded:`Diese Kamera ist gerade nicht geladen. Versuche es erneut, sobald sie gestartet ist.`,unknown:`Der Export konnte nicht gestartet werden.`},size:`Größe`,size_value:`{v} % der Breite`,position:`Position`,block_left:`Linker Block`,block_right:`Rechter Block`,positions:{left:`Links`,right:`Rechts`,top:`Oben`,bottom:`Unten`},folder:`Videos werden gespeichert in {v}`},ct={empty:Ze,badge:Qe,controls:$e,track:et,spark:tt,error:nt,version_update:rt,version_reload:it,editor:at,actions:ot,export:st};const lt={en:Le,de:Xe};function ut(e,t){let n=e.split(`.`).reduce((e,t)=>{if(e&&typeof e==`object`&&t in e)return e[t]},t);return typeof n==`string`?n:void 0}function V(e,t=void 0,n=``,r=``){let i=(t??`en`).toLowerCase().split(/[-_]/)[0]??`en`,a=lt[i]??lt.en??{},o=lt.en??{},s=ut(e,a);return s===void 0&&(s=ut(e,o)),s===void 0&&(s=e),n!==``&&r!==``&&(s=s.replace(n,r)),s}function H(e,t,n,r){var i=arguments.length,a=i<3?t:r===null?r=Object.getOwnPropertyDescriptor(t,n):r,o;if(typeof Reflect==`object`&&typeof Reflect.decorate==`function`)a=Reflect.decorate(e,t,n,r);else for(var s=e.length-1;s>=0;s--)(o=e[s])&&(a=(i<3?o(a):i>3?o(t,n,a):o(t,n))||a);return i>3&&a&&Object.defineProperty(t,n,a),a}var U;const dt=[1,2,4,8,16,32,64],ft=[{name:`overlay_title`,selector:{text:{}}}],pt=[{name:`overlay_title_left`,selector:{text:{}}}],mt=[{type:`grid`,schema:[{name:`name`,selector:{text:{}}},{name:`unit`,selector:{text:{}}},{name:`decimals`,selector:{number:{min:0,max:4,mode:`box`}}},{name:`graph_hours`,selector:{number:{min:1,max:8760,mode:`box`,unit_of_measurement:`h`}}},{name:`show_icon`,selector:{boolean:{}}},{name:`graph`,selector:{boolean:{}}}]}];let W=class extends z{static{U=this}constructor(...e){super(...e),this.computeLabel=e=>this.t(`editor.${e.name}`),this.computeHelper=e=>{let t=this.t(`editor.helper.${e.name}`);return t.startsWith(`editor.`)?void 0:t}}static{this.styles=Ie}setConfig(e){this.config=e}get uiLanguage(){return this.hass?.locale?.language??this.hass?.language??`en`}t(e){return V(e,this.uiLanguage)}get schema(){return[{name:`camera_entity`,required:!0,selector:{entity:{filter:{domain:`camera`,integration:`webcam_timelapse`}}}},{name:`title`,selector:{text:{}}},{type:`grid`,schema:[{name:`show_dayticks`,selector:{boolean:{}}},{name:`show_graph`,selector:{boolean:{}}},{name:`show_sun`,selector:{boolean:{}}},{name:`show_export`,selector:{boolean:{}}}]},{type:`expandable`,name:`playback`,icon:`mdi:play-speed`,flatten:!0,schema:[{name:`autoplay`,selector:{boolean:{}}},{name:`speed`,selector:{select:{mode:`dropdown`,options:dt.map(e=>({value:e,label:`${e}x`}))}}},{name:`deflicker`,selector:{number:{min:0,max:100,step:5,mode:`slider`}}},{name:`graph_hours`,selector:{number:{min:1,max:336,mode:`slider`,unit_of_measurement:`h`}}}]}]}onFormChange(e){e.stopPropagation(),this.emit({...this.config,...e.detail.value})}emit(e){this.dispatchEvent(new CustomEvent(`config-changed`,{detail:{config:e},bubbles:!0,composed:!0}))}static{this.ENTITY_KEY={right:`entities`,left:`entities_left`}}rows(e){return this.config?.[U.ENTITY_KEY[e]]??[]}updateRows(e,t){this.emit({...this.config,[U.ENTITY_KEY[e]]:t})}addRow(e){this.updateRows(e,[...this.rows(e),{entity:``}])}removeRow(e,t){this.updateRows(e,this.rows(e).filter((e,n)=>n!==t))}moveRow(e,t,n){let r=[...this.rows(e)],i=t+n;i<0||i>=r.length||([r[t],r[i]]=[r[i],r[t]],this.updateRows(e,r))}patchRow(e,t,n){let r=this.rows(e).map((e,r)=>r===t?{...e,...n}:e);this.updateRows(e,r)}renderRow(e,t,n){let r=t.name||t.entity||this.t(`editor.entity`);return N`
       <div class="ent-row" role="group" aria-label=${r}>
         <ha-entity-picker
           .hass=${this.hass}
@@ -897,7 +1146,7 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
         <ha-form
           .hass=${this.hass}
           .data=${t}
-          .schema=${ut}
+          .schema=${mt}
           .computeLabel=${this.computeLabel}
           @value-changed=${t=>{t.stopPropagation(),this.patchRow(e,n,t.detail.value)}}
         ></ha-form>
@@ -941,7 +1190,7 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
           </ha-icon-button>
         </div>
       </div>
-    `}render(){return!this.hass||!this.config?P`${I}`:P`
+    `}render(){return!this.hass||!this.config?N`${F}`:N`
       <ha-form
         .hass=${this.hass}
         .data=${this.config}
@@ -951,9 +1200,9 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
         @value-changed=${this.onFormChange}
       ></ha-form>
 
-      ${this.renderSection(`right`,ct)}
-      ${this.renderSection(`left`,lt)}
-    `}renderSection(e,t){let n=this.t(`editor.overlay_`+e),r=this.t(`editor.overlay_`+e+`_hint`);return P`
+      ${this.renderSection(`right`,ft)}
+      ${this.renderSection(`left`,pt)}
+    `}renderSection(e,t){let n=this.t(`editor.overlay_`+e),r=this.t(`editor.overlay_`+e+`_hint`);return N`
       <div class="ent-section">
         <h4>${n}</h4>
         <p class="ent-hint">${r}</p>
@@ -975,18 +1224,18 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
           ${this.t(`editor.add_entity`)}
         </ha-button>
       </div>
-    `}};W([V({attribute:!1})],K.prototype,`hass`,void 0),W([H()],K.prototype,`config`,void 0),K=G=W([ke(`webcam-timelapse-card-editor`)],K);var dt=class{constructor(e){this.task=e,this.running=!1,this.queued=!1,this.waiters=[]}request(){return new Promise(e=>{if(this.waiters.push(e),this.running){this.queued=!0;return}this.drain()})}get busy(){return this.running}async drain(){this.running=!0;try{do{this.queued=!1;let e=this.waiters;this.waiters=[];try{await this.task()}catch{}for(let t of e)t()}while(this.queued)}finally{this.running=!1}}};const ft=`webcam-timelapse-card`,pt={radius:6,maxGain:1.5};function mt(e,t=.15){if(e.length===0)return 0;let n=[...e].sort((e,t)=>e-t),r=Math.floor(n.length*t),i=n.length-2*r>=3?n.slice(r,n.length-r):n;return i.reduce((e,t)=>e+t,0)/i.length}function ht(e,t=pt){let n=new Float32Array(e.length).fill(1),{radius:r,maxGain:i}=t;if(r<1||e.length===0)return n;let a=1/i;for(let t=0;t<e.length;t++){let o=e[t];if(o==null||o<8)continue;let s=Math.max(0,t-r),c=Math.min(e.length-1,t+r),l=[];for(let t=s;t<=c;t++){let n=e[t];n!=null&&n>=8&&l.push(n)}if(l.length<3)continue;let u=mt(l);n[t]=Math.min(Math.max(u/o,a),i)}return n}function gt(e){let t=Math.min(Math.max(e,0),100);return t===0?0:Math.max(1,Math.round(t/100*12))}function _t(e){return e?.trim()||void 0}function vt(e){let t=[],n=e?.entities_left??[];n.length>0&&t.push({side:`left`,title:_t(e?.overlay_title_left),entities:n});let r=e?.entities??[];return r.length>0&&t.push({side:`right`,title:_t(e?.overlay_title),entities:r}),t}function yt(e){return vt(e).flatMap(e=>e.entities)}const bt={base:``,ext:`.webp`,step:600,t0:null,count:0,gaps:[],retention_days:0,online:!0,newest_slot:null};function xt(e,t){return e.t0===null||t<0||t>=e.count?null:e.t0+t*e.step}function St(e,t){let n=xt(e,t);return n===null?null:`${e.base}${n}${e.ext}`}function Ct(e){let t=new Uint8Array(e.count).fill(1);for(let[n,r]of e.gaps){let i=Math.max(0,n),a=Math.min(e.count,n+r);for(let e=i;e<a;e++)t[e]=0}return t}function q(e,t,n=1){for(let r=t;r>=0&&r<e.length;r+=n)if(e[r])return r;return null}function wt(e){return e.t0!==null&&e.count>0}var Tt=class{constructor(e){this.size=e,this.cursor=0,this.slots=Array(e).fill(null)}prefetch(e){let t=new Image;t.decoding=`async`,t.fetchPriority=`low`,t.src=e,this.slots[this.cursor]=t,this.cursor=(this.cursor+1)%this.size}clear(){this.slots.fill(null),this.cursor=0}};function J(e){return Math.min(Math.max(Math.round(4*e),4),16)}function Et(e){let t=Math.max(e,0)*2;if(t<=0)return{stride:1,frameDelay:500};let n=Math.max(1,Math.round(t/30.303030303030305));return{stride:n,frameDelay:Math.max(1e3*n/t,33)}}function Dt(e,t,n){let r=q(e,t+Math.max(1,n));if(r!==null)return r;let i=q(e,e.length-1,-1);return i!==null&&i>t?i:null}function Ot(e,t,n,r,i){let a=Math.max(1,r),o=i>t+n*a?t:Math.max(i,t),s=[];for(let r=1;r<=n;r++){let n=t+r*a;if(n<=o)continue;let i=q(e,n);if(i===null)break;i>o&&(s.push(i),o=i)}return s}function kt(e){return e.currentSrc!==e.requested||!e.complete?`pending`:e.naturalWidth>0?`ready`:`failed`}function At(e){return e.configured&&!e.reducedMotion&&!e.alreadyPlaying}function jt(e,t,n){return n.reducedMotion?0:n.playing?e>4?0:Math.min(120,Math.round(t/2)):120}const Mt=/* @__PURE__ */ new Map;function Y(e,t){let n=`${e}|${JSON.stringify(t)}`,r=Mt.get(n);return r===void 0&&(r=new Intl.DateTimeFormat(e,t),Mt.set(n,r)),r}function Nt(e,t){return Y(`en-CA`,{timeZone:t,year:`numeric`,month:`2-digit`,day:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}function Pt(e,t){let n=Y(`en-GB`,{timeZone:t,hour:`2-digit`,minute:`2-digit`,second:`2-digit`,hour12:!1}).formatToParts(/* @__PURE__ */ new Date(e*1e3)),r=0,i=0,a=0;for(let e of n)e.type===`hour`?r=Number(e.value):e.type===`minute`?i=Number(e.value):e.type===`second`&&(a=Number(e.value));return r===24&&(r=0),r*3600+i*60+a}function Ft(e,t,n,r){let i={timeZone:t,day:`2-digit`,month:`2-digit`};return r===`long`&&(i.weekday=`long`),r===`short`&&(i.weekday=`short`),Y(n,i).format(/* @__PURE__ */ new Date(e*1e3))}function It(e){return e>=560?`long`:e>=380?`short`:`date`}function Lt(e,t,n){let r=Math.max(1,Math.floor(t/n));return Math.max(1,Math.ceil(e/r))}function Rt(e,t,n,r){if(e.t0===null||e.count===0)return[];let i=It(r),a=i===`long`?110:i===`short`?78:58,o=[],s=Nt(e.t0,t);for(let n=1;n<e.count;n++){let r=xt(e,n);if(r===null)continue;let i=Nt(r,t);i!==s&&(o.push({position:n,slot:r,date:i}),s=i)}let c=Lt(o.length,r,a),l=Math.max(1,e.count-1);return o.map((e,r)=>{let a=e.date.endsWith(`-01`),o=a||r%c===0;return{position:e.position,left:e.position/l*100,label:o?Ft(e.slot,t,n,i):``,isMonthStart:a}})}const zt=[600,900,1800,3600,7200,10800,21600,43200];function Bt(e,t,n){if(e<=0)return null;let r=e/Math.max(2,Math.floor(n/9));for(let e of zt)if(e>=r&&e>=t)return e;return null}function Vt(e,t,n,r){if(e.t0===null||e.count===0)return[];let i=e.t0,a=Math.max(1,e.count-1),o=i+a*e.step,s=Bt(o-i,e.step,r);if(s===null)return[];let c=s/(o-i)*r,l=Math.max(1,Math.ceil(46/c)),u=Math.min(43200,s*l),d=[],f=Pt(i,t)%s,p=f===0?i:i+(s-f),m=-1/0;for(let c=0;p<=o&&c<4096;c++){let o=Pt(p,t),c=o%s;if(c===0){let s=Math.round((p-i)/e.step),c=s/a*100,l=c/100*r,f=``;o%u===0&&l-m>=46&&(f=Ut(p,t,n),m=l),d.push({position:s,left:c,label:f})}p+=s-c}return d}function Ht(e,t,n){return Y(n,{timeZone:t,weekday:`short`,day:`2-digit`,month:`2-digit`,hour:`2-digit`,minute:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}function Ut(e,t,n){return Y(n,{timeZone:t,hour:`2-digit`,minute:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}const Wt=/* @__PURE__ */ new Set([`unknown`,`unavailable`,`none`,``]),Gt=/* @__PURE__ */ new Map,Kt=/* @__PURE__ */ new Map;function qt(e){if(typeof e.lu==`number`)return Math.round(e.lu*1e3);let t=e.lu??e.last_updated??e.last_changed;return t?new Date(t).getTime():0}function Jt(e,t){let n=(e.a??e.attributes)?.[t];if(typeof n!=`string`&&typeof n!=`number`)return null;let r=new Date(n).getTime();return Number.isFinite(r)&&r>0?r:null}async function Yt(e,t,n){let r=e?.callWS?.bind(e);if(!r||t.length===0)return/* @__PURE__ */ new Map;let i=n.timeAttributes??{},a=`${t.slice().sort().join(`,`)}|${n.days}`,o=Kt.get(a);if(o)return o;let s=/* @__PURE__ */ new Date,c=/* @__PURE__ */ new Date(s.getTime()-n.days*864e5),l=Object.keys(i).length>0,u=(async()=>{try{let e=await r({type:`history/history_during_period`,start_time:c.toISOString(),end_time:s.toISOString(),entity_ids:t,minimal_response:!l,no_attributes:!l,significant_changes_only:!0}),n=/* @__PURE__ */ new Map;for(let r of t){let t=i[r],a=(e?.[r]??[]).map(e=>{let n=String(e.s??e.state??``).trim(),r=Wt.has(n.toLowerCase())?NaN:parseFloat(n);return{at:(t?Jt(e,t):null)??qt(e),value:r}}).filter(e=>Number.isFinite(e.value)&&e.at>0).sort((e,t)=>e.at-t.at);n.set(r,a),Gt.set(r,a)}return n}catch{return new Map(t.map(e=>[e,Gt.get(e)??[]]))}finally{Kt.delete(a)}})();return Kt.set(a,u),u}function Xt(e,t,n){if(e.length===0)return null;let r=0,i=e.length-1,a=-1;for(;r<=i;){let n=r+i>>1;e[n].at<=t?(a=n,r=n+1):i=n-1}if(a===-1)return null;let o=e[a];return{value:o.value,at:o.at,stale:t-o.at>n}}function Zt(e){if(!Number.isFinite(e)||e<=0)return 0;let t=e*(1+1e-9),n=10**Math.floor(Math.log10(t)),r=t/n;return(r>=5?5:r>=2?2:1)*n}const Qt=/* @__PURE__ */ new WeakMap;function $t(e){let t=Qt.get(e);if(t)return t;let n=[];for(let t=1;t<e.length;t++){let r=Math.abs(e[t].value-e[t-1].value);r>0&&n.push(r)}n.sort((e,t)=>e-t);let r=n[Math.floor(n.length*.1)],i={quantum:r===void 0?0:Zt(r),staleAfter:en(e)};return Qt.set(e,i),i}function en(e,t=54e5){if(e.length<3)return t;let n=[];for(let t=1;t<e.length;t++)n.push(e[t].at-e[t-1].at);n.sort((e,t)=>e-t);let r=n[n.length>>1]??t;return Math.max(r*2,t)}function tn(e,t,n){let r=n*36e5/2,i=t-r,a=t+r,o=e.filter(e=>e.at>=i&&e.at<=a);if(o[0]?.at===i)return o;let s;for(let t of e){if(t.at>=i)break;s=t}return s?[{at:i,value:s.value},...o]:o}async function nn(e,t,n){if(!e?.callWS)return null;try{let r=await e.callWS({type:t});if(r?.version&&r.version!==n)return r.version}catch{}return null}function rn(){try{window.caches?.keys?.().then(e=>{e.forEach(e=>window.caches?.delete?.(e))})}catch{}window.location.reload()}function an(e,t){if(!e)return I;let n=t(`version_update`).replace(`{v}`,e),r=t(`version_reload`);return P`
+    `}};H([Ne({attribute:!1})],W.prototype,`hass`,void 0),H([B()],W.prototype,`config`,void 0),W=U=H([Ae(`webcam-timelapse-card-editor`)],W);var ht=class{constructor(e){this.task=e,this.running=!1,this.queued=!1,this.waiters=[]}request(){return new Promise(e=>{if(this.waiters.push(e),this.running){this.queued=!0;return}this.drain()})}get busy(){return this.running}async drain(){this.running=!0;try{do{this.queued=!1;let e=this.waiters;this.waiters=[];try{await this.task()}catch{}for(let t of e)t()}while(this.queued)}finally{this.running=!1}}};const gt=`webcam-timelapse-card`,_t={radius:6,maxGain:1.5};function vt(e,t=.15){if(e.length===0)return 0;let n=[...e].sort((e,t)=>e-t),r=Math.floor(n.length*t),i=n.length-2*r>=3?n.slice(r,n.length-r):n;return i.reduce((e,t)=>e+t,0)/i.length}function yt(e,t=_t){let n=new Float32Array(e.length).fill(1),{radius:r,maxGain:i}=t;if(r<1||e.length===0)return n;let a=1/i;for(let t=0;t<e.length;t++){let o=e[t];if(o==null||o<8)continue;let s=Math.max(0,t-r),c=Math.min(e.length-1,t+r),l=[];for(let t=s;t<=c;t++){let n=e[t];n!=null&&n>=8&&l.push(n)}if(l.length<3)continue;let u=vt(l);n[t]=Math.min(Math.max(u/o,a),i)}return n}function bt(e){let t=Math.min(Math.max(e,0),100);return t===0?0:Math.max(1,Math.round(t/100*12))}const xt={base:``,ext:`.webp`,step:600,t0:null,count:0,gaps:[],retention_days:0,online:!0,newest_slot:null};function G(e,t){return e.t0===null||t<0||t>=e.count?null:e.t0+t*e.step}function St(e,t){let n=G(e,t);return n===null?null:`${e.base}${n}${e.ext}`}function Ct(e){let t=new Uint8Array(e.count).fill(1);for(let[n,r]of e.gaps){let i=Math.max(0,n),a=Math.min(e.count,n+r);for(let e=i;e<a;e++)t[e]=0}return t}function K(e,t,n=1){for(let r=t;r>=0&&r<e.length;r+=n)if(e[r])return r;return null}function q(e){return e.t0!==null&&e.count>0}var wt=class{constructor(e){this.size=e,this.cursor=0,this.slots=Array(e).fill(null)}prefetch(e){let t=new Image;t.decoding=`async`,t.fetchPriority=`low`,t.src=e,this.slots[this.cursor]=t,this.cursor=(this.cursor+1)%this.size}clear(){this.slots.fill(null),this.cursor=0}};function J(e){return Math.min(Math.max(Math.round(4*e),4),16)}function Tt(e){let t=Math.max(e,0)*2;if(t<=0)return{stride:1,frameDelay:500};let n=Math.max(1,Math.round(t/30.303030303030305));return{stride:n,frameDelay:Math.max(1e3*n/t,33)}}function Et(e,t,n){let r=K(e,t+Math.max(1,n));if(r!==null)return r;let i=K(e,e.length-1,-1);return i!==null&&i>t?i:null}function Dt(e,t,n,r,i){let a=Math.max(1,r),o=i>t+n*a?t:Math.max(i,t),s=[];for(let r=1;r<=n;r++){let n=t+r*a;if(n<=o)continue;let i=K(e,n);if(i===null)break;i>o&&(s.push(i),o=i)}return s}function Ot(e){return e.currentSrc!==e.requested||!e.complete?`pending`:e.naturalWidth>0?`ready`:`failed`}function kt(e){return e.configured&&!e.reducedMotion&&!e.alreadyPlaying}function At(e,t,n){return n.reducedMotion?0:n.playing?e>4?0:Math.min(120,Math.round(t/2)):120}function jt(e){return e?.trim()||void 0}function Mt(e){let t=[],n=e?.entities_left??[];n.length>0&&t.push({side:`left`,title:jt(e?.overlay_title_left),entities:n});let r=e?.entities??[];return r.length>0&&t.push({side:`right`,title:jt(e?.overlay_title),entities:r}),t}function Nt(e){return Mt(e).flatMap(e=>e.entities)}const Pt=[12,24,30,60],Ft=[`left`,`right`,`top`,`bottom`],It={min:10,max:80,step:5,default:30},Lt={min:5,max:50,step:5,default:15},Rt=[24,72,168];function zt(e){return e.t0===null||e.count===0?null:{start:0,end:e.count-1}}function Bt(e,t){let n=Math.max(0,t-1),r=e=>Math.min(Math.max(Math.round(e),0),n),i=r(e.start),a=r(e.end);return i<=a?{start:i,end:a}:{start:a,end:i}}function Vt(e,t,n){let r=Bt({start:t,end:t},n).start;return{start:r,end:Math.max(e.end,r)}}function Ht(e,t,n){let r=Bt({start:t,end:t},n).end;return{start:Math.min(e.start,r),end:r}}function Ut(e,t){let n=zt(e);if(n===null)return null;let r=Math.round(t*3600/e.step);return{start:Math.max(0,n.end-r),end:n.end}}function Wt(e,t){return e.count*e.step>t*3600}function Gt(e,t){let n=0,r=Math.min(t.end,e.length-1);for(let i=Math.max(0,t.start);i<=r;i++)e[i]&&n++;return n}function Kt(e,t){let n=G(e,t.start),r=G(e,t.end);return n===null||r===null?null:{start:n,end:r}}function qt(e,t){let n=Math.max(1,t-1);return{left:e.start/n*100,width:(e.end-e.start)/n*100}}function Jt(e){if(!Number.isFinite(e)||e<=0)return`0 s`;if(e<60)return e<10?`${(Math.round(e*10)/10).toString()} s`:`${Math.round(e)} s`;let t=Math.round(e),n=e=>String(e).padStart(2,`0`),r=Math.floor(t/60);return r<60?`${r}:${n(t%60)} min`:`${Math.floor(r/60)}:${n(r%60)}:${n(t%60)} h`}function Yt(e){if(!Number.isFinite(e)||e<=0)return`0 MB`;let t=e/1e6;return t>=1e3?`${(t/1e3).toFixed(1)} GB`:t>=10?`${Math.round(t)} MB`:`${t.toFixed(1)} MB`}function Xt(e){return!e||e.total<=0?0:Math.min(1,Math.max(0,e.done/e.total))}function Zt(e){let t=/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/.exec(e.trim());return t?`#${t.slice(1,4).map(e=>Math.min(255,Number(e)).toString(16).padStart(2,`0`)).join(``)}`:e}function Qt(e,t){return Number.isFinite(e)?Math.min(t.max,Math.max(t.min,Math.round(e))):t.default}function $t(e,t){if(Nt(e).length===0)return null;let n=e=>(e??[]).map(e=>e.color?{...e,color:Zt(t(e.color))}:e);return{entities:n(e.entities),entities_left:n(e.entities_left),overlay_title:e.overlay_title??``,overlay_title_left:e.overlay_title_left??``,graph_hours:e.graph_hours??24,show_graph:e.show_graph!==!1,show_sun:e.show_sun===!0,accent_color:Zt(t(`var(--wtl-accent)`))}}function en(e,t,n,r,i,a){let o=Kt(t,n);return o===null?null:{entity_id:e.camera_entity,start:o.start,end:o.end,fps:r.fps,deflicker:Math.min(100,Math.max(0,Math.round(e.deflicker??0))),timestamp:r.timestamp,timestamp_size:Qt(r.timestampSize,Lt),overlay:r.readings?$t(e,a):null,readings_size:Qt(r.readingsSize,It),readings_position:r.positions.right??null,readings_position_left:r.positions.left??null,language:i}}const tn=/* @__PURE__ */ new Map;function Y(e,t){let n=`${e}|${JSON.stringify(t)}`,r=tn.get(n);return r===void 0&&(r=new Intl.DateTimeFormat(e,t),tn.set(n,r)),r}function nn(e,t){return Y(`en-CA`,{timeZone:t,year:`numeric`,month:`2-digit`,day:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}function rn(e,t){let n=Y(`en-GB`,{timeZone:t,hour:`2-digit`,minute:`2-digit`,second:`2-digit`,hour12:!1}).formatToParts(/* @__PURE__ */ new Date(e*1e3)),r=0,i=0,a=0;for(let e of n)e.type===`hour`?r=Number(e.value):e.type===`minute`?i=Number(e.value):e.type===`second`&&(a=Number(e.value));return r===24&&(r=0),r*3600+i*60+a}function an(e,t,n,r){let i={timeZone:t,day:`2-digit`,month:`2-digit`};return r===`long`&&(i.weekday=`long`),r===`short`&&(i.weekday=`short`),Y(n,i).format(/* @__PURE__ */ new Date(e*1e3))}function on(e){return e>=560?`long`:e>=380?`short`:`date`}function sn(e,t,n){let r=Math.max(1,Math.floor(t/n));return Math.max(1,Math.ceil(e/r))}function cn(e,t,n,r){if(e.t0===null||e.count===0)return[];let i=on(r),a=i===`long`?110:i===`short`?78:58,o=[],s=nn(e.t0,t);for(let n=1;n<e.count;n++){let r=G(e,n);if(r===null)continue;let i=nn(r,t);i!==s&&(o.push({position:n,slot:r,date:i}),s=i)}let c=sn(o.length,r,a),l=Math.max(1,e.count-1);return o.map((e,r)=>{let a=e.date.endsWith(`-01`),o=a||r%c===0;return{position:e.position,left:e.position/l*100,label:o?an(e.slot,t,n,i):``,isMonthStart:a}})}const ln=[600,900,1800,3600,7200,10800,21600,43200];function un(e,t,n){if(e<=0)return null;let r=e/Math.max(2,Math.floor(n/9));for(let e of ln)if(e>=r&&e>=t)return e;return null}function dn(e,t,n,r){if(e.t0===null||e.count===0)return[];let i=e.t0,a=Math.max(1,e.count-1),o=i+a*e.step,s=un(o-i,e.step,r);if(s===null)return[];let c=s/(o-i)*r,l=Math.max(1,Math.ceil(46/c)),u=Math.min(43200,s*l),d=[],f=rn(i,t)%s,p=f===0?i:i+(s-f),m=-1/0;for(let c=0;p<=o&&c<4096;c++){let o=rn(p,t),c=o%s;if(c===0){let s=Math.round((p-i)/e.step),c=s/a*100,l=c/100*r,f=``;o%u===0&&l-m>=46&&(f=pn(p,t,n),m=l),d.push({position:s,left:c,label:f})}p+=s-c}return d}function fn(e,t,n){return Y(n,{timeZone:t,weekday:`short`,day:`2-digit`,month:`2-digit`,hour:`2-digit`,minute:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}function pn(e,t,n){return Y(n,{timeZone:t,hour:`2-digit`,minute:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}const mn=/* @__PURE__ */ new Set([`unknown`,`unavailable`,`none`,``]),hn=/* @__PURE__ */ new Map,gn=/* @__PURE__ */ new Map;function _n(e){if(typeof e.lu==`number`)return Math.round(e.lu*1e3);let t=e.lu??e.last_updated??e.last_changed;return t?new Date(t).getTime():0}function vn(e,t){let n=(e.a??e.attributes)?.[t];if(typeof n!=`string`&&typeof n!=`number`)return null;let r=new Date(n).getTime();return Number.isFinite(r)&&r>0?r:null}async function yn(e,t,n){let r=e?.callWS?.bind(e);if(!r||t.length===0)return/* @__PURE__ */ new Map;let i=n.timeAttributes??{},a=`${t.slice().sort().join(`,`)}|${n.days}`,o=gn.get(a);if(o)return o;let s=/* @__PURE__ */ new Date,c=/* @__PURE__ */ new Date(s.getTime()-n.days*864e5),l=Object.keys(i).length>0,u=(async()=>{try{let e=await r({type:`history/history_during_period`,start_time:c.toISOString(),end_time:s.toISOString(),entity_ids:t,minimal_response:!l,no_attributes:!l,significant_changes_only:!0}),n=/* @__PURE__ */ new Map;for(let r of t){let t=i[r],a=(e?.[r]??[]).map(e=>{let n=String(e.s??e.state??``).trim(),r=mn.has(n.toLowerCase())?NaN:parseFloat(n);return{at:(t?vn(e,t):null)??_n(e),value:r}}).filter(e=>Number.isFinite(e.value)&&e.at>0).sort((e,t)=>e.at-t.at);n.set(r,a),hn.set(r,a)}return n}catch{return new Map(t.map(e=>[e,hn.get(e)??[]]))}finally{gn.delete(a)}})();return gn.set(a,u),u}function bn(e,t,n){if(e.length===0)return null;let r=0,i=e.length-1,a=-1;for(;r<=i;){let n=r+i>>1;e[n].at<=t?(a=n,r=n+1):i=n-1}if(a===-1)return null;let o=e[a];return{value:o.value,at:o.at,stale:t-o.at>n}}function xn(e){if(!Number.isFinite(e)||e<=0)return 0;let t=e*(1+1e-9),n=10**Math.floor(Math.log10(t)),r=t/n;return(r>=5?5:r>=2?2:1)*n}const Sn=/* @__PURE__ */ new WeakMap;function Cn(e){let t=Sn.get(e);if(t)return t;let n=[];for(let t=1;t<e.length;t++){let r=Math.abs(e[t].value-e[t-1].value);r>0&&n.push(r)}n.sort((e,t)=>e-t);let r=n[Math.floor(n.length*.1)],i={quantum:r===void 0?0:xn(r),staleAfter:wn(e)};return Sn.set(e,i),i}function wn(e,t=54e5){if(e.length<3)return t;let n=[];for(let t=1;t<e.length;t++)n.push(e[t].at-e[t-1].at);n.sort((e,t)=>e-t);let r=n[n.length>>1]??t;return Math.max(r*2,t)}function Tn(e,t,n){let r=n*36e5/2,i=t-r,a=t+r,o=e.filter(e=>e.at>=i&&e.at<=a);if(o[0]?.at===i)return o;let s;for(let t of e){if(t.at>=i)break;s=t}return s?[{at:i,value:s.value},...o]:o}async function En(e,t,n){if(!e?.callWS)return null;try{let r=await e.callWS({type:t});if(r?.version&&r.version!==n)return r.version}catch{}return null}function Dn(){try{window.caches?.keys?.().then(e=>{e.forEach(e=>window.caches?.delete?.(e))})}catch{}window.location.reload()}function On(e,t){if(!e)return F;let n=t(`version_update`).replace(`{v}`,e),r=t(`version_reload`);return N`
     <div class="banner" role="alert" aria-live="assertive">
       <span>${n}</span>
       <button
         type="button"
         aria-label=${r}
-        @click=${rn}
+        @click=${Dn}
       >
         ${r}
       </button>
     </div>
-  `}function on(e){if(!Number.isFinite(e)||e<=0)return 1;let t=10**Math.floor(Math.log10(e)),n=e/t;return(n>5?10:n>2?5:n>1?2:1)*t}function sn(e){if(e.length===0)return 0;let t=1/0,n=-1/0;for(let r of e)r.value<t&&(t=r.value),r.value>n&&(n=r.value);return n-t}function cn(e){let{points:t,at:n,hours:r,color:i,label:a,quantum:o=0,nights:s=[]}=e;if(t.length===0)return null;let c=r*36e5/2,l=n-c,u=n+c,d=u-l||1,f=1/0,p=-1/0;for(let e of t)e.value<f&&(f=e.value),e.value>p&&(p=e.value);let m=p-f,h=(f+p)/2,g=Math.max(4*o,Math.abs(h)*1e-9),_=Math.max(m,g)||1,v=h-_/2,y=h+_/2;if(m>0){let e=on(_/4);v=Math.floor(v/e)*e,y=Math.ceil(y/e)*e,y>v||(v=h-_/2,y=h+_/2)}let ee=y-v||1,b=e=>3+(e-l)/d*234,x=e=>41-(e-v)/ee*38,S=[];t.forEach((e,t)=>{let n=b(e.at),r=x(e.value);t===0?S.push(`M ${n.toFixed(1)} ${r.toFixed(1)}`):S.push(`H ${n.toFixed(1)}`,`V ${r.toFixed(1)}`)});let te=t[t.length-1];S.push(`H ${b(u).toFixed(1)}`);let C=s.map(e=>({left:3+e.left*234,width:e.width*234})),w=b(n),T=te;for(let e=t.length-1;e>=0;e--)if(t[e].at<=n){T=t[e];break}return me`
+  `}function kn(e){if(!Number.isFinite(e)||e<=0)return 1;let t=10**Math.floor(Math.log10(e)),n=e/t;return(n>5?10:n>2?5:n>1?2:1)*t}function An(e){if(e.length===0)return 0;let t=1/0,n=-1/0;for(let r of e)r.value<t&&(t=r.value),r.value>n&&(n=r.value);return n-t}function jn(e){let{points:t,at:n,hours:r,color:i,label:a,quantum:o=0,nights:s=[]}=e;if(t.length===0)return null;let c=r*36e5/2,l=n-c,u=n+c,d=u-l||1,f=1/0,p=-1/0;for(let e of t)e.value<f&&(f=e.value),e.value>p&&(p=e.value);let m=p-f,h=(f+p)/2,g=Math.max(4*o,Math.abs(h)*1e-9),_=Math.max(m,g)||1,v=h-_/2,y=h+_/2;if(m>0){let e=kn(_/4);v=Math.floor(v/e)*e,y=Math.ceil(y/e)*e,y>v||(v=h-_/2,y=h+_/2)}let ee=y-v||1,b=e=>3+(e-l)/d*234,x=e=>41-(e-v)/ee*38,S=[];t.forEach((e,t)=>{let n=b(e.at),r=x(e.value);t===0?S.push(`M ${n.toFixed(1)} ${r.toFixed(1)}`):S.push(`H ${n.toFixed(1)}`,`V ${r.toFixed(1)}`)});let te=t[t.length-1];S.push(`H ${b(u).toFixed(1)}`);let C=s.map(e=>({left:3+e.left*234,width:e.width*234})),w=b(n),T=te;for(let e=t.length-1;e>=0;e--)if(t[e].at<=n){T=t[e];break}return he`
     <svg
       class="spark"
       viewBox="0 0 ${240} ${44}"
@@ -994,7 +1243,7 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
       role="img"
       aria-label=${a}
     >
-      ${C.map(e=>me`<rect
+      ${C.map(e=>he`<rect
           class="spark-night"
           x=${e.left.toFixed(1)}
           y="0"
@@ -1027,25 +1276,26 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
         vector-effect="non-scaling-stroke"
       />
     </svg>
-  `}const X=864e5,ln=2440587.5,un=2451545,Z=Math.PI/180;function dn(e,t,n){let r=2451545.0009-n/360+e,i=fn(r),a=(357.5291+.98560028*(r-un))%360,o=(a+(1.9148*Math.sin(a*Z)+.02*Math.sin(2*a*Z)+3e-4*Math.sin(3*a*Z))+180+102.9372)%360,s=r+.0053*Math.sin(a*Z)-.0069*Math.sin(2*o*Z),c=Math.sin(o*Z)*Math.sin(23.4397*Z),l=Math.cos(Math.asin(c)),u=(Math.sin(-.833*Z)-Math.sin(t*Z)*c)/(Math.cos(t*Z)*l);if(!Number.isFinite(u)||Math.abs(u)>1)return{noon:i,rise:null,set:null,polarNight:u>1};let d=Math.acos(u)/Z;return{noon:i,rise:fn(s-d/360),set:fn(s+d/360),polarNight:!1}}function fn(e){return(e-ln)*X}function pn(e,t){return Math.round(e/X+ln-un-9e-4+t/360)}function mn(e,t,n,r){if(!Number.isFinite(e)||!Number.isFinite(t)||t<=e||!Number.isFinite(n)||!Number.isFinite(r)||Math.abs(n)>90)return[];let i=pn(e,r)-1,a=pn(t,r)+1;if(a-i>800)return[];let o=[];for(let e=i;e<=a;e++){let t=dn(e,n,r);if(t.set===null){t.polarNight&&gn(o,t.noon-X/2,t.noon+X/2);continue}let i=dn(e+1,n,r);gn(o,t.set,i.rise??i.noon-X/2)}return _n(o,e,t)}function hn(e,t,n,r){let i=t-e;if(!(i>0))return[];let a=mn(e,t,n,r).map(t=>({left:(t.from-e)/i,width:(t.to-t.from)/i}));return a.reduce((e,t)=>Math.max(e,t.width),0)>=.017094017094017096?a:[]}function gn(e,t,n){if(n<=t)return;let r=e[e.length-1];if(r&&t<=r.to){r.to=Math.max(r.to,n);return}e.push({from:t,to:n})}function _n(e,t,n){let r=[];for(let i of e){let e=Math.max(i.from,t),a=Math.min(i.to,n);a>e&&r.push({from:e,to:a})}return r}function vn(e){if(!e)return;let t=e.trim();if(t.startsWith(`/`)||t.startsWith(`https://`))return t}function yn(e){if(!Number.isFinite(e)||e<=0)return`0`;if(e>=100)return Math.round(e).toString();let t=e.toPrecision(2);return t.includes(`.`)?t.replace(/0+$/,``).replace(/\.$/,``):t}function bn(e){return!Number.isFinite(e)||e<=0?``:e<1?`${Math.round(e*60)} min`:e<48?`${Math.round(e)} h`:`${Math.round(e/24)} d`}function xn(){return typeof window<`u`&&typeof window.matchMedia==`function`&&window.matchMedia(`(prefers-reduced-motion: reduce)`).matches}const Q=[1,2,4,8,16,32,64];let $=class extends B{constructor(...e){super(...e),this.index=bt,this.position=0,this.playing=!1,this.speed=1,this.trackWidth=600,this.versionMismatch=null,this.history=/* @__PURE__ */ new Map,this.folded=/* @__PURE__ */ new Set,this.present=/* @__PURE__ */ new Uint8Array,this.ring=new Tt(J(1)),this.prefetchedThrough=-1,this.useLayerA=!0,this.frameGeneration=0,this.swaps=new dt(()=>this.performSwap()),this.gains=/* @__PURE__ */ new Float32Array,this.versionChecked=!1,this.autoplayPending=!0,this.playCounter=0,this.lastScrubAt=0,this.visible=!0,this.onScreen=!0,this.onVisibilityChange=()=>{this.visible=document.visibilityState===`visible`,this.reconcilePlayback(),this.visible&&this.refreshIndex()}}static{this.styles=Pe}setConfig(e){if(!e?.camera_entity)throw Error(U(`error.no_camera`,this.hass?.locale?.language));this.config={autoplay:!1,speed:32,show_dayticks:!0,show_graph:!0,show_sun:!1,graph_hours:24,deflicker:50,...e,entities:(e.entities??[]).filter(e=>e?.entity),entities_left:(e.entities_left??[]).filter(e=>e?.entity)},this.speed=Q.includes(this.config.speed)?this.config.speed:32,this.ring=new Tt(J(this.speed))}static getConfigElement(){return document.createElement(`webcam-timelapse-card-editor`)}static getStubConfig(e){return{camera_entity:Object.keys(e.states).find(t=>t.startsWith(`camera.`)&&e.entities?.[t]?.platform===`webcam_timelapse`)??``}}getCardSize(){return 8}getGridOptions(){return{columns:`full`,rows:`auto`,min_columns:6,min_rows:6}}connectedCallback(){super.connectedCallback(),document.addEventListener(`visibilitychange`,this.onVisibilityChange),this.intersectionObserver=new IntersectionObserver(e=>{this.onScreen=e.some(e=>e.isIntersecting),this.reconcilePlayback()}),this.intersectionObserver.observe(this),this.resizeObserver=new ResizeObserver(e=>{let t=e[0]?.contentRect.width;t&&(this.trackWidth=t-24)}),this.resizeObserver.observe(this)}disconnectedCallback(){super.disconnectedCallback(),document.removeEventListener(`visibilitychange`,this.onVisibilityChange),this.intersectionObserver?.disconnect(),this.resizeObserver?.disconnect(),this.stopPlayback(),this.indexTimer&&window.clearTimeout(this.indexTimer),this.scrubSettle&&window.clearTimeout(this.scrubSettle),this.ring.clear()}willUpdate(e){e.has(`hass`)&&this.hass&&this.index===bt&&(this.refreshIndex(),this.refreshHistory()),e.has(`hass`)&&this.hass&&!this.versionChecked&&(this.versionChecked=!0,nn(this.hass,`webcam_timelapse/card_version`,`0.6.1`).then(e=>{this.versionMismatch=e}))}reconcilePlayback(){this.playing&&this.visible&&this.onScreen?this.startPlayback():this.stopPlayback()}async refreshIndex(){if(this.hass?.callWS&&this.config){try{let e=await this.hass.callWS({type:`webcam_timelapse/index`,entity_id:this.config.camera_entity}),t=this.position>=this.index.count-1;this.index=e,this.present=Ct(e),(t||this.position>=e.count)&&(this.position=Math.max(0,e.count-1)),await this.updateComplete,this.startAutoplayIfRequested()||this.swapInFrame(),this.refreshLuma(),this.indexError=void 0}catch(e){this.indexError=e instanceof Error?e.message:`Could not load the timeline.`}this.scheduleIndexRefresh()}}async refreshLuma(){let e=gt(this.config?.deflicker??0);if(!this.hass?.callWS||e===0||!this.config){this.gains=/* @__PURE__ */ new Float32Array;return}try{let t=await this.hass.callWS({type:`webcam_timelapse/luma`,entity_id:this.config.camera_entity});this.gains=ht(t.luma,{...pt,radius:e})}catch{this.gains=/* @__PURE__ */ new Float32Array}this.requestUpdate()}async refreshHistory(){let e=yt(this.config);if(!this.hass||e.length===0)return;let t={};for(let n of e)n.time_attribute&&(t[n.entity]=n.time_attribute);let n=Math.max(this.config?.graph_hours??24,...e.map(e=>e.graph_hours??0));this.history=await Yt(this.hass,e.map(e=>e.entity),{days:(this.index.retention_days||14)+1+Math.ceil(n/48),timeAttributes:t})}scheduleIndexRefresh(){this.indexTimer&&window.clearTimeout(this.indexTimer);let e=this.index.step*1e3+Math.random()*15e3;this.indexTimer=window.setTimeout(()=>void this.refreshIndex(),e)}get cadence(){return Et(this.speed)}get frameDelay(){return this.cadence.frameDelay}get fadeDuration(){return jt(this.speed,this.frameDelay,{playing:this.playing,reducedMotion:xn()})}async runPlayback(e){let t=!1;for(;this.playToken===e&&this.playing;){if(t){let e=Dt(this.present,this.position,this.cadence.stride);if(e===null){this.playing=!1;break}this.position=e}t=!0;let n=performance.now();if(await this.swapInFrame(),this.prefetchAhead(),this.playToken!==e)return;let r=this.frameDelay-(performance.now()-n);r>0&&await new Promise(e=>window.setTimeout(e,r))}}startPlayback(){if(this.playToken!==void 0)return;let e=++this.playCounter;this.playToken=e,this.runPlayback(e).finally(()=>{this.playToken===e&&(this.playToken=void 0)})}stopPlayback(){this.playToken=void 0}startAutoplayIfRequested(){return!this.autoplayPending||!wt(this.index)||(this.autoplayPending=!1,!At({configured:this.config?.autoplay===!0,reducedMotion:xn(),alreadyPlaying:this.playing}))?!1:(this.togglePlay(),!0)}togglePlay(){if(!this.playing&&this.atLive){let e=q(this.present,0);e!==null&&(this.position=e)}this.playing=!this.playing,this.reconcilePlayback()}cycleSpeed(){let e=Q[(Q.indexOf(this.speed)+1)%Q.length];this.speed=e??1,this.ring=new Tt(J(this.speed)),this.prefetchedThrough=-1}goTo(e){this.position=Math.min(Math.max(e,0),Math.max(0,this.index.count-1)),this.swapInFrame(),this.prefetchAhead()}swapInFrame(){return this.swaps.request()}async performSwap(){let e=this.position,t=this.frameSources(e);if(t.length===0)return;let n=++this.frameGeneration,r=this.useLayerA?this.layerB:this.layerA;if(!r)return;let i=!1;for(let a of t){let t=new URL(a,document.baseURI).href;r.src=a;try{await r.decode()}catch{}let o=kt({currentSrc:r.currentSrc,requested:t,complete:r.complete,naturalWidth:r.naturalWidth});if(o===`pending`&&!this.playing&&(await this.awaitLoad(r),o=kt({currentSrc:r.currentSrc,requested:t,complete:r.complete,naturalWidth:r.naturalWidth})),o!==`failed`){if(o===`pending`){i=!0;continue}if(n!==this.frameGeneration)return;this.revealFrame(r,this.useLayerA?this.layerA:this.layerB),this.useLayerA=!this.useLayerA,this.loadedPosition=e,this.frameError=void 0,this.requestUpdate();return}}n===this.frameGeneration&&(this.playing||i||(this.frameError=t[0],this.requestUpdate()))}awaitLoad(e){return new Promise(t=>{let n,r=()=>{n!==void 0&&window.clearTimeout(n),e.removeEventListener(`load`,r),e.removeEventListener(`error`,r),t()};e.addEventListener(`load`,r),e.addEventListener(`error`,r),n=window.setTimeout(r,1500)})}revealFrame(e,t){let n=this.fadeDuration;if(t&&(t.style.transition=`none`,t.style.opacity=`1`,t.style.zIndex=`1`),e.style.zIndex=`2`,n===0){e.style.transition=`none`,e.style.opacity=`1`;return}e.style.transition=`none`,e.style.opacity=`0`,e.offsetWidth,e.style.transition=`opacity ${n}ms linear`,e.style.opacity=`1`}frameSources(e){let t=[],n=vn(this.hass?.states[this.config.camera_entity]?.attributes.entity_picture);e>=this.index.count-1&&n&&t.push(n);let r=St(this.index,e);return r&&t.push(r),t}prefetchAhead(){let e=Ot(this.present,this.position,J(this.speed),this.cadence.stride,this.prefetchedThrough);for(let t of e){let e=St(this.index,t);e&&this.ring.prefetch(e),this.prefetchedThrough=t}}onScrub(e){let t=Number(e.target.value);this.position=t,this.pendingPosition=t;let n=performance.now();n-this.lastScrubAt>=80&&(this.lastScrubAt=n,this.loadPendingPosition()),this.scrubSettle&&window.clearTimeout(this.scrubSettle),this.scrubSettle=window.setTimeout(()=>{this.scrubSettle=void 0,this.loadPendingPosition()},80)}loadPendingPosition(){let e=this.pendingPosition;e!==void 0&&e!==this.loadedPosition&&this.goTo(e)}onScrubCommit(e){this.scrubSettle&&window.clearTimeout(this.scrubSettle),this.scrubSettle=void 0,this.pendingPosition=Number(e.target.value),this.loadPendingPosition()}jumpToNow(){this.playing=!1,this.stopPlayback(),this.goTo(this.index.count-1)}stepBy(e){let t=q(this.present,this.position+e,e);t!==null&&this.goTo(t)}get timeZone(){return this.hass?.config?.time_zone??Intl.DateTimeFormat().resolvedOptions().timeZone}get language(){return this.hass?.locale?.language??this.hass?.language??`en`}t(e,t){return t===void 0?U(e,this.language):U(e,this.language,`{v}`,t)}get atLive(){return this.position>=this.index.count-1}get onGap(){return this.present.length>0&&!this.present[this.position]}render(){if(!this.config||!this.hass)return P`<ha-card></ha-card>`;let e=this.index.t0===null?null:this.index.t0+this.position*this.index.step;return P`
-      <ha-card .header=${this.config.title??I}>
-        ${an(this.versionMismatch,e=>this.t(e))}
+  `}const X=864e5,Mn=2440587.5,Nn=2451545,Z=Math.PI/180;function Pn(e,t,n){let r=2451545.0009-n/360+e,i=Fn(r),a=(357.5291+.98560028*(r-Nn))%360,o=(a+(1.9148*Math.sin(a*Z)+.02*Math.sin(2*a*Z)+3e-4*Math.sin(3*a*Z))+180+102.9372)%360,s=r+.0053*Math.sin(a*Z)-.0069*Math.sin(2*o*Z),c=Math.sin(o*Z)*Math.sin(23.4397*Z),l=Math.cos(Math.asin(c)),u=(Math.sin(-.833*Z)-Math.sin(t*Z)*c)/(Math.cos(t*Z)*l);if(!Number.isFinite(u)||Math.abs(u)>1)return{noon:i,rise:null,set:null,polarNight:u>1};let d=Math.acos(u)/Z;return{noon:i,rise:Fn(s-d/360),set:Fn(s+d/360),polarNight:!1}}function Fn(e){return(e-Mn)*X}function In(e,t){return Math.round(e/X+Mn-Nn-9e-4+t/360)}function Ln(e,t,n,r){if(!Number.isFinite(e)||!Number.isFinite(t)||t<=e||!Number.isFinite(n)||!Number.isFinite(r)||Math.abs(n)>90)return[];let i=In(e,r)-1,a=In(t,r)+1;if(a-i>800)return[];let o=[];for(let e=i;e<=a;e++){let t=Pn(e,n,r);if(t.set===null){t.polarNight&&zn(o,t.noon-X/2,t.noon+X/2);continue}let i=Pn(e+1,n,r);zn(o,t.set,i.rise??i.noon-X/2)}return Bn(o,e,t)}function Rn(e,t,n,r){let i=t-e;if(!(i>0))return[];let a=Ln(e,t,n,r).map(t=>({left:(t.from-e)/i,width:(t.to-t.from)/i}));return a.reduce((e,t)=>Math.max(e,t.width),0)>=.017094017094017096?a:[]}function zn(e,t,n){if(n<=t)return;let r=e[e.length-1];if(r&&t<=r.to){r.to=Math.max(r.to,n);return}e.push({from:t,to:n})}function Bn(e,t,n){let r=[];for(let i of e){let e=Math.max(i.from,t),a=Math.min(i.to,n);a>e&&r.push({from:e,to:a})}return r}function Vn(e){if(!e)return;let t=e.trim();if(t.startsWith(`/`)||t.startsWith(`https://`))return t}function Hn(e){if(!Number.isFinite(e)||e<=0)return`0`;if(e>=100)return Math.round(e).toString();let t=e.toPrecision(2);return t.includes(`.`)?t.replace(/0+$/,``).replace(/\.$/,``):t}function Un(e){return!Number.isFinite(e)||e<=0?``:e<1?`${Math.round(e*60)} min`:e<48?`${Math.round(e)} h`:`${Math.round(e/24)} d`}function Wn(){return typeof window<`u`&&typeof window.matchMedia==`function`&&window.matchMedia(`(prefers-reduced-motion: reduce)`).matches}const Q=[1,2,4,8,16,32,64];let $=class extends z{constructor(...e){super(...e),this.index=xt,this.position=0,this.playing=!1,this.speed=1,this.trackWidth=600,this.versionMismatch=null,this.history=/* @__PURE__ */ new Map,this.folded=/* @__PURE__ */ new Set,this.exportOpen=!1,this.exportRange=null,this.exportFps=24,this.exportStamp=!0,this.exportReadings=!0,this.exportStampSize=Lt.default,this.exportReadingsSize=It.default,this.exportPositions={},this.exportStatus=null,this.exportSubscription=0,this.present=/* @__PURE__ */ new Uint8Array,this.ring=new wt(J(1)),this.prefetchedThrough=-1,this.useLayerA=!0,this.frameGeneration=0,this.swaps=new ht(()=>this.performSwap()),this.gains=/* @__PURE__ */ new Float32Array,this.versionChecked=!1,this.autoplayPending=!0,this.playCounter=0,this.lastScrubAt=0,this.visible=!0,this.onScreen=!0,this.onVisibilityChange=()=>{this.visible=document.visibilityState===`visible`,this.reconcilePlayback(),this.visible&&this.refreshIndex()},this.resolveColor=e=>{let t=document.createElement(`span`);t.style.display=`none`,t.style.color=e,this.renderRoot.appendChild(t);let n=getComputedStyle(t).color;return t.remove(),n||e}}static{this.styles=Ie}setConfig(e){if(!e?.camera_entity)throw Error(V(`error.no_camera`,this.hass?.locale?.language));this.config={autoplay:!1,speed:32,show_dayticks:!0,show_graph:!0,show_sun:!1,graph_hours:24,deflicker:50,show_export:!0,...e,entities:(e.entities??[]).filter(e=>e?.entity),entities_left:(e.entities_left??[]).filter(e=>e?.entity)},this.speed=Q.includes(this.config.speed)?this.config.speed:32,this.ring=new wt(J(this.speed))}static getConfigElement(){return document.createElement(`webcam-timelapse-card-editor`)}static getStubConfig(e){return{camera_entity:Object.keys(e.states).find(t=>t.startsWith(`camera.`)&&e.entities?.[t]?.platform===`webcam_timelapse`)??``}}getCardSize(){return 8}getGridOptions(){return{columns:`full`,rows:`auto`,min_columns:6,min_rows:6}}connectedCallback(){super.connectedCallback(),document.addEventListener(`visibilitychange`,this.onVisibilityChange),this.intersectionObserver=new IntersectionObserver(e=>{this.onScreen=e.some(e=>e.isIntersecting),this.reconcilePlayback()}),this.intersectionObserver.observe(this),this.resizeObserver=new ResizeObserver(e=>{let t=e[0]?.contentRect.width;t&&(this.trackWidth=t-24)}),this.resizeObserver.observe(this),this.exportOpen&&this.subscribeExport()}disconnectedCallback(){super.disconnectedCallback(),document.removeEventListener(`visibilitychange`,this.onVisibilityChange),this.intersectionObserver?.disconnect(),this.resizeObserver?.disconnect(),this.stopPlayback(),this.indexTimer&&window.clearTimeout(this.indexTimer),this.scrubSettle&&window.clearTimeout(this.scrubSettle),this.ring.clear(),this.unsubscribeExport()}willUpdate(e){e.has(`hass`)&&this.hass&&this.index===xt&&(this.refreshIndex(),this.refreshHistory()),e.has(`hass`)&&this.hass&&!this.versionChecked&&(this.versionChecked=!0,En(this.hass,`webcam_timelapse/card_version`,`0.6.1`).then(e=>{this.versionMismatch=e}))}reconcilePlayback(){this.playing&&this.visible&&this.onScreen?this.startPlayback():this.stopPlayback()}async refreshIndex(){if(this.hass?.callWS&&this.config){try{let e=await this.hass.callWS({type:`webcam_timelapse/index`,entity_id:this.config.camera_entity}),t=this.position>=this.index.count-1;this.index=e,this.present=Ct(e),(t||this.position>=e.count)&&(this.position=Math.max(0,e.count-1)),await this.updateComplete,this.startAutoplayIfRequested()||this.swapInFrame(),this.refreshLuma(),this.indexError=void 0}catch(e){this.indexError=e instanceof Error?e.message:`Could not load the timeline.`}this.scheduleIndexRefresh()}}async refreshLuma(){let e=bt(this.config?.deflicker??0);if(!this.hass?.callWS||e===0||!this.config){this.gains=/* @__PURE__ */ new Float32Array;return}try{let t=await this.hass.callWS({type:`webcam_timelapse/luma`,entity_id:this.config.camera_entity});this.gains=yt(t.luma,{..._t,radius:e})}catch{this.gains=/* @__PURE__ */ new Float32Array}this.requestUpdate()}async refreshHistory(){let e=Nt(this.config);if(!this.hass||e.length===0)return;let t={};for(let n of e)n.time_attribute&&(t[n.entity]=n.time_attribute);let n=Math.max(this.config?.graph_hours??24,...e.map(e=>e.graph_hours??0));this.history=await yn(this.hass,e.map(e=>e.entity),{days:(this.index.retention_days||14)+1+Math.ceil(n/48),timeAttributes:t})}scheduleIndexRefresh(){this.indexTimer&&window.clearTimeout(this.indexTimer);let e=this.index.step*1e3+Math.random()*15e3;this.indexTimer=window.setTimeout(()=>void this.refreshIndex(),e)}get cadence(){return Tt(this.speed)}get frameDelay(){return this.cadence.frameDelay}get fadeDuration(){return At(this.speed,this.frameDelay,{playing:this.playing,reducedMotion:Wn()})}async runPlayback(e){let t=!1;for(;this.playToken===e&&this.playing;){if(t){let e=Et(this.present,this.position,this.cadence.stride);if(e===null){this.playing=!1;break}this.position=e}t=!0;let n=performance.now();if(await this.swapInFrame(),this.prefetchAhead(),this.playToken!==e)return;let r=this.frameDelay-(performance.now()-n);r>0&&await new Promise(e=>window.setTimeout(e,r))}}startPlayback(){if(this.playToken!==void 0)return;let e=++this.playCounter;this.playToken=e,this.runPlayback(e).finally(()=>{this.playToken===e&&(this.playToken=void 0)})}stopPlayback(){this.playToken=void 0}startAutoplayIfRequested(){return!this.autoplayPending||!q(this.index)||(this.autoplayPending=!1,!kt({configured:this.config?.autoplay===!0,reducedMotion:Wn(),alreadyPlaying:this.playing}))?!1:(this.togglePlay(),!0)}togglePlay(){if(!this.playing&&this.atLive){let e=K(this.present,0);e!==null&&(this.position=e)}this.playing=!this.playing,this.reconcilePlayback()}cycleSpeed(){let e=Q[(Q.indexOf(this.speed)+1)%Q.length];this.speed=e??1,this.ring=new wt(J(this.speed)),this.prefetchedThrough=-1}goTo(e){this.position=Math.min(Math.max(e,0),Math.max(0,this.index.count-1)),this.swapInFrame(),this.prefetchAhead()}swapInFrame(){return this.swaps.request()}async performSwap(){let e=this.position,t=this.frameSources(e);if(t.length===0)return;let n=++this.frameGeneration,r=this.useLayerA?this.layerB:this.layerA;if(!r)return;let i=!1;for(let a of t){let t=new URL(a,document.baseURI).href;r.src=a;try{await r.decode()}catch{}let o=Ot({currentSrc:r.currentSrc,requested:t,complete:r.complete,naturalWidth:r.naturalWidth});if(o===`pending`&&!this.playing&&(await this.awaitLoad(r),o=Ot({currentSrc:r.currentSrc,requested:t,complete:r.complete,naturalWidth:r.naturalWidth})),o!==`failed`){if(o===`pending`){i=!0;continue}if(n!==this.frameGeneration)return;this.revealFrame(r,this.useLayerA?this.layerA:this.layerB),this.useLayerA=!this.useLayerA,this.loadedPosition=e,this.frameError=void 0,this.requestUpdate();return}}n===this.frameGeneration&&(this.playing||i||(this.frameError=t[0],this.requestUpdate()))}awaitLoad(e){return new Promise(t=>{let n,r=()=>{n!==void 0&&window.clearTimeout(n),e.removeEventListener(`load`,r),e.removeEventListener(`error`,r),t()};e.addEventListener(`load`,r),e.addEventListener(`error`,r),n=window.setTimeout(r,1500)})}revealFrame(e,t){let n=this.fadeDuration;if(t&&(t.style.transition=`none`,t.style.opacity=`1`,t.style.zIndex=`1`),e.style.zIndex=`2`,n===0){e.style.transition=`none`,e.style.opacity=`1`;return}e.style.transition=`none`,e.style.opacity=`0`,e.offsetWidth,e.style.transition=`opacity ${n}ms linear`,e.style.opacity=`1`}frameSources(e){let t=[],n=Vn(this.hass?.states[this.config.camera_entity]?.attributes.entity_picture);e>=this.index.count-1&&n&&t.push(n);let r=St(this.index,e);return r&&t.push(r),t}prefetchAhead(){let e=Dt(this.present,this.position,J(this.speed),this.cadence.stride,this.prefetchedThrough);for(let t of e){let e=St(this.index,t);e&&this.ring.prefetch(e),this.prefetchedThrough=t}}onScrub(e){let t=Number(e.target.value);this.position=t,this.pendingPosition=t;let n=performance.now();n-this.lastScrubAt>=80&&(this.lastScrubAt=n,this.loadPendingPosition()),this.scrubSettle&&window.clearTimeout(this.scrubSettle),this.scrubSettle=window.setTimeout(()=>{this.scrubSettle=void 0,this.loadPendingPosition()},80)}loadPendingPosition(){let e=this.pendingPosition;e!==void 0&&e!==this.loadedPosition&&this.goTo(e)}onScrubCommit(e){this.scrubSettle&&window.clearTimeout(this.scrubSettle),this.scrubSettle=void 0,this.pendingPosition=Number(e.target.value),this.loadPendingPosition()}jumpToNow(){this.playing=!1,this.stopPlayback(),this.goTo(this.index.count-1)}stepBy(e){let t=K(this.present,this.position+e,e);t!==null&&this.goTo(t)}get exportSelection(){let e=zt(this.index);return e===null?null:this.exportRange===null?e:Bt(this.exportRange,this.index.count)}get exportRunning(){return this.exportStatus?.state===`running`}toggleExport(){this.exportOpen=!this.exportOpen,this.exportError=void 0,this.exportOpen?this.subscribeExport():this.unsubscribeExport()}async subscribeExport(){this.unsubscribeExport();let e=this.hass?.connection;if(!e||!this.config)return;let t=++this.exportSubscription;try{let n=await e.subscribeMessage(e=>{t===this.exportSubscription&&this.onExportStatus(e)},{type:`webcam_timelapse/export/subscribe`,entity_id:this.config.camera_entity});if(t!==this.exportSubscription){n();return}this.exportUnsubscribe=n}catch(e){t===this.exportSubscription&&(this.exportError=this.exportErrorKey(e))}}unsubscribeExport(){this.exportSubscription++;let e=this.exportUnsubscribe;this.exportUnsubscribe=void 0,e&&Promise.resolve(e()).catch(()=>void 0)}onExportStatus(e){if(this.exportStatus=e,e.state!==`done`||!e.result){this.exportUrl=void 0,this.exportUrlFor=void 0;return}this.resolveExportUrl(e.result.media_content_id)}async resolveExportUrl(e){if(this.exportUrlFor!==e&&this.hass?.callWS){this.exportUrlFor=e,this.exportUrl=void 0;try{let t=await this.hass.callWS({type:`media_source/resolve_media`,media_content_id:e});if(this.exportUrlFor!==e)return;this.exportUrl=this.hass.hassUrl?.(t.url)??t.url}catch{}}}exportErrorKey(e){return(typeof e==`object`&&e&&`code`in e?String(e.code):``)||`unknown`}async startExport(){let e=this.exportSelection;if(!this.hass?.callWS||!this.config||e===null)return;let t=en(this.config,this.index,e,{fps:this.exportFps,timestamp:this.exportStamp,timestampSize:this.exportStampSize,readings:this.exportReadings,readingsSize:this.exportReadingsSize,positions:this.exportPositions},this.language,this.resolveColor);if(t!==null){this.exportError=void 0;try{this.exportStatus=await this.hass.callWS({type:`webcam_timelapse/export/start`,...t})}catch(e){this.exportError=this.exportErrorKey(e)}}}async cancelExport(){if(this.hass?.callWS&&this.config)try{await this.hass.callWS({type:`webcam_timelapse/export/cancel`,entity_id:this.config.camera_entity})}catch(e){this.exportError=this.exportErrorKey(e)}}markExportStart(){let e=this.exportSelection;e&&(this.exportRange=Vt(e,this.position,this.index.count))}markExportEnd(){let e=this.exportSelection;e&&(this.exportRange=Ht(e,this.position,this.index.count))}presetExport(e){this.exportRange=e===null?null:Ut(this.index,e)}exportErrorText(e,t){let n=this.t(`export.error.${e}`);return n.startsWith(`export.error.`)?t||this.t(`export.error.unknown`):n}get timeZone(){return this.hass?.config?.time_zone??Intl.DateTimeFormat().resolvedOptions().timeZone}get language(){return this.hass?.locale?.language??this.hass?.language??`en`}t(e,t){return t===void 0?V(e,this.language):V(e,this.language,`{v}`,t)}get atLive(){return this.position>=this.index.count-1}get onGap(){return this.present.length>0&&!this.present[this.position]}render(){if(!this.config||!this.hass)return N`<ha-card></ha-card>`;let e=this.index.t0===null?null:this.index.t0+this.position*this.index.step;return N`
+      <ha-card .header=${this.config.title??F}>
+        ${On(this.versionMismatch,e=>this.t(e))}
         ${this.renderStage(e)}
-        ${wt(this.index)?this.renderTimeline(e):I}
+        ${q(this.index)?this.renderTimeline(e):F}
+        ${q(this.index)&&this.config.show_export!==!1?this.renderExport():F}
       </ha-card>
-    `}renderStage(e){if(!wt(this.index))return P`
+    `}renderStage(e){if(!q(this.index))return N`
         <div class="stage">
           <div class="empty">
-            ${this.indexError?P`
+            ${this.indexError?N`
                   <div>${this.t(`empty.index_failed`)}</div>
                   <div class="detail">${this.indexError}</div>
-                `:P`
+                `:N`
                   <div>${this.t(`empty.no_frames`)}</div>
                   <div>${this.t(`empty.first_soon`)}</div>
                 `}
           </div>
         </div>
-      `;let t=this.gains[this.position]??1,n=[];t!==1&&n.push(`brightness(${t.toFixed(3)})`),this.onGap&&n.push(`grayscale(0.5)`,`brightness(0.5)`);let r=n.length>0?n.join(` `):`none`;return P`
+      `;let t=this.gains[this.position]??1,n=[];t!==1&&n.push(`brightness(${t.toFixed(3)})`),this.onGap&&n.push(`grayscale(0.5)`,`brightness(0.5)`);let r=n.length>0?n.join(` `):`none`;return N`
       <div
         class="stage"
         style="--wtl-frame-filter:${r}"
@@ -1061,34 +1311,34 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
           <img class="layer a" alt="" decoding="async" fetchpriority="high" />
           <img class="layer b" alt="" decoding="async" fetchpriority="high" />
         </div>
-        ${this.frameError?P`<div class="empty">
+        ${this.frameError?N`<div class="empty">
               <div>${this.t(`empty.frame_failed`)}</div>
               <div class="detail">${this.frameError}</div>
-            </div>`:I}
-        ${e===null?I:P`<div class="stamp">
+            </div>`:F}
+        ${e===null?F:N`<div class="stamp">
               <time datetime=${(/* @__PURE__ */ new Date(e*1e3)).toISOString()}>
-                ${Ht(e,this.timeZone,this.language)}
+                ${fn(e,this.timeZone,this.language)}
               </time>
             </div>`}
-        ${e===null?I:this.renderReadouts(e)}
-        ${this.onGap?P`<div class="badge gap">${this.t(`badge.gap`)}</div>`:this.atLive?P`<div class="badge live">${this.t(`badge.live`)}</div>`:I}
+        ${e===null?F:this.renderReadouts(e)}
+        ${this.onGap?N`<div class="badge gap">${this.t(`badge.gap`)}</div>`:this.atLive?N`<div class="badge live">${this.t(`badge.live`)}</div>`:F}
         ${this.renderControls()}
       </div>
-    `}renderReadouts(e){let t=vt(this.config);return t.length===0?I:P`<div class="readouts ${t.length>1?`pair`:``}">
+    `}renderReadouts(e){let t=Mt(this.config);return t.length===0?F:N`<div class="readouts ${t.length>1?`pair`:``}">
       ${t.map(t=>this.renderReadout(e,t))}
-    </div>`}renderReadout(e,t){let n=`readout ${t.side===`left`?`left`:``}`;if(this.folded.has(t.side))return P`<div class="${n} folded">
+    </div>`}renderReadout(e,t){let n=`readout ${t.side===`left`?`left`:``}`;if(this.folded.has(t.side))return N`<div class="${n} folded">
         ${this.renderFoldToggle(t.side,!0)}
-      </div>`;let r=t.entities,i=e*1e3,a=r.map(e=>{let t=this.history.get(e.entity)??[],n=$t(t),r=Xt(t,i,n.staleAfter),a=e.name??this.hass?.states[e.entity]?.attributes.friendly_name??e.entity,o=e.unit??this.hass?.states[e.entity]?.attributes.unit_of_measurement??``,s=e.color??`var(--wtl-accent)`,c=r===null?`—`:`${r.value.toFixed(e.decimals??1)}${o?` ${o}`:``}`,l=e.graph_hours??this.config?.graph_hours??24,u=e.graph===!0&&this.config?.show_graph!==!1,d=u?tn(t,i,l):[],f=u&&this.config?.show_sun===!0?this.nightsAround(i,l):[],p=u?cn({points:d,at:i,hours:l,color:s,label:`${a} history`,quantum:n.quantum,nights:f}):null,m=p===null?0:sn(d),h=p===null?I:P`<div class="spark-scale">
+      </div>`;let r=t.entities,i=e*1e3,a=r.map(e=>{let t=this.history.get(e.entity)??[],n=Cn(t),r=bn(t,i,n.staleAfter),a=e.name??this.hass?.states[e.entity]?.attributes.friendly_name??e.entity,o=e.unit??this.hass?.states[e.entity]?.attributes.unit_of_measurement??``,s=e.color??`var(--wtl-accent)`,c=r===null?`—`:`${r.value.toFixed(e.decimals??1)}${o?` ${o}`:``}`,l=e.graph_hours??this.config?.graph_hours??24,u=e.graph===!0&&this.config?.show_graph!==!1,d=u?Tn(t,i,l):[],f=u&&this.config?.show_sun===!0?this.nightsAround(i,l):[],p=u?jn({points:d,at:i,hours:l,color:s,label:`${a} history`,quantum:n.quantum,nights:f}):null,m=p===null?0:An(d),h=p===null?F:N`<div class="spark-scale">
             <span
-              >${m===0?this.t(`spark.flat`):this.t(`spark.range`,`${yn(m)}${o?` ${o}`:``}`)}</span
+              >${m===0?this.t(`spark.flat`):this.t(`spark.range`,`${Hn(m)}${o?` ${o}`:``}`)}</span
             >
-            <span>${bn(l)}</span>
-          </div>`,g=this.hass?.states[e.entity],_=e.show_icon&&g?P`<ha-state-icon
+            <span>${Un(l)}</span>
+          </div>`,g=this.hass?.states[e.entity],_=e.show_icon&&g?N`<ha-state-icon
               class="readout-icon"
               style="color:${s}"
               .hass=${this.hass}
               .stateObj=${g}
-            ></ha-state-icon>`:I;return P`
+            ></ha-state-icon>`:F;return N`
         <div
           class="readout-row ${r?.stale?`stale`:``}"
           role="button"
@@ -1100,25 +1350,25 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
           ${_}
           <span class="readout-name" style="color:${s}">${a}</span>
           <span class="readout-value">${c}</span>
-          ${r===null?I:P`<span class="readout-at"
-                >${Ut(Math.round(r.at/1e3),this.timeZone,this.language)}</span
+          ${r===null?F:N`<span class="readout-at"
+                >${pn(Math.round(r.at/1e3),this.timeZone,this.language)}</span
               >`}
         </div>
-        ${p?P`<div class="spark-wrap">${p}${h}</div>`:I}
-      `});return P`<div class=${n}>
+        ${p?N`<div class="spark-wrap">${p}${h}</div>`:F}
+      `});return N`<div class=${n}>
       <div class="readout-head">
-        ${t.title?P`<div class="readout-title">${t.title}</div>`:I}
+        ${t.title?N`<div class="readout-title">${t.title}</div>`:F}
         ${this.renderFoldToggle(t.side,!1)}
       </div>
       ${a}
-    </div>`}nightsAround(e,t){let n=t*36e5/2;return this.nightsBetween(e-n,e+n)}nightsBetween(e,t){let n=this.hass?.config?.latitude,r=this.hass?.config?.longitude;if(n===void 0||r===void 0)return[];let i=`${e}|${t}|${n}|${r}`;return this.nightCache?.key!==i&&(this.nightCache={key:i,bands:hn(e,t,n,r)}),this.nightCache.bands}renderFoldToggle(e,t){let n=this.t(t?`actions.show_readings`:`actions.hide_readings`);return P`<ha-icon-button
+    </div>`}nightsAround(e,t){let n=t*36e5/2;return this.nightsBetween(e-n,e+n)}nightsBetween(e,t){let n=this.hass?.config?.latitude,r=this.hass?.config?.longitude;if(n===void 0||r===void 0)return[];let i=`${e}|${t}|${n}|${r}`;return this.nightCache?.key!==i&&(this.nightCache={key:i,bands:Rn(e,t,n,r)}),this.nightCache.bands}renderFoldToggle(e,t){let n=this.t(t?`actions.show_readings`:`actions.hide_readings`);return N`<ha-icon-button
       class="readout-fold"
       .label=${n}
       aria-expanded=${t?`false`:`true`}
       @click=${()=>this.toggleFold(e)}
     >
       <ha-icon icon=${t?`mdi:eye-outline`:`mdi:eye-off-outline`}></ha-icon>
-    </ha-icon-button>`}toggleFold(e){let t=new Set(this.folded);t.delete(e)||t.add(e),this.folded=t}fireMoreInfo(e){e&&this.dispatchEvent(new CustomEvent(`hass-more-info`,{detail:{entityId:e},bubbles:!0,composed:!0}))}onActivateKey(e,t){(e.key===`Enter`||e.key===` `)&&(e.preventDefault(),this.fireMoreInfo(t))}onStageClick(e){let t=e.composedPath(),n=t.indexOf(e.currentTarget);(n===-1?t:t.slice(0,n)).some(e=>e instanceof HTMLElement&&(e.classList.contains(`controls`)||e.classList.contains(`readout-row`)||e.classList.contains(`readout-fold`)))||this.config&&this.fireMoreInfo(this.config.camera_entity)}renderControls(){return P`
+    </ha-icon-button>`}toggleFold(e){let t=new Set(this.folded);t.delete(e)||t.add(e),this.folded=t}fireMoreInfo(e){e&&this.dispatchEvent(new CustomEvent(`hass-more-info`,{detail:{entityId:e},bubbles:!0,composed:!0}))}onActivateKey(e,t){(e.key===`Enter`||e.key===` `)&&(e.preventDefault(),this.fireMoreInfo(t))}onStageClick(e){let t=e.composedPath(),n=t.indexOf(e.currentTarget);(n===-1?t:t.slice(0,n)).some(e=>e instanceof HTMLElement&&(e.classList.contains(`controls`)||e.classList.contains(`readout-row`)||e.classList.contains(`readout-fold`)))||this.config&&this.fireMoreInfo(this.config.camera_entity)}renderControls(){return N`
       <div class="controls">
         <ha-icon-button .label=${this.t(`controls.previous`)} @click=${()=>this.stepBy(-1)}>
           <ha-icon icon="mdi:skip-previous"></ha-icon>
@@ -1147,31 +1397,32 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
           <ha-icon icon="mdi:update"></ha-icon>
         </ha-icon-button>
       </div>
-    `}renderTimeline(e){let t=Math.max(1,this.index.count-1),n=this.position/t*100,r=this.config?.show_dayticks!==!1,{days:i,times:a}=r?this.rulerFor():{days:[],times:[]},o=this.config?.show_sun===!0&&this.index.t0!==null?this.nightsBetween(this.index.t0*1e3,(this.index.t0+t*this.index.step)*1e3):[];return P`
+    `}renderTimeline(e){let t=Math.max(1,this.index.count-1),n=this.position/t*100,r=this.config?.show_dayticks!==!1,{days:i,times:a}=r?this.rulerFor():{days:[],times:[]},o=this.config?.show_sun===!0&&this.index.t0!==null?this.nightsBetween(this.index.t0*1e3,(this.index.t0+t*this.index.step)*1e3):[];return N`
       <div class="timeline">
-        ${r?P`<div class="band dates" aria-hidden="true">
-              ${i.map(e=>e.label?P`<span class="lab date" style="left:${e.left}%"
+        ${r?N`<div class="band dates" aria-hidden="true">
+              ${i.map(e=>e.label?N`<span class="lab date" style="left:${e.left}%"
                       >${e.label}</span
-                    >`:I)}
-            </div>`:I}
+                    >`:F)}
+            </div>`:F}
 
         <div class="track">
-          ${o.length>0?P`<div class="nights" aria-hidden="true">
-                ${o.map(e=>P`<span
+          ${o.length>0?N`<div class="nights" aria-hidden="true">
+                ${o.map(e=>N`<span
                       class="night"
                       style="left:${(e.left*100).toFixed(3)}%;width:${(e.width*100).toFixed(3)}%"
                     ></span>`)}
-              </div>`:I}
-          ${r?P`<div class="marks" aria-hidden="true">
-                ${a.map(e=>P`<span class="mark" style="left:${e.left}%"></span>`)}
-                ${i.map(e=>P`<span
+              </div>`:F}
+          ${this.renderExportBand()}
+          ${r?N`<div class="marks" aria-hidden="true">
+                ${a.map(e=>N`<span class="mark" style="left:${e.left}%"></span>`)}
+                ${i.map(e=>N`<span
                       class="mark ${e.isMonthStart?`month`:`day`}"
                       style="left:${e.left}%"
                     ></span>`)}
-              </div>`:I}
+              </div>`:F}
           <div class="rail"></div>
         <div class="fill" style="width:${n}%"></div>
-        ${this.index.gaps.map(([e,n])=>{let r=e/t*100,i=n/t*100;return P`<div
+        ${this.index.gaps.map(([e,n])=>{let r=e/t*100,i=n/t*100;return N`<div
             class="gap-run"
             style="left:${r}%;width:${i}%"
           ></div>`})}
@@ -1182,16 +1433,197 @@ const Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!
           step="1"
           .value=${String(this.position)}
           aria-label=${this.t(`track.label`)}
-          aria-valuetext=${e===null?``:Ht(e,this.timeZone,this.language)}
+          aria-valuetext=${e===null?``:fn(e,this.timeZone,this.language)}
           @input=${this.onScrub}
           @change=${this.onScrubCommit}
           />
         </div>
 
-        ${r?P`<div class="band times" aria-hidden="true">
-              ${a.map(e=>e.label?P`<span class="lab time" style="left:${e.left}%"
+        ${r?N`<div class="band times" aria-hidden="true">
+              ${a.map(e=>e.label?N`<span class="lab time" style="left:${e.left}%"
                       >${e.label}</span
-                    >`:I)}
-            </div>`:I}
+                    >`:F)}
+            </div>`:F}
       </div>
-    `}rulerFor(){let e=[this.index.t0,this.index.count,this.index.step,Math.round(this.trackWidth),this.timeZone,this.language].join(`|`);return this.rulerCache?.key!==e&&(this.rulerCache={key:e,days:Rt(this.index,this.timeZone,this.language,this.trackWidth),times:Vt(this.index,this.timeZone,this.language,this.trackWidth)}),this.rulerCache}};W([V({attribute:!1})],$.prototype,`hass`,void 0),W([H()],$.prototype,`config`,void 0),W([H()],$.prototype,`index`,void 0),W([H()],$.prototype,`position`,void 0),W([H()],$.prototype,`playing`,void 0),W([H()],$.prototype,`speed`,void 0),W([H()],$.prototype,`trackWidth`,void 0),W([H()],$.prototype,`versionMismatch`,void 0),W([H()],$.prototype,`indexError`,void 0),W([H()],$.prototype,`frameError`,void 0),W([H()],$.prototype,`history`,void 0),W([H()],$.prototype,`folded`,void 0),W([Ne(`img.layer.a`)],$.prototype,`layerA`,void 0),W([Ne(`img.layer.b`)],$.prototype,`layerB`,void 0),$=W([ke(ft)],$);const Sn=window;Sn.customCards=Sn.customCards??[],Sn.customCards.push({type:ft,name:`Webcam Timelapse`,description:`Scrub and play back an archived still-image webcam.`,preview:!0,documentationURL:`https://github.com/rolandzeiner/webcam-timelapse`,getEntitySuggestion:(e,t)=>!t.startsWith(`camera.`)||e.entities?.[t]?.platform!==`webcam_timelapse`?null:{config:{type:`custom:${ft}`,camera_entity:t}}});export{$ as WebcamTimelapseCard};
+    `}renderExportBand(){let e=this.exportOpen?this.exportSelection:null;if(e===null)return F;let t=qt(e,this.index.count);return N`<div
+      class="export-band"
+      role="img"
+      aria-label=${this.t(`export.band`)}
+      style="left:${t.left.toFixed(3)}%;width:${t.width.toFixed(3)}%"
+    ></div>`}renderExport(){return N`
+      <div class="export">
+        <button
+          class="export-toggle"
+          aria-expanded=${this.exportOpen?`true`:`false`}
+          @click=${this.toggleExport}
+        >
+          <ha-icon icon="mdi:movie-open-outline"></ha-icon>
+          ${this.t(this.exportOpen?`export.close`:`export.open`)}
+        </button>
+        ${this.exportOpen?this.renderExportPanel():F}
+      </div>
+    `}renderExportPanel(){let e=this.exportSelection;if(e===null)return F;let t=e=>fn(this.index.t0+e*this.index.step,this.timeZone,this.language),n=Gt(this.present,e),r=this.exportRunning,i=Nt(this.config).length>0,a=Rt.filter(e=>Wt(this.index,e));return N`
+      <div class="export-panel">
+        <div class="export-ends">
+          <div class="export-end">
+            <span class="export-label">${this.t(`export.from`)}</span>
+            <span class="export-stamp">${t(e.start)}</span>
+            <button
+              class="export-chip"
+              ?disabled=${r}
+              @click=${this.markExportStart}
+            >
+              ${this.t(`export.start_here`)}
+            </button>
+          </div>
+          <div class="export-end">
+            <span class="export-label">${this.t(`export.to`)}</span>
+            <span class="export-stamp">${t(e.end)}</span>
+            <button
+              class="export-chip"
+              ?disabled=${r}
+              @click=${this.markExportEnd}
+            >
+              ${this.t(`export.end_here`)}
+            </button>
+          </div>
+        </div>
+
+        ${a.length>0?N`<div class="export-row">
+              ${a.map(e=>N`<button
+                    class="export-chip"
+                    ?disabled=${r}
+                    @click=${()=>this.presetExport(e)}
+                  >
+                    ${e<48?this.t(`export.preset_hours`,String(e)):this.t(`export.preset_days`,String(e/24))}
+                  </button>`)}
+              <button
+                class="export-chip"
+                ?disabled=${r}
+                @click=${()=>this.presetExport(null)}
+              >
+                ${this.t(`export.preset_all`)}
+              </button>
+            </div>`:F}
+
+        <div class="export-row" role="group" aria-label=${this.t(`export.fps`)}>
+          <span class="export-label">${this.t(`export.fps`)}</span>
+          ${Pt.map(e=>N`<button
+                class="export-chip"
+                aria-pressed=${this.exportFps===e?`true`:`false`}
+                ?disabled=${r}
+                @click=${()=>{this.exportFps=e}}
+              >
+                ${e}
+              </button>`)}
+        </div>
+
+        <div class="export-row">
+          <label class="export-check">
+            <input
+              type="checkbox"
+              .checked=${this.exportStamp}
+              ?disabled=${r}
+              @change=${e=>{this.exportStamp=e.target.checked}}
+            />
+            ${this.t(`export.timestamp`)}
+          </label>
+          ${this.exportStamp?this.renderExportSize(Lt,this.exportStampSize,r,e=>{this.exportStampSize=e}):F}
+        </div>
+        ${i?N`<div class="export-row">
+                <label class="export-check">
+                  <input
+                    type="checkbox"
+                    .checked=${this.exportReadings}
+                    ?disabled=${r}
+                    @change=${e=>{this.exportReadings=e.target.checked}}
+                  />
+                  ${this.t(`export.readings`)}
+                </label>
+                ${this.exportReadings?this.renderExportSize(It,this.exportReadingsSize,r,e=>{this.exportReadingsSize=e}):F}
+              </div>
+              ${this.exportReadings?this.renderExportPositions(r):F}`:F}
+
+        <div class="export-summary">
+          ${n===0?this.t(`export.summary_empty`):this.t(`export.summary`).replace(`{frames}`,String(n)).replace(`{length}`,Jt(n/this.exportFps))}
+        </div>
+
+        ${r?F:N`<div class="export-row">
+              <button
+                class="export-go"
+                ?disabled=${n===0}
+                @click=${this.startExport}
+              >
+                <ha-icon icon="mdi:movie-open-outline"></ha-icon>
+                ${this.t(`export.start`)}
+              </button>
+            </div>`}
+        ${this.renderExportStatus()}
+        ${this.exportStatus?.folder?N`<div class="export-folder">
+              ${this.t(`export.folder`,this.exportStatus.folder)}
+            </div>`:F}
+      </div>
+    `}renderExportSize(e,t,n,r){let i=this.t(`export.size_value`,String(t));return N`<label class="export-size">
+      <span class="export-label">${this.t(`export.size`)}</span>
+      <input
+        type="range"
+        min=${e.min}
+        max=${e.max}
+        step=${e.step}
+        .value=${String(t)}
+        aria-valuetext=${i}
+        ?disabled=${n}
+        @input=${e=>r(Number(e.target.value))}
+      />
+      <span class="export-size-value">${i}</span>
+    </label>`}renderExportPositions(e){let t=Mt(this.config);return t.map(n=>{let r=this.exportPositions[n.side]??n.side,i=t.length===1?this.t(`export.position`):n.title??this.t(n.side===`left`?`export.block_left`:`export.block_right`);return N`<div class="export-row" role="group" aria-label=${i}>
+        <span class="export-label">${i}</span>
+        ${Ft.map(t=>N`<button
+              class="export-chip"
+              aria-pressed=${r===t?`true`:`false`}
+              ?disabled=${e}
+              @click=${()=>{this.exportPositions={...this.exportPositions,[n.side]:t}}}
+            >
+              ${this.t(`export.positions.${t}`)}
+            </button>`)}
+      </div>`})}renderExportStatus(){if(this.exportError)return N`<div class="export-status" role="alert">
+        <span class="export-error">${this.exportErrorText(this.exportError)}</span>
+      </div>`;let e=this.exportStatus;if(!e||e.state===`idle`)return F;if(e.state===`running`){let t=Xt(e);return N`<div class="export-status" role="status">
+        <span>
+          ${e.total>0?this.t(`export.running`).replace(`{done}`,String(e.done)).replace(`{total}`,String(e.total)):this.t(`export.preparing`)}
+        </span>
+        <div
+          class="export-progress"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow=${Math.round(t*100)}
+        >
+          <span style="width:${(t*100).toFixed(1)}%"></span>
+        </div>
+        <button class="export-chip" @click=${this.cancelExport}>
+          ${this.t(`export.cancel`)}
+        </button>
+      </div>`}if(e.state===`done`&&e.result){let t=e.result;return N`<div class="export-status" role="status">
+        <span>
+          ${this.t(`export.done`)} · ${Jt(t.duration)} ·
+          ${Yt(t.size_bytes)}
+        </span>
+        <span class="detail">${this.t(`export.saved`,t.path)}</span>
+        ${this.exportUrl?N`<a
+              class="export-download"
+              href=${this.exportUrl}
+              download=${t.file_name}
+              target="_blank"
+              rel="noopener"
+            >
+              <ha-icon icon="mdi:download"></ha-icon>
+              ${this.t(`export.download`)}
+            </a>`:F}
+      </div>`}return e.state===`cancelled`?N`<div class="export-status" role="status">
+        <span class="detail">${this.t(`export.cancelled`)}</span>
+      </div>`:N`<div class="export-status" role="alert">
+      <span class="export-error"
+        >${this.exportErrorText(e.error??`unknown`,e.message)}</span
+      >
+    </div>`}rulerFor(){let e=[this.index.t0,this.index.count,this.index.step,Math.round(this.trackWidth),this.timeZone,this.language].join(`|`);return this.rulerCache?.key!==e&&(this.rulerCache={key:e,days:cn(this.index,this.timeZone,this.language,this.trackWidth),times:dn(this.index,this.timeZone,this.language,this.trackWidth)}),this.rulerCache}};H([Ne({attribute:!1})],$.prototype,`hass`,void 0),H([B()],$.prototype,`config`,void 0),H([B()],$.prototype,`index`,void 0),H([B()],$.prototype,`position`,void 0),H([B()],$.prototype,`playing`,void 0),H([B()],$.prototype,`speed`,void 0),H([B()],$.prototype,`trackWidth`,void 0),H([B()],$.prototype,`versionMismatch`,void 0),H([B()],$.prototype,`indexError`,void 0),H([B()],$.prototype,`frameError`,void 0),H([B()],$.prototype,`history`,void 0),H([B()],$.prototype,`folded`,void 0),H([B()],$.prototype,`exportOpen`,void 0),H([B()],$.prototype,`exportRange`,void 0),H([B()],$.prototype,`exportFps`,void 0),H([B()],$.prototype,`exportStamp`,void 0),H([B()],$.prototype,`exportReadings`,void 0),H([B()],$.prototype,`exportStampSize`,void 0),H([B()],$.prototype,`exportReadingsSize`,void 0),H([B()],$.prototype,`exportPositions`,void 0),H([B()],$.prototype,`exportStatus`,void 0),H([B()],$.prototype,`exportError`,void 0),H([B()],$.prototype,`exportUrl`,void 0),H([Fe(`img.layer.a`)],$.prototype,`layerA`,void 0),H([Fe(`img.layer.b`)],$.prototype,`layerB`,void 0),$=H([Ae(gt)],$);const Gn=window;Gn.customCards=Gn.customCards??[],Gn.customCards.push({type:gt,name:`Webcam Timelapse`,description:`Scrub and play back an archived still-image webcam.`,preview:!0,documentationURL:`https://github.com/rolandzeiner/webcam-timelapse`,getEntitySuggestion:(e,t)=>!t.startsWith(`camera.`)||e.entities?.[t]?.platform!==`webcam_timelapse`?null:{config:{type:`custom:${gt}`,camera_entity:t}}});export{$ as WebcamTimelapseCard};

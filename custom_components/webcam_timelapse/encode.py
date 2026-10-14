@@ -111,3 +111,43 @@ def measure_luma(data: bytes) -> int:
             return round(ImageStat.Stat(image.convert("L")).mean[0])
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as err:
         raise ImageDecodeError(str(err)) from err
+
+
+def frame_size(data: bytes) -> tuple[int, int]:
+    """Pixel size of an encoded frame, read from its header alone."""
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            return image.size
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as err:
+        raise ImageDecodeError(str(err)) from err
+
+
+def decode_frame(
+    data: bytes, size: tuple[int, int] | None = None, gain: float = 1.0
+) -> Image.Image:
+    """Decode a stored frame to RGB, for the video export.
+
+    Args:
+        data: The encoded frame as stored on disk.
+        size: Resize to exactly this, or ``None`` to keep the native size.
+            A video has one frame size, and an archive can hold more than
+            one — changing "Resize to" mid-archive does exactly that.
+        gain: Brightness multiplier, 1.0 for none. Applied as a straight
+            scale of the sRGB values, which is what the card's
+            ``filter: brightness()`` does to the same frame.
+
+    Raises:
+        ImageDecodeError: The payload could not be decoded as an image.
+    """
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            rgb = image.convert("RGB")
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as err:
+        raise ImageDecodeError(str(err)) from err
+
+    if size is not None and rgb.size != size:
+        rgb = rgb.resize(size, Image.Resampling.LANCZOS)
+    if gain != 1.0:
+        table = [min(255, round(level * gain)) for level in range(256)]
+        rgb = rgb.point(table * 3)
+    return rgb

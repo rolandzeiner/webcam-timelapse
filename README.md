@@ -28,6 +28,7 @@ particular camera or a particular kind of sensor.
 - [The card](#the-card)
 - [Overlay readings](#overlay-readings)
 - [Smoothing cloud flicker](#smoothing-cloud-flicker)
+- [Exporting a video](#exporting-a-video)
 - [Entities](#entities)
 - [Actions](#actions)
 - [How data updates](#how-data-updates)
@@ -52,6 +53,9 @@ play back weeks at 64×.
 
 **Prove when something happened.** Every frame is timestamped and kept on
 disk, so you can find the exact capture.
+
+**Keep the timelapse as a video.** Pick a stretch of the timeline and export
+it as an MP4, with the readings drawn on it if you want them.
 
 **Use it without the card.** Each camera also becomes a normal Home Assistant
 camera entity, so `camera.snapshot`, picture cards and the mobile app all
@@ -149,6 +153,7 @@ show_graph: true
 show_sun: false          # shade night behind the graphs and the scrubber
 graph_hours: 24
 deflicker: 50            # 0 turns it off
+show_export: true        # the Export video button under the timeline
 entities: []
 ```
 
@@ -364,6 +369,76 @@ setting `deflicker: 0` gives you the originals back exactly.
 Turn it up if playback still strobes. Turn it down if evening transitions look
 flattened.
 
+## Exporting a video
+
+Press **Export video** under the timeline. Scrub to the frame the video should
+open on and press **Start at this frame**, scrub to the one it should close on
+and press **End at this frame**. The chosen stretch is tinted on the bar. The
+shortcuts select the last day, three days or week, or everything.
+
+The card shows how many frames that is and how long the video will run at the
+chosen frame rate. At 24 frames per second, a day captured every five minutes
+plays in 12 seconds.
+
+**Home Assistant makes the video, not your browser.** You can close the
+dashboard or lock your phone while it encodes; open the panel again later and
+the finished video is there to download.
+
+**Videos are saved in your media folder**, in one folder per camera named
+after it — `/media/webcam_timelapse/<camera>/` on Home Assistant OS. The panel
+shows the folder, and the full path of each video once it is written. In Home
+Assistant they are under **Media → My media → webcam_timelapse**, which is
+also the easiest place to delete old ones.
+
+**Sensor readings** draws the card's overlay blocks on every frame — the same
+readings, labels, colours and graphs, each showing the value from the moment
+that frame was captured. **Date and time** stamps each frame in the top-left
+corner. Both can be switched off for a clean picture.
+
+**Each has a size**, set as a share of the video's width: the readings take
+30 % by default and the date and time 15 %. A long sensor name is shortened
+rather than shrinking every reading to make room for it, and text never gets
+too small to survive video compression — at a very small size the block ends
+up a little wider than asked instead.
+
+**The readings can sit left, right, top or bottom.** Left and right are the
+bottom corners, as on the card, and each block starts where the card has it.
+Top and bottom centre the block on that edge. Two blocks put in the same place
+are stacked rather than drawn over each other, and a block at the top keeps
+clear of the date and time.
+
+**Gaps are skipped**, as they are during playback, so a night without captures
+does not become seconds of frozen picture.
+
+The video uses the card's **Smooth brightness** setting, so it flickers no
+more than the playback you exported it from.
+
+Three things differ from the card on purpose:
+
+- **The timestamp includes the year** (`2026-08-01 12:30`). A video outlives
+  the dashboard it came from.
+- **The readings block keeps one width** for the whole video instead of
+  resizing with its contents, which would jitter at 24 frames per second.
+- **Entity icons are not drawn.** They belong to Home Assistant's frontend,
+  which the encoder does not have.
+
+**Readings older than your recorder keeps are hourly averages.** Home
+Assistant stores detailed history for ten days unless you have changed
+`purge_keep_days`. A camera that keeps frames for longer can export further
+back than that, and for those frames the overlay falls back to long-term
+statistics. A sensor without statistics shows a dash.
+
+**One export at a time per camera.** Encoding is the heaviest thing this
+integration does: a day of 1600 px frames captured every five minutes took
+about half a minute on a four-core mini PC, and a Raspberry Pi will need
+longer. Captures carry on meanwhile.
+
+**Exported videos are yours to tidy up.** They are not deleted with the frames
+they were made from, nor when the camera is removed.
+
+The export needs `ffmpeg`, which Home Assistant OS and the Container image
+include.
+
 ## Entities
 
 Each camera creates one device with these entities:
@@ -390,6 +465,7 @@ has a visible explanation.
 | `webcam_timelapse.purge_frames` | Deletes every stored frame for one camera |
 | `webcam_timelapse.pause_capture` | Stops capturing. Stored frames are kept |
 | `webcam_timelapse.resume_capture` | Starts capturing again |
+| `webcam_timelapse.export_video` | Renders a stretch of the archive to an MP4 in the media folder |
 
 Each takes an `entry_id`, which the UI offers as a picker.
 
@@ -406,6 +482,31 @@ actions:
   - action: webcam_timelapse.capture_now
     data:
       entry_id: 01ABCDEF...
+```
+
+**`export_video` finishes when the video is written**, which can take
+minutes, and returns where it is — so the next step of an automation can send
+it somewhere. `start` and `end` are optional and default to the whole archive.
+`overlay` takes the readings in the same form as the card's configuration;
+`readings_size`, `timestamp_size`, `readings_position` and
+`readings_position_left` work as in the card's export panel.
+
+```yaml
+# Every Sunday night, keep the week as a video
+actions:
+  - action: webcam_timelapse.export_video
+    data:
+      entry_id: 01ABCDEF...
+      start: "{{ (now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S') }}"
+      fps: 30
+      overlay:
+        entities:
+          - entity: sensor.greenhouse_temperature
+            graph: true
+    response_variable: video
+  - action: notify.mobile_app_phone
+    data:
+      message: "This week's timelapse: {{ video.file_name }}"
 ```
 
 ## How data updates
@@ -487,7 +588,8 @@ Go to **Settings → Devices & Services**, open the three-dot menu on the
 Webcam Timelapse entry and choose **Delete**.
 
 This deletes that camera's stored frames along with the entry. Other cameras
-are untouched. When the last entry is removed, the card is unregistered from
+are untouched, and so are any videos you exported — those stay in the media
+folder. When the last entry is removed, the card is unregistered from
 your dashboard resources.
 
 To uninstall completely, remove the repository in HACS and restart Home

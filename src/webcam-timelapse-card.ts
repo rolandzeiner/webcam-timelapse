@@ -13,8 +13,12 @@ import {
   CARD_TAG,
   CARD_VERSION,
   WS_CARD_VERSION,
+  WS_EXPORT_CANCEL,
+  WS_EXPORT_START,
+  WS_EXPORT_SUBSCRIBE,
   WS_INDEX,
   WS_LUMA,
+  WS_RESOLVE_MEDIA,
 } from "./const";
 import {
   DEFAULT_DEFLICKER,
@@ -22,6 +26,29 @@ import {
   type LumaSeries,
   radiusForStrength,
 } from "./deflicker";
+import {
+  clampRange,
+  DEFAULT_EXPORT_FPS,
+  EXPORT_FPS,
+  EXPORT_POSITIONS,
+  EXPORT_PRESETS,
+  type ExportPosition,
+  type ExportRange,
+  exportRequest,
+  type ExportStatus,
+  formatLength,
+  formatSize,
+  framesIn,
+  fullRange,
+  lastHours,
+  presetFits,
+  progress,
+  rangeBand,
+  READINGS_SIZE,
+  TIMESTAMP_SIZE,
+  withEnd,
+  withStart,
+} from "./export";
 import { localize } from "./localize/localize";
 import {
   overlayEntities,
@@ -136,6 +163,36 @@ export class WebcamTimelapseCard extends LitElement {
    */
   @state() private folded = new Set<ReadoutSide>();
 
+  // --- video export ---
+  @state() private exportOpen = false;
+  /**
+   * The stretch chosen for export, in grid positions.
+   *
+   * Null means "not chosen yet", which the panel reads as the whole
+   * archive. Kept null rather than filled in eagerly so a range the user
+   * never touched keeps following the archive as it grows, instead of
+   * freezing at whatever the newest frame was when the panel opened.
+   */
+  @state() private exportRange: ExportRange | null = null;
+  @state() private exportFps: number = DEFAULT_EXPORT_FPS;
+  @state() private exportStamp = true;
+  @state() private exportReadings = true;
+  @state() private exportStampSize: number = TIMESTAMP_SIZE.default;
+  @state() private exportReadingsSize: number = READINGS_SIZE.default;
+  /** Positions the viewer picked; a block not in here keeps its card side. */
+  @state() private exportPositions: Partial<Record<ReadoutSide, ExportPosition>> =
+    {};
+  @state() private exportStatus: ExportStatus | null = null;
+  /** Why the last attempt to start or cancel was refused, as a string key. */
+  @state() private exportError: string | undefined;
+  /** Signed download link for the finished video, once resolved. */
+  @state() private exportUrl: string | undefined;
+  /** Which video `exportUrl` belongs to, so it is resolved once. */
+  private exportUrlFor: string | undefined;
+  private exportUnsubscribe: (() => Promise<void> | void) | undefined;
+  /** Counts subscriptions, so a stale one resolving late is dropped. */
+  private exportSubscription = 0;
+
   /** Not @state: derived from the playhead, never a reason to re-render. */
   private nightCache?: { key: string; bands: NightBand[] };
 
@@ -196,6 +253,7 @@ export class WebcamTimelapseCard extends LitElement {
       show_sun: false,
       graph_hours: 24,
       deflicker: 50,
+      show_export: true,
       ...config,
       // Drop malformed rows rather than crashing render on a hand-edited
       // YAML typo: one bad entry should cost that row, not the card.
@@ -255,6 +313,9 @@ export class WebcamTimelapseCard extends LitElement {
       if (width) this.trackWidth = width - 24;
     });
     this.resizeObserver.observe(this);
+    // A dashboard view that is navigated away from and back re-attaches
+    // the same element, with the panel still marked open.
+    if (this.exportOpen) void this.subscribeExport();
   }
 
   override disconnectedCallback(): void {
@@ -266,6 +327,7 @@ export class WebcamTimelapseCard extends LitElement {
     if (this.indexTimer) window.clearTimeout(this.indexTimer);
     if (this.scrubSettle) window.clearTimeout(this.scrubSettle);
     this.ring.clear();
+    this.unsubscribeExport();
   }
 
   protected override willUpdate(changed: PropertyValues): void {
@@ -901,6 +963,200 @@ export class WebcamTimelapseCard extends LitElement {
     if (next !== null) this.goTo(next);
   }
 
+  // --- video export ------------------------------------------------
+
+  /** The range the panel is showing: the chosen one, or the whole archive. */
+  private get exportSelection(): ExportRange | null {
+    const full = fullRange(this.index);
+    if (full === null) return null;
+    return this.exportRange === null
+      ? full
+      : clampRange(this.exportRange, this.index.count);
+  }
+
+  private get exportRunning(): boolean {
+    return this.exportStatus?.state === "running";
+  }
+
+  private toggleExport(): void {
+    this.exportOpen = !this.exportOpen;
+    this.exportError = undefined;
+    if (this.exportOpen) void this.subscribeExport();
+    else this.unsubscribeExport();
+  }
+
+  /**
+   * Follow this camera's export status for as long as the panel is open.
+   *
+   * Subscribed on open rather than when an export starts, so a panel
+   * opened on a second device — or reopened after the dashboard was
+   * closed mid-encode — shows the export that is already running, or the
+   * link to the one that finished, instead of an idle form.
+   */
+  private async subscribeExport(): Promise<void> {
+    this.unsubscribeExport();
+    const connection = this.hass?.connection;
+    if (!connection || !this.config) return;
+
+    const generation = ++this.exportSubscription;
+    try {
+      const unsubscribe = await connection.subscribeMessage<ExportStatus>(
+        (status) => {
+          if (generation === this.exportSubscription) this.onExportStatus(status);
+        },
+        { type: WS_EXPORT_SUBSCRIBE, entity_id: this.config.camera_entity },
+      );
+      // The panel was closed, or reopened, while this was in flight.
+      if (generation !== this.exportSubscription) {
+        void unsubscribe();
+        return;
+      }
+      this.exportUnsubscribe = unsubscribe;
+    } catch (error) {
+      if (generation === this.exportSubscription) {
+        this.exportError = this.exportErrorKey(error);
+      }
+    }
+  }
+
+  private unsubscribeExport(): void {
+    this.exportSubscription++;
+    const unsubscribe = this.exportUnsubscribe;
+    this.exportUnsubscribe = undefined;
+    // Rejects if the socket has already gone, which is the same outcome.
+    if (unsubscribe) void Promise.resolve(unsubscribe()).catch(() => undefined);
+  }
+
+  private onExportStatus(status: ExportStatus): void {
+    this.exportStatus = status;
+    if (status.state !== "done" || !status.result) {
+      this.exportUrl = undefined;
+      this.exportUrlFor = undefined;
+      return;
+    }
+    void this.resolveExportUrl(status.result.media_content_id);
+  }
+
+  /**
+   * Turn the finished video's media id into a link the browser can open.
+   *
+   * Media files are served behind authentication, so the id has to be
+   * exchanged for a short-lived signed URL. Failing to get one is not an
+   * error worth showing: the video exists either way, and the panel says
+   * where it was saved.
+   */
+  private async resolveExportUrl(mediaContentId: string): Promise<void> {
+    if (this.exportUrlFor === mediaContentId || !this.hass?.callWS) return;
+    this.exportUrlFor = mediaContentId;
+    this.exportUrl = undefined;
+    try {
+      const resolved = await this.hass.callWS<{ url: string }>({
+        type: WS_RESOLVE_MEDIA,
+        media_content_id: mediaContentId,
+      });
+      if (this.exportUrlFor !== mediaContentId) return;
+      this.exportUrl = this.hass.hassUrl?.(resolved.url) ?? resolved.url;
+    } catch {
+      // No media browser on this install; the saved-as line still applies.
+    }
+  }
+
+  /** A stable string key for a refused WebSocket command. */
+  private exportErrorKey(error: unknown): string {
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code: unknown }).code)
+        : "";
+    return code || "unknown";
+  }
+
+  /**
+   * What a CSS colour comes out as, asked of the browser.
+   *
+   * A row's colour can be anything CSS accepts, including a theme
+   * variable, and the integration has no stylesheet to resolve one
+   * against. The probe sits inside this card's shadow root so that the
+   * card's own custom properties — the accent above all — are in scope.
+   */
+  private resolveColor = (value: string): string => {
+    const probe = document.createElement("span");
+    probe.style.display = "none";
+    probe.style.color = value;
+    this.renderRoot.appendChild(probe);
+    const computed = getComputedStyle(probe).color;
+    probe.remove();
+    return computed || value;
+  };
+
+  private async startExport(): Promise<void> {
+    const range = this.exportSelection;
+    if (!this.hass?.callWS || !this.config || range === null) return;
+
+    const request = exportRequest(
+      this.config,
+      this.index,
+      range,
+      {
+        fps: this.exportFps,
+        timestamp: this.exportStamp,
+        timestampSize: this.exportStampSize,
+        readings: this.exportReadings,
+        readingsSize: this.exportReadingsSize,
+        positions: this.exportPositions,
+      },
+      this.language,
+      this.resolveColor,
+    );
+    if (request === null) return;
+
+    this.exportError = undefined;
+    try {
+      // The status subscription carries everything from here on; the
+      // reply only matters for the first paint of the progress bar.
+      this.exportStatus = await this.hass.callWS<ExportStatus>({
+        type: WS_EXPORT_START,
+        ...request,
+      });
+    } catch (error) {
+      this.exportError = this.exportErrorKey(error);
+    }
+  }
+
+  private async cancelExport(): Promise<void> {
+    if (!this.hass?.callWS || !this.config) return;
+    try {
+      await this.hass.callWS({
+        type: WS_EXPORT_CANCEL,
+        entity_id: this.config.camera_entity,
+      });
+    } catch (error) {
+      this.exportError = this.exportErrorKey(error);
+    }
+  }
+
+  private markExportStart(): void {
+    const range = this.exportSelection;
+    if (range) this.exportRange = withStart(range, this.position, this.index.count);
+  }
+
+  private markExportEnd(): void {
+    const range = this.exportSelection;
+    if (range) this.exportRange = withEnd(range, this.position, this.index.count);
+  }
+
+  /** `hours` back from the newest frame; null selects the whole archive. */
+  private presetExport(hours: number | null): void {
+    this.exportRange = hours === null ? null : lastHours(this.index, hours);
+  }
+
+  /** An export error in the viewer's language, or the server's own words. */
+  private exportErrorText(key: string, fallback?: string | null): string {
+    const translated = this.t(`export.error.${key}`);
+    // localize() hands the key back when it has no entry for it.
+    if (!translated.startsWith("export.error.")) return translated;
+    return fallback || this.t("export.error.unknown");
+  }
+
   // --- render ------------------------------------------------------
 
   private get timeZone(): string {
@@ -948,6 +1204,9 @@ export class WebcamTimelapseCard extends LitElement {
         ${this.renderStage(slot)}
         ${hasFrames(this.index)
           ? this.renderTimeline(slot)
+          : nothing}
+        ${hasFrames(this.index) && this.config.show_export !== false
+          ? this.renderExport()
           : nothing}
       </ha-card>
     `;
@@ -1443,6 +1702,7 @@ export class WebcamTimelapseCard extends LitElement {
                 )}
               </div>`
             : nothing}
+          ${this.renderExportBand()}
           ${ticks
             ? html`<div class="marks" aria-hidden="true">
                 ${times.map(
@@ -1496,6 +1756,352 @@ export class WebcamTimelapseCard extends LitElement {
           : nothing}
       </div>
     `;
+  }
+
+  /**
+   * The chosen range, drawn on the scrubber while the panel is open.
+   *
+   * Only while it is open: the band is feedback for an edit in progress,
+   * and a tinted stretch left on the bar afterwards would read as
+   * something about the archive rather than about a form that is closed.
+   */
+  private renderExportBand(): TemplateResult | typeof nothing {
+    const range = this.exportOpen ? this.exportSelection : null;
+    if (range === null) return nothing;
+    const band = rangeBand(range, this.index.count);
+    return html`<div
+      class="export-band"
+      role="img"
+      aria-label=${this.t("export.band")}
+      style="left:${band.left.toFixed(3)}%;width:${band.width.toFixed(3)}%"
+    ></div>`;
+  }
+
+  /**
+   * Export, under the timeline.
+   *
+   * The range is set with the playhead rather than with date pickers:
+   * scrub to the frame the video should open on, mark it, scrub to the
+   * one it should close on, mark that. The picture is the thing being
+   * chosen, so the picture is what the choice is made against — a typed
+   * timestamp would have the user reading the clock in the corner and
+   * copying it into a field.
+   */
+  private renderExport(): TemplateResult {
+    return html`
+      <div class="export">
+        <button
+          class="export-toggle"
+          aria-expanded=${this.exportOpen ? "true" : "false"}
+          @click=${this.toggleExport}
+        >
+          <ha-icon icon="mdi:movie-open-outline"></ha-icon>
+          ${this.t(this.exportOpen ? "export.close" : "export.open")}
+        </button>
+        ${this.exportOpen ? this.renderExportPanel() : nothing}
+      </div>
+    `;
+  }
+
+  private renderExportPanel(): TemplateResult | typeof nothing {
+    const range = this.exportSelection;
+    if (range === null) return nothing;
+
+    const stamp = (position: number): string => {
+      const slot = this.index.t0! + position * this.index.step;
+      return formatStamp(slot, this.timeZone, this.language);
+    };
+    const frames = framesIn(this.present, range);
+    const running = this.exportRunning;
+    const hasReadings = overlayEntities(this.config).length > 0;
+    const presets = EXPORT_PRESETS.filter((hours) => presetFits(this.index, hours));
+
+    return html`
+      <div class="export-panel">
+        <div class="export-ends">
+          <div class="export-end">
+            <span class="export-label">${this.t("export.from")}</span>
+            <span class="export-stamp">${stamp(range.start)}</span>
+            <button
+              class="export-chip"
+              ?disabled=${running}
+              @click=${this.markExportStart}
+            >
+              ${this.t("export.start_here")}
+            </button>
+          </div>
+          <div class="export-end">
+            <span class="export-label">${this.t("export.to")}</span>
+            <span class="export-stamp">${stamp(range.end)}</span>
+            <button
+              class="export-chip"
+              ?disabled=${running}
+              @click=${this.markExportEnd}
+            >
+              ${this.t("export.end_here")}
+            </button>
+          </div>
+        </div>
+
+        ${presets.length > 0
+          ? html`<div class="export-row">
+              ${presets.map(
+                (hours) =>
+                  html`<button
+                    class="export-chip"
+                    ?disabled=${running}
+                    @click=${() => this.presetExport(hours)}
+                  >
+                    ${hours < 48
+                      ? this.t("export.preset_hours", String(hours))
+                      : this.t("export.preset_days", String(hours / 24))}
+                  </button>`,
+              )}
+              <button
+                class="export-chip"
+                ?disabled=${running}
+                @click=${() => this.presetExport(null)}
+              >
+                ${this.t("export.preset_all")}
+              </button>
+            </div>`
+          : nothing}
+
+        <div class="export-row" role="group" aria-label=${this.t("export.fps")}>
+          <span class="export-label">${this.t("export.fps")}</span>
+          ${EXPORT_FPS.map(
+            (fps) =>
+              html`<button
+                class="export-chip"
+                aria-pressed=${this.exportFps === fps ? "true" : "false"}
+                ?disabled=${running}
+                @click=${() => {
+                  this.exportFps = fps;
+                }}
+              >
+                ${fps}
+              </button>`,
+          )}
+        </div>
+
+        <div class="export-row">
+          <label class="export-check">
+            <input
+              type="checkbox"
+              .checked=${this.exportStamp}
+              ?disabled=${running}
+              @change=${(event: Event) => {
+                this.exportStamp = (event.target as HTMLInputElement).checked;
+              }}
+            />
+            ${this.t("export.timestamp")}
+          </label>
+          ${this.exportStamp
+            ? this.renderExportSize(
+                TIMESTAMP_SIZE,
+                this.exportStampSize,
+                running,
+                (size) => {
+                  this.exportStampSize = size;
+                },
+              )
+            : nothing}
+        </div>
+        ${hasReadings
+          ? html`<div class="export-row">
+                <label class="export-check">
+                  <input
+                    type="checkbox"
+                    .checked=${this.exportReadings}
+                    ?disabled=${running}
+                    @change=${(event: Event) => {
+                      this.exportReadings = (event.target as HTMLInputElement).checked;
+                    }}
+                  />
+                  ${this.t("export.readings")}
+                </label>
+                ${this.exportReadings
+                  ? this.renderExportSize(
+                      READINGS_SIZE,
+                      this.exportReadingsSize,
+                      running,
+                      (size) => {
+                        this.exportReadingsSize = size;
+                      },
+                    )
+                  : nothing}
+              </div>
+              ${this.exportReadings ? this.renderExportPositions(running) : nothing}`
+          : nothing}
+
+        <div class="export-summary">
+          ${frames === 0
+            ? this.t("export.summary_empty")
+            : this.t("export.summary")
+                .replace("{frames}", String(frames))
+                .replace("{length}", formatLength(frames / this.exportFps))}
+        </div>
+
+        ${running
+          ? nothing
+          : html`<div class="export-row">
+              <button
+                class="export-go"
+                ?disabled=${frames === 0}
+                @click=${this.startExport}
+              >
+                <ha-icon icon="mdi:movie-open-outline"></ha-icon>
+                ${this.t("export.start")}
+              </button>
+            </div>`}
+        ${this.renderExportStatus()}
+        ${this.exportStatus?.folder
+          ? html`<div class="export-folder">
+              ${this.t("export.folder", this.exportStatus.folder)}
+            </div>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  /**
+   * A size as a share of the video's width.
+   *
+   * A share rather than a pixel count, because the card does not know
+   * the size of the frames and the share is how an overlay is judged
+   * anyway: "the readings cover a third of the picture".
+   */
+  private renderExportSize(
+    bounds: { min: number; max: number; step: number },
+    value: number,
+    disabled: boolean,
+    onChange: (size: number) => void,
+  ): TemplateResult {
+    const label = this.t("export.size_value", String(value));
+    return html`<label class="export-size">
+      <span class="export-label">${this.t("export.size")}</span>
+      <input
+        type="range"
+        min=${bounds.min}
+        max=${bounds.max}
+        step=${bounds.step}
+        .value=${String(value)}
+        aria-valuetext=${label}
+        ?disabled=${disabled}
+        @input=${(event: Event) =>
+          onChange(Number((event.target as HTMLInputElement).value))}
+      />
+      <span class="export-size-value">${label}</span>
+    </label>`;
+  }
+
+  /**
+   * Where each readings block goes in the video — one row per block the
+   * card shows. Unchosen, a block sits where the card draws it.
+   */
+  private renderExportPositions(disabled: boolean): TemplateResult[] {
+    const groups = overlayGroups(this.config);
+    return groups.map((group) => {
+      const current = this.exportPositions[group.side] ?? group.side;
+      const label =
+        groups.length === 1
+          ? this.t("export.position")
+          : (group.title ??
+            this.t(group.side === "left" ? "export.block_left" : "export.block_right"));
+      return html`<div class="export-row" role="group" aria-label=${label}>
+        <span class="export-label">${label}</span>
+        ${EXPORT_POSITIONS.map(
+          (position) =>
+            html`<button
+              class="export-chip"
+              aria-pressed=${current === position ? "true" : "false"}
+              ?disabled=${disabled}
+              @click=${() => {
+                this.exportPositions = {
+                  ...this.exportPositions,
+                  [group.side]: position,
+                };
+              }}
+            >
+              ${this.t(`export.positions.${position}`)}
+            </button>`,
+        )}
+      </div>`;
+    });
+  }
+
+  /** Progress, the finished video, or what went wrong. */
+  private renderExportStatus(): TemplateResult | typeof nothing {
+    // A refused command is about the attempt just made, so it outranks
+    // whatever the last export's status happens to be.
+    if (this.exportError) {
+      return html`<div class="export-status" role="alert">
+        <span class="export-error">${this.exportErrorText(this.exportError)}</span>
+      </div>`;
+    }
+
+    const status = this.exportStatus;
+    if (!status || status.state === "idle") return nothing;
+
+    if (status.state === "running") {
+      const share = progress(status);
+      return html`<div class="export-status" role="status">
+        <span>
+          ${status.total > 0
+            ? this.t("export.running")
+                .replace("{done}", String(status.done))
+                .replace("{total}", String(status.total))
+            : this.t("export.preparing")}
+        </span>
+        <div
+          class="export-progress"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow=${Math.round(share * 100)}
+        >
+          <span style="width:${(share * 100).toFixed(1)}%"></span>
+        </div>
+        <button class="export-chip" @click=${this.cancelExport}>
+          ${this.t("export.cancel")}
+        </button>
+      </div>`;
+    }
+
+    if (status.state === "done" && status.result) {
+      const result = status.result;
+      return html`<div class="export-status" role="status">
+        <span>
+          ${this.t("export.done")} · ${formatLength(result.duration)} ·
+          ${formatSize(result.size_bytes)}
+        </span>
+        <span class="detail">${this.t("export.saved", result.path)}</span>
+        ${this.exportUrl
+          ? html`<a
+              class="export-download"
+              href=${this.exportUrl}
+              download=${result.file_name}
+              target="_blank"
+              rel="noopener"
+            >
+              <ha-icon icon="mdi:download"></ha-icon>
+              ${this.t("export.download")}
+            </a>`
+          : nothing}
+      </div>`;
+    }
+
+    if (status.state === "cancelled") {
+      return html`<div class="export-status" role="status">
+        <span class="detail">${this.t("export.cancelled")}</span>
+      </div>`;
+    }
+
+    return html`<div class="export-status" role="alert">
+      <span class="export-error"
+        >${this.exportErrorText(status.error ?? "unknown", status.message)}</span
+      >
+    </div>`;
   }
 
   /**

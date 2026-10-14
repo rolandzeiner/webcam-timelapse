@@ -117,6 +117,7 @@ export class WebcamTimelapseCardEditor
           { name: "show_dayticks", selector: { boolean: {} } },
           { name: "show_graph", selector: { boolean: {} } },
           { name: "show_sun", selector: { boolean: {} } },
+          { name: "show_export", selector: { boolean: {} } },
         ],
       },
       {

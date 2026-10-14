@@ -1,7 +1,7 @@
 {
   "domain": "webcam_timelapse",
   "name": "Webcam Timelapse",
-  "after_dependencies": ["frontend", "http", "lovelace"],
+  "after_dependencies": ["ffmpeg", "frontend", "http", "lovelace", "recorder"],
   "codeowners": ["@rolandzeiner"],
   "config_flow": true,
   "dependencies": [],

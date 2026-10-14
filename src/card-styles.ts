@@ -511,6 +511,24 @@ export const cardStyles = css`
     opacity: 0.07;
   }
 
+  /* The stretch of the timeline an export would cover. The same idiom
+     as the night bands — a tinted span behind the bar, placed by DOM
+     order rather than z-index — but in the accent colour and far
+     stronger: night is context, this is a selection the user made and
+     has to be able to see while dragging the playhead to its other end. */
+  .export-band {
+    position: absolute;
+    top: 50%;
+    height: 20px;
+    /* A one-frame selection still has to be findable on the bar. */
+    min-width: 3px;
+    transform: translateY(-50%);
+    border-radius: 3px;
+    background: var(--wtl-accent);
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
   .marks {
     position: absolute;
     inset: 0;
@@ -657,6 +675,235 @@ export const cardStyles = css`
     bottom: 0;
     font-weight: 500;
     color: var(--wtl-text);
+  }
+
+  /* --- video export ------------------------------------------------ */
+
+  /* Under the timeline, in normal flow. Deliberately not a button on the
+     control pill: the pill's width is what the narrow-layout breakpoints
+     above are derived from, and export is a once-in-a-while action that
+     does not belong among the transport controls anyway.
+
+     Every control here is a native element. Home Assistant's own
+     (ha-button, ha-switch, ha-select) are loaded lazily by whichever
+     core panel needs them first, so in a card they may or may not be
+     registered — and an unregistered custom element renders as nothing
+     at all, with no error. */
+  .export {
+    margin: 0 12px 10px;
+    font-size: var(--ha-font-size-s, 12px);
+  }
+
+  .export button,
+  .export-download {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .export button:focus-visible,
+  .export-download:focus-visible,
+  .export-check input:focus-visible {
+    outline: 2px solid var(--wtl-accent);
+    outline-offset: 2px;
+  }
+
+  /* Quiet until wanted, like the fold control on the readings. */
+  .export-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 4px 8px;
+    margin-left: -8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--wtl-muted);
+    --mdc-icon-size: 16px;
+  }
+
+  .export-toggle:hover,
+  .export-toggle[aria-expanded="true"] {
+    color: var(--wtl-text);
+  }
+
+  .export-panel {
+    display: grid;
+    gap: 12px;
+    margin-top: 4px;
+    padding: 12px;
+    border: 1px solid var(--wtl-divider);
+    border-radius: 8px;
+    color: var(--wtl-text);
+  }
+
+  /* From and To side by side while there is room, stacked when not. */
+  .export-ends {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px 16px;
+  }
+
+  .export-end {
+    display: grid;
+    gap: 4px;
+    justify-items: start;
+  }
+
+  .export-label {
+    color: var(--wtl-muted);
+  }
+
+  /* Digits must not shift width as the range is moved. */
+  .export-stamp {
+    font-size: var(--ha-font-size-m, 14px);
+    font-weight: var(--ha-font-weight-medium, 500);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .export-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+  }
+
+  .export-chip {
+    min-height: 28px;
+    padding: 4px 10px;
+    border: 1px solid var(--wtl-divider);
+    border-radius: 999px;
+    background: none;
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .export-chip:hover {
+    border-color: var(--wtl-muted);
+  }
+
+  /* The chosen frame rate. Border and tint, not colour alone, so it
+     still reads as selected in forced-colours and to anyone who cannot
+     tell the accent from the divider. */
+  .export-chip[aria-pressed="true"] {
+    border-color: var(--wtl-accent);
+    border-width: 2px;
+    padding: 3px 9px;
+    font-weight: var(--ha-font-weight-medium, 500);
+  }
+
+  .export-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    cursor: pointer;
+  }
+
+  .export-check input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--wtl-accent);
+  }
+
+  .export-summary {
+    color: var(--wtl-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Indented under its checkbox, so the size reads as belonging to it. */
+  .export-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+  }
+
+  /* Undoes the scrubber's rules, which style every range input in the
+     card: that one is stretched invisibly over the timeline track and
+     draws its own thumb. This one is an ordinary slider in a row. */
+  .export-size input[type="range"] {
+    position: static;
+    inset: auto;
+    width: 140px;
+    height: auto;
+    margin: 0;
+    background: none;
+    appearance: auto;
+    accent-color: var(--wtl-accent);
+  }
+
+  /* Fixed width, so the slider does not jump as the number grows a digit. */
+  .export-size-value {
+    min-width: 11ch;
+    color: var(--wtl-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The folder is for finding and tidying up old exports, so it is always
+     there — but quiet, and free to break anywhere in a long path. */
+  .export-folder {
+    color: var(--wtl-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .export-go,
+  .export-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--wtl-accent);
+    color: var(--text-primary-color, #fff);
+    font-weight: var(--ha-font-weight-medium, 500);
+    text-decoration: none;
+    --mdc-icon-size: 18px;
+  }
+
+  /* While an export runs the form is locked, and has to look it:
+     a control that ignores a press without saying why reads as a
+     broken card. */
+  .export-go:disabled,
+  .export-chip:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .export-chip:disabled:hover {
+    border-color: var(--wtl-divider);
+  }
+
+  .export-status {
+    display: grid;
+    gap: 8px;
+    justify-items: start;
+  }
+
+  .export-status .detail {
+    color: var(--wtl-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .export-error {
+    color: var(--wtl-gap);
+  }
+
+  .export-progress {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--wtl-divider);
+    overflow: hidden;
+  }
+
+  .export-progress span {
+    display: block;
+    height: 100%;
+    background: var(--wtl-accent);
   }
 
   /* --- editor ------------------------------------------------------ */
@@ -838,7 +1085,9 @@ export const cardStyles = css`
 
   @media (forced-colors: active) {
     .fill,
-    .gap-run {
+    .gap-run,
+    .export-band,
+    .export-progress span {
       forced-color-adjust: none;
     }
   }
