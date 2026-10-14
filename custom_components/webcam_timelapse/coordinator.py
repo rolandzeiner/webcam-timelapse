@@ -33,12 +33,15 @@ from .const import (
     CAPTURE_SECOND_MAX,
     CAPTURE_SECOND_MIN,
     CONF_CAPTURE_INTERVAL,
+    CONF_CAPTURE_LIGHTS,
     CONF_FRAMES_PATH,
     CONF_HEADERS,
+    CONF_LIGHT_SETTLE,
     CONF_MAX_WIDTH,
     CONF_QUALITY,
     CONF_RETENTION_DAYS,
     DEFAULT_CAPTURE_INTERVAL,
+    DEFAULT_LIGHT_SETTLE,
     DEFAULT_MAX_WIDTH,
     DEFAULT_QUALITY,
     DEFAULT_RETENTION_DAYS,
@@ -46,6 +49,7 @@ from .const import (
     STORAGE_SUBDIR,
 )
 from .encode import ImageDecodeError, encode_webp, measure_luma
+from .lights import CaptureLights, lights_mode, lights_window
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -117,6 +121,15 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self.step: int = self.interval_minutes * 60
         self.capture_second: int = capture_second_for(entry.entry_id)
+
+        self.capture_lights = CaptureLights(
+            hass,
+            entry.title,
+            list(config.get(CONF_CAPTURE_LIGHTS) or []),
+            settle_seconds=float(config.get(CONF_LIGHT_SETTLE, DEFAULT_LIGHT_SETTLE)),
+            mode=lights_mode(config),
+            window=lights_window(config),
+        )
 
         # Live-capture state
         self.last_frame: bytes | None = None
@@ -326,15 +339,22 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_capture(self, slot: int, *, force: bool = False) -> bool:
         """Fetch, encode and store one frame. Returns True if stored."""
         async with self._capture_lock:
-            result = await fetch_frame(
-                self._session,
-                self.image_url,
-                validators=None if force else self._validators,
-                previous_digest=None if force else self._last_digest,
-                extra_headers=self._extra_headers,
-                auth_header=self._auth_header,
-                verify_ssl=self.verify_ssl,
-            )
+            # Lit for the fetch only. The encode below can take a quarter
+            # of a second on a slow core, and there is no reason to leave
+            # a room lit while a CPU compresses a picture already taken.
+            # The live-view refresh never comes through here, so it never
+            # switches a light: at a 30-second refresh that would be a
+            # strobe.
+            async with self.capture_lights.lit():
+                result = await fetch_frame(
+                    self._session,
+                    self.image_url,
+                    validators=None if force else self._validators,
+                    previous_digest=None if force else self._last_digest,
+                    extra_headers=self._extra_headers,
+                    auth_header=self._auth_header,
+                    verify_ssl=self.verify_ssl,
+                )
             self._validators = result.validators
 
             if result.outcome is FetchOutcome.UNCHANGED or result.raw is None:
