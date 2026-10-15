@@ -10,7 +10,8 @@ source .venv/bin/activate
 uv pip install -r requirements_test.txt
 ```
 
-Card side:
+Card side, which runs on [Vite+](https://viteplus.dev/) (`vp`, see
+[Card toolchain](#card-toolchain-vite)):
 
 ```bash
 npm install
@@ -23,8 +24,8 @@ uv pip install pre-commit
 pre-commit install
 ```
 
-They run the same ruff and mypy that CI does, at the same pinned versions,
-plus `actionlint` on any workflow file you touch.
+They run the same ruff, mypy and `vp check` that CI does, at the same pinned
+versions, plus `actionlint` on any workflow file you touch.
 
 `actionlint` is deliberately **not** in CI. `validate.yml` runs on a nightly
 cron, and an unpinned linter shipping a new rule turns the repo red overnight
@@ -32,6 +33,62 @@ with no code change — which is exactly what ruff 0.16.0 did in July. As a
 hook it costs no CI time and reports while you are still editing the file.
 It uses your system binary (`brew install actionlint`); keep the `rev` in
 `.pre-commit-config.yaml` equal to `actionlint --version`.
+
+## Card toolchain (Vite+)
+
+The card is built, tested, linted and formatted with
+[Vite+](https://viteplus.dev/) (`vp`), configured entirely in
+`vite.config.ts`. The only card `devDependency` is `vite-plus`: Vite (library
+mode on Rolldown), Vitest, Oxlint, Oxfmt and the type-checker ship inside it,
+and `typescript` is not installed.
+
+| Command | What it does |
+|---|---|
+| `npx vp check` | Format check (Oxfmt), lint (Oxlint) and strict type-check |
+| `npx vp check --fix` | The same, applying formatting and safe lint fixes |
+| `npm test` | `vp test run`: the card's unit tests |
+| `npm run build` | `vp build`: the production bundle in `custom_components/webcam_timelapse/www/` |
+| `npm run dev` | Rebuild on change, unminified, with sourcemaps |
+
+A globally installed `vp` works too; `npx` uses the project's pinned one.
+
+Five things in `vite.config.ts` fail silently if you change them:
+
+- The banner must be a **legal** comment (`/*! ... */`) with
+  `comments: { legal: true }`, or the minifier strips it.
+- **`minify` lives on `rolldownOptions.output`, with `dropConsole: false`.**
+  Vite's library mode skips whitespace minification for ES output, so
+  `build.minify` alone ships a larger bundle. `dropConsole` is all-or-nothing,
+  and the calls it would remove sit in `catch` blocks.
+- **Dev vs prod comes from `--mode development`** (`npm run dev`). A plain
+  `vp build` is production: minified, no sourcemap.
+- **`fmt.embeddedLanguageFormatting` stays `"off"`.** Otherwise Oxfmt
+  reformats Lit `html`/`css` templates and changes the whitespace inside
+  rendered elements, which is a DOM change, not a style change.
+- **Decorators are not configured.** Rolldown reads `tsconfig.json` itself;
+  if that regresses, class fields overwrite Lit's accessors and reactivity
+  dies while the build stays green.
+
+The `vite` override in `package.json` must name the same version as
+`vite-plus`: it keeps npm from installing upstream Vite next to Vite+'s core.
+Dependabot bumps `vite-plus` but not the override, and `src/toolchain.test.ts`
+fails until both move together. The build does not type-check, so `vp check`
+is the only gate between a type error and a shipped bundle.
+
+Card tests live next to the code as `src/**/*.test.ts` and run in plain node
+(settings in `vite.config.ts`'s `test` block).
+
+`tsconfig.json`'s `lib` is the card's browser floor. It is `es2023`, so the
+card may call ES2023 built-ins such as `toSorted()`, which the bundle does not
+polyfill. Raising it raises the browser requirement in the README's Install
+section; change both together.
+
+Note the bundle is excluded from the `end-of-file-fixer` / `trailing-whitespace`
+pre-commit hooks: Rolldown emits no trailing newline, and a hook that "fixes"
+the file *after* the build leaves the committed bundle out of sync with a fresh
+one — which `validate.yml` asserts byte-for-byte. `vp check` also runs as a
+local pre-commit hook on card source; don't switch to Vite+'s own `vp staged`
+hooks, which take over `core.hooksPath` and silently disable ruff and mypy.
 
 ## Verification gate
 
@@ -138,60 +195,15 @@ formula wipes every existing install.
 comes from `src/` via `vp build` — never hand-edit it. Commit the rebuilt bundle
 alongside the source change; HACS users never run `npm`.
 
-`vite.config.ts` is the whole card toolchain, run through
-[Vite+](https://viteplus.dev/) (`vp`): `vp build` (Vite library mode on
-Rolldown), `vp test` (Vitest) and `vp check` (Oxfmt + Oxlint + type-check).
-The only card `devDependency` is `vite-plus`; Vitest, Rolldown and the
-type-checker ship inside it, and `typescript` is not installed. Five things in
-that file fail silently if you change them:
-
-- The banner must be a **legal** comment (`/*! ... */`) with
-  `comments: { legal: true }`, or the minifier strips it.
-- **`minify` lives on `rolldownOptions.output`, with `dropConsole: false`.**
-  Vite's library mode skips whitespace minification for ES output, so
-  `build.minify` alone ships a larger bundle. `dropConsole` is all-or-nothing,
-  and the calls it would remove sit in `catch` blocks.
-- **Dev vs prod comes from `--mode development`** (`npm run dev`). A plain
-  `vp build` is production: minified, no sourcemap.
-- **`fmt.embeddedLanguageFormatting` stays `"off"`.** Otherwise Oxfmt
-  reformats Lit `html`/`css` templates and changes the whitespace inside
-  rendered elements, which is a DOM change, not a style change.
-- **Decorators are not configured.** Rolldown reads `tsconfig.json` itself;
-  if that regresses, class fields overwrite Lit's accessors and reactivity
-  dies while the build stays green.
-
-The `vite` override in `package.json` must name the same version as
-`vite-plus`: it keeps npm from installing upstream Vite next to Vite+'s core.
-Dependabot bumps `vite-plus` but not the override, and `src/toolchain.test.ts`
-fails until both move together. The build does not type-check, so `vp check`
-is the only gate between a type error and a shipped bundle.
-
-Card tests live next to the code as `src/**/*.test.ts` and run in plain node
-(settings in `vite.config.ts`'s `test` block).
-
-`tsconfig.json`'s `lib` is the card's browser floor. It is `es2023`, so the
-card may call ES2023 built-ins such as `toSorted()`, which the bundle does not
-polyfill. Raising it raises the browser requirement in the README's Install
-section; change both together.
-
-Note the bundle is excluded from the `end-of-file-fixer` / `trailing-whitespace`
-pre-commit hooks: Rolldown emits no trailing newline, and a hook that "fixes"
-the file *after* the build leaves the committed bundle out of sync with a fresh
-one — which `validate.yml` asserts byte-for-byte. `vp check` also runs as a
-local pre-commit hook on card source; don't switch to Vite+'s own `vp staged`
-hooks, which take over `core.hooksPath` and silently disable ruff and mypy.
-
 **Version sync is byte-identical.** `manifest.json` `version` and
 `src/const.ts` `CARD_VERSION` must match; `const.py` derives its value from the
 manifest at import. `tests/test_versions.py` enforces the pair. Drift means the
 card's version probe sees a mismatch, shows a reload banner, the reload serves
 the same JS, and the banner returns — a loop.
 
-## Quality scale
+## Home Assistant conventions
 
-This integration targets **Platinum**. Every change must leave
-`custom_components/webcam_timelapse/quality_scale.yaml` at `done` or `exempt`
-with a written reason. Four things that break rules silently:
+Four easy-to-miss mistakes:
 
 - A bare-string `UpdateFailed` — every raise needs `translation_domain`,
   `translation_key` and placeholders.
@@ -209,13 +221,9 @@ PR from `dev`, with all CI checks green.
 Releases: bump `manifest.json` and `src/const.ts` together, rebuild the
 bundle, open the PR, merge, then tag from `main`.
 
-## Testing against a live Home Assistant
+## Test harness details
 
-`scripts/dev-push.sh` rsyncs the integration to a running HA container. After
-a push: a card-JS change needs a browser hard-refresh, a Python change needs
-an HA restart.
-
-Two harness details that will otherwise cost you an afternoon:
+Two that will otherwise cost you an afternoon:
 
 - `pytest-homeassistant-custom-component`'s `hass.config.config_dir` is a
   **fixed directory inside site-packages**, shared across tests and runs. The
