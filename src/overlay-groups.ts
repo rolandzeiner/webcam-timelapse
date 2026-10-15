@@ -31,9 +31,7 @@ function heading(value: string | undefined): string | undefined {
  * Left comes first because the narrow layout stacks the two with
  * `column-reverse`, and that is what puts the right-hand block on top.
  */
-export function overlayGroups(
-  config: WebcamTimelapseCardConfig | undefined,
-): OverlayGroup[] {
+export function overlayGroups(config: WebcamTimelapseCardConfig | undefined): OverlayGroup[] {
   const groups: OverlayGroup[] = [];
 
   const left = config?.entities_left ?? [];

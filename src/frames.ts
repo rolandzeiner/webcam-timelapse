@@ -121,7 +121,7 @@ export class PrefetchRing {
   private cursor = 0;
 
   constructor(private readonly size: number) {
-    this.slots = new Array<HTMLImageElement | null>(size).fill(null);
+    this.slots = Array.from({ length: size }, () => null);
   }
 
   prefetch(url: string): void {
@@ -159,7 +159,7 @@ export function prefetchDepth(speed: number): number {
 }
 
 /** Milliseconds per frame at 1x. */
-export const BASE_FRAME_MS = 500;
+const BASE_FRAME_MS = 500;
 
 /**
  * Floor on the frame interval, ~30 fps.

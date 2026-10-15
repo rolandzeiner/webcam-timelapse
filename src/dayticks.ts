@@ -34,10 +34,7 @@ type LabelWidth = "long" | "short" | "date";
  */
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
-function formatter(
-  locale: string,
-  options: Intl.DateTimeFormatOptions,
-): Intl.DateTimeFormat {
+function formatter(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
   const key = `${locale}|${JSON.stringify(options)}`;
   let cached = formatterCache.get(key);
   if (cached === undefined) {
@@ -92,12 +89,7 @@ function secondsOfLocalDay(slot: number, timeZone: string): number {
   return hour * 3600 + minute * 60 + second;
 }
 
-function formatLabel(
-  slot: number,
-  timeZone: string,
-  language: string,
-  width: LabelWidth,
-): string {
+function formatLabel(slot: number, timeZone: string, language: string, width: LabelWidth): string {
   const options: Intl.DateTimeFormatOptions = {
     timeZone,
     day: "2-digit",
@@ -191,9 +183,7 @@ export function dayTicks(
  * clock times a reader expects (06:00, not 05:47) and repeat identically
  * on each day of the window.
  */
-export const TIME_STEPS = [
-  600, 900, 1800, 3600, 7200, 10800, 21600, 43200,
-] as const;
+export const TIME_STEPS = [600, 900, 1800, 3600, 7200, 10800, 21600, 43200] as const;
 
 /** Minimum pixels between adjacent marks before they read as a smear. */
 const MIN_TICK_PX = 9;
@@ -219,11 +209,7 @@ export interface TimeTick {
  * Never returns a spacing finer than the capture grid: a mark between two
  * frames would point at an instant the archive cannot show.
  */
-export function timeStepFor(
-  spanSeconds: number,
-  gridStep: number,
-  trackPx: number,
-): number | null {
+export function timeStepFor(spanSeconds: number, gridStep: number, trackPx: number): number | null {
   if (spanSeconds <= 0) return null;
   const maxTicks = Math.max(2, Math.floor(trackPx / MIN_TICK_PX));
   const wanted = spanSeconds / maxTicks;
@@ -309,10 +295,7 @@ export function timeTicks(
       const leftPx = (left / 100) * trackPx;
 
       let label = "";
-      if (
-        secondsIn % labelInterval === 0 &&
-        leftPx - lastLabelPx >= MIN_TIME_LABEL_PX
-      ) {
+      if (secondsIn % labelInterval === 0 && leftPx - lastLabelPx >= MIN_TIME_LABEL_PX) {
         label = formatClock(at, timeZone, language);
         lastLabelPx = leftPx;
       }
@@ -325,11 +308,7 @@ export function timeTicks(
 }
 
 /** "Sa 01.08., 12:30" — announced by the scrubber via aria-valuetext. */
-export function formatStamp(
-  slot: number,
-  timeZone: string,
-  language: string,
-): string {
+export function formatStamp(slot: number, timeZone: string, language: string): string {
   return formatter(language, {
     timeZone,
     weekday: "short",
@@ -341,11 +320,7 @@ export function formatStamp(
 }
 
 /** "12:30" — the compact overlay clock. */
-export function formatClock(
-  slot: number,
-  timeZone: string,
-  language: string,
-): string {
+export function formatClock(slot: number, timeZone: string, language: string): string {
   return formatter(language, {
     timeZone,
     hour: "2-digit",

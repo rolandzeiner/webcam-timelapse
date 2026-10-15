@@ -68,12 +68,7 @@ export const DEFAULT_EXPORT_FPS = 24;
  * own bottom corners; top and bottom centre the block on that edge.
  */
 export type ExportPosition = "left" | "right" | "top" | "bottom";
-export const EXPORT_POSITIONS: readonly ExportPosition[] = [
-  "left",
-  "right",
-  "top",
-  "bottom",
-];
+export const EXPORT_POSITIONS: readonly ExportPosition[] = ["left", "right", "top", "bottom"];
 
 /**
  * Overlay sizes, as a percentage of the video's width — the same bounds
@@ -95,8 +90,7 @@ export function fullRange(index: FrameIndex): ExportRange | null {
 /** Pull a range back inside the archive, with its ends the right way round. */
 export function clampRange(range: ExportRange, count: number): ExportRange {
   const last = Math.max(0, count - 1);
-  const clamp = (value: number): number =>
-    Math.min(Math.max(Math.round(value), 0), last);
+  const clamp = (value: number): number => Math.min(Math.max(Math.round(value), 0), last);
   const a = clamp(range.start);
   const b = clamp(range.end);
   return a <= b ? { start: a, end: b } : { start: b, end: a };
@@ -111,21 +105,13 @@ export function clampRange(range: ExportRange, count: number): ExportRange {
  * to the same frame instead, which leaves an obviously-empty selection to
  * extend rather than a plausible-looking wrong one.
  */
-export function withStart(
-  range: ExportRange,
-  position: number,
-  count: number,
-): ExportRange {
+export function withStart(range: ExportRange, position: number, count: number): ExportRange {
   const start = clampRange({ start: position, end: position }, count).start;
   return { start, end: Math.max(range.end, start) };
 }
 
 /** Move the end to `position`. Mirrors `withStart`. */
-export function withEnd(
-  range: ExportRange,
-  position: number,
-  count: number,
-): ExportRange {
+export function withEnd(range: ExportRange, position: number, count: number): ExportRange {
   const end = clampRange({ start: position, end: position }, count).end;
   return { start: Math.min(range.start, end), end };
 }
@@ -171,10 +157,7 @@ export function rangeSlots(
 }
 
 /** Where a range sits on the scrubber, as percentages of its width. */
-export function rangeBand(
-  range: ExportRange,
-  count: number,
-): { left: number; width: number } {
+export function rangeBand(range: ExportRange, count: number): { left: number; width: number } {
   const last = Math.max(1, count - 1);
   return {
     left: (range.start / last) * 100,

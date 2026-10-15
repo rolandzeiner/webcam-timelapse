@@ -54,10 +54,7 @@ function parseTime(entry: RawHistoryEntry): number {
   return raw ? new Date(raw).getTime() : 0;
 }
 
-function parseAttributeTime(
-  entry: RawHistoryEntry,
-  attribute: string,
-): number | null {
+function parseAttributeTime(entry: RawHistoryEntry, attribute: string): number | null {
   const attrs = entry.a ?? entry.attributes;
   const raw = attrs?.[attribute];
   if (typeof raw !== "string" && typeof raw !== "number") return null;
@@ -97,7 +94,7 @@ export async function fetchOverlayHistory(
   if (!callWS || entityIds.length === 0) return new Map();
 
   const timeAttributes = options.timeAttributes ?? {};
-  const key = `${entityIds.slice().sort().join(",")}|${options.days}`;
+  const key = `${entityIds.toSorted().join(",")}|${options.days}`;
 
   // Coalesce concurrent fetches: `hass` updates arrive back-to-back and
   // would otherwise fire duplicate requests for the same window.
@@ -133,19 +130,16 @@ export async function fetchOverlayHistory(
         const points = (result?.[entityId] ?? [])
           .map((entry): HistoryPoint => {
             const raw = String(entry.s ?? entry.state ?? "").trim();
-            const value = NON_VALUES.has(raw.toLowerCase())
-              ? Number.NaN
-              : parseFloat(raw);
+            const value = NON_VALUES.has(raw.toLowerCase()) ? Number.NaN : parseFloat(raw);
             const at =
-              (attribute ? parseAttributeTime(entry, attribute) : null) ??
-              parseTime(entry);
+              (attribute ? parseAttributeTime(entry, attribute) : null) ?? parseTime(entry);
             return { at, value };
           })
           // `unknown` / `unavailable` are filtered rather than coerced.
           // They appear on every HA restart, and letting them through
           // would blank the overlay at exactly those moments.
           .filter((p) => Number.isFinite(p.value) && p.at > 0)
-          .sort((a, b) => a.at - b.at);
+          .toSorted((a, b) => a.at - b.at);
         out.set(entityId, points);
         cache.set(entityId, points);
       }
@@ -309,11 +303,7 @@ export function stalenessThreshold(points: HistoryPoint[], floorMs = 5_400_000):
  * applies. Keeping the true time would also push it off-canvas, since the
  * sparkline scales x to the window.
  */
-export function windowAround(
-  points: HistoryPoint[],
-  at: number,
-  hours: number,
-): HistoryPoint[] {
+export function windowAround(points: HistoryPoint[], at: number, hours: number): HistoryPoint[] {
   const half = (hours * 3_600_000) / 2;
   const from = at - half;
   const to = at + half;

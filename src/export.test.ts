@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   clampRange,
@@ -31,9 +31,7 @@ function index(count: number, gaps: [number, number][] = []): FrameIndex {
   return { ...EMPTY_INDEX, step: 300, t0: T0, count, gaps };
 }
 
-const config = (
-  extra: Partial<WebcamTimelapseCardConfig> = {},
-): WebcamTimelapseCardConfig => ({
+const config = (extra: Partial<WebcamTimelapseCardConfig> = {}): WebcamTimelapseCardConfig => ({
   type: "custom:webcam-timelapse-card",
   camera_entity: "camera.greenhouse",
   ...extra,

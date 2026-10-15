@@ -20,12 +20,7 @@ import {
   WS_LUMA,
   WS_RESOLVE_MEDIA,
 } from "./const";
-import {
-  DEFAULT_DEFLICKER,
-  deflickerGains,
-  type LumaSeries,
-  radiusForStrength,
-} from "./deflicker";
+import { DEFAULT_DEFLICKER, deflickerGains, type LumaSeries, radiusForStrength } from "./deflicker";
 import {
   clampRange,
   DEFAULT_EXPORT_FPS,
@@ -88,24 +83,20 @@ import {
   seriesStats,
   windowAround,
 } from "./overlay-history";
-import {
-  checkCardVersionWS,
-  renderVersionBanner,
-} from "./shared-render";
+import { checkCardVersionWS, renderVersionBanner } from "./shared-render";
 import { extentOf, sparkline } from "./sparkline";
 import { type NightBand, nightBands } from "./sun";
-import type {
-  HomeAssistant,
-  LovelaceCardEditor,
-  WebcamTimelapseCardConfig,
-} from "./types";
-import {
-  formatExtent,
-  formatSpan,
-  prefersReducedMotion,
-  safeImageUri,
-} from "./utils";
+import type { HomeAssistant, LovelaceCardEditor, WebcamTimelapseCardConfig } from "./types";
+import { formatExtent, formatSpan, prefersReducedMotion, safeImageUri } from "./utils";
 
+/**
+ * Playback multipliers.
+ *
+ * Goes well past 8x because the useful range depends on the capture
+ * interval, which the user controls. At a ten-minute cadence a fortnight
+ * is ~2000 frames and 8x is plenty; at one minute it is ~20,000, and 8x
+ * would take twenty minutes to play through.
+ */
 const SPEEDS = [1, 2, 4, 8, 16, 32, 64] as const;
 /** Speed a card starts at when config says nothing usable. */
 const DEFAULT_SPEED = 32;
@@ -180,8 +171,7 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private exportStampSize: number = TIMESTAMP_SIZE.default;
   @state() private exportReadingsSize: number = READINGS_SIZE.default;
   /** Positions the viewer picked; a block not in here keeps its card side. */
-  @state() private exportPositions: Partial<Record<ReadoutSide, ExportPosition>> =
-    {};
+  @state() private exportPositions: Partial<Record<ReadoutSide, ExportPosition>> = {};
   @state() private exportStatus: ExportStatus | null = null;
   /** Why the last attempt to start or cancel was refused, as a string key. */
   @state() private exportError: string | undefined;
@@ -276,16 +266,12 @@ export class WebcamTimelapseCard extends LitElement {
     // The editor is eagerly imported at the top of this module. Without
     // that import this returns an unupgraded element and HA silently
     // falls back to YAML mode with no error anywhere.
-    return document.createElement(
-      "webcam-timelapse-card-editor",
-    ) as LovelaceCardEditor;
+    return document.createElement("webcam-timelapse-card-editor");
   }
 
   static getStubConfig(hass: HomeAssistant): Partial<WebcamTimelapseCardConfig> {
     const camera = Object.keys(hass.states).find(
-      (id) =>
-        id.startsWith("camera.") &&
-        hass.entities?.[id]?.platform === "webcam_timelapse",
+      (id) => id.startsWith("camera.") && hass.entities?.[id]?.platform === "webcam_timelapse",
     );
     return { camera_entity: camera ?? "" };
   }
@@ -337,11 +323,9 @@ export class WebcamTimelapseCard extends LitElement {
     }
     if (changed.has("hass") && this.hass && !this.versionChecked) {
       this.versionChecked = true;
-      void checkCardVersionWS(this.hass, WS_CARD_VERSION, CARD_VERSION).then(
-        (version) => {
-          this.versionMismatch = version;
-        },
-      );
+      void checkCardVersionWS(this.hass, WS_CARD_VERSION, CARD_VERSION).then((version) => {
+        this.versionMismatch = version;
+      });
     }
   }
 
@@ -398,8 +382,7 @@ export class WebcamTimelapseCard extends LitElement {
       // Distinguish "archive is empty" from "could not ask". Reporting a
       // failed lookup as "no frames yet" sends the user hunting for a
       // capture problem that does not exist.
-      this.indexError =
-        error instanceof Error ? error.message : "Could not load the timeline.";
+      this.indexError = error instanceof Error ? error.message : "Could not load the timeline.";
     }
 
     this.scheduleIndexRefresh();
@@ -460,8 +443,7 @@ export class WebcamTimelapseCard extends LitElement {
       {
         // Cover the whole archive so scrubbing to the oldest frame still
         // resolves a reading; +1 day of slack for the retention boundary.
-        days:
-          (this.index.retention_days || 14) + 1 + Math.ceil(graphHours / 48),
+        days: (this.index.retention_days || 14) + 1 + Math.ceil(graphHours / 48),
         timeAttributes,
       },
     );
@@ -519,11 +501,7 @@ export class WebcamTimelapseCard extends LitElement {
       if (advance) {
         // Stride, not one: above the decode ceiling the only way to play
         // faster is to skip frames rather than paint them sooner.
-        const next = nextPlaybackPosition(
-          this.present,
-          this.position,
-          this.cadence.stride,
-        );
+        const next = nextPlaybackPosition(this.present, this.position, this.cadence.stride);
         if (next === null) {
           // Settle on the newest frame rather than looping silently past it.
           this.playing = false;
@@ -607,7 +585,7 @@ export class WebcamTimelapseCard extends LitElement {
     return true;
   }
 
-  private togglePlay(): void {
+  private togglePlay = (): void => {
     // Pressing play while parked on the newest frame should replay the
     // archive, not do nothing. Sitting at the live edge is the default
     // resting position, so "play" there almost always means "show me what
@@ -619,9 +597,9 @@ export class WebcamTimelapseCard extends LitElement {
     }
     this.playing = !this.playing;
     this.reconcilePlayback();
-  }
+  };
 
-  private cycleSpeed(): void {
+  private cycleSpeed = (): void => {
     const next = SPEEDS[(SPEEDS.indexOf(this.speed as never) + 1) % SPEEDS.length];
     this.speed = next ?? 1;
     // A new ring drops the references holding the old prefetches alive, so
@@ -629,13 +607,10 @@ export class WebcamTimelapseCard extends LitElement {
     // new stride rather than skipping frames nothing is keeping warm.
     this.ring = new PrefetchRing(prefetchDepth(this.speed));
     this.prefetchedThrough = -1;
-  }
+  };
 
   private goTo(position: number): void {
-    this.position = Math.min(
-      Math.max(position, 0),
-      Math.max(0, this.index.count - 1),
-    );
+    this.position = Math.min(Math.max(position, 0), Math.max(0, this.index.count - 1));
     void this.swapInFrame();
     this.prefetchAhead();
   }
@@ -815,10 +790,7 @@ export class WebcamTimelapseCard extends LitElement {
    * it is hidden beneath an opaque layer, and it becomes the next
    * incoming layer, which resets it. Nothing to clean up.
    */
-  private revealFrame(
-    incoming: HTMLImageElement,
-    outgoing: HTMLImageElement | undefined,
-  ): void {
+  private revealFrame(incoming: HTMLImageElement, outgoing: HTMLImageElement | undefined): void {
     const duration = this.fadeDuration;
 
     if (outgoing) {
@@ -859,8 +831,9 @@ export class WebcamTimelapseCard extends LitElement {
   private frameSources(position: number): string[] {
     const sources: string[] = [];
     const live = safeImageUri(
-      this.hass?.states[this.config!.camera_entity]?.attributes
-        .entity_picture as string | undefined,
+      this.hass?.states[this.config!.camera_entity]?.attributes.entity_picture as
+        | string
+        | undefined,
     );
     if (position >= this.index.count - 1 && live) sources.push(live);
     const archived = urlAt(this.index, position);
@@ -907,7 +880,7 @@ export class WebcamTimelapseCard extends LitElement {
    * left the correctness of the picture resting on an event the throttle
    * knows nothing about.
    */
-  private onScrub(event: Event): void {
+  private onScrub = (event: Event): void => {
     const position = Number((event.target as HTMLInputElement).value);
     this.position = position;
     this.pendingPosition = position;
@@ -925,7 +898,7 @@ export class WebcamTimelapseCard extends LitElement {
       this.scrubSettle = undefined;
       this.loadPendingPosition();
     }, SCRUB_QUIET_MS);
-  }
+  };
 
   /**
    * Load whatever position the thumb is on now, skipping a repeat.
@@ -943,20 +916,20 @@ export class WebcamTimelapseCard extends LitElement {
     this.goTo(position);
   }
 
-  private onScrubCommit(event: Event): void {
+  private onScrubCommit = (event: Event): void => {
     // Belt and braces: `change` also fires for a keyboard step or a click
     // on the track, where there may never be a second `input` to settle.
     if (this.scrubSettle) window.clearTimeout(this.scrubSettle);
     this.scrubSettle = undefined;
     this.pendingPosition = Number((event.target as HTMLInputElement).value);
     this.loadPendingPosition();
-  }
+  };
 
-  private jumpToNow(): void {
+  private jumpToNow = (): void => {
     this.playing = false;
     this.stopPlayback();
     this.goTo(this.index.count - 1);
-  }
+  };
 
   private stepBy(delta: 1 | -1): void {
     const next = nextPresent(this.present, this.position + delta, delta);
@@ -969,21 +942,19 @@ export class WebcamTimelapseCard extends LitElement {
   private get exportSelection(): ExportRange | null {
     const full = fullRange(this.index);
     if (full === null) return null;
-    return this.exportRange === null
-      ? full
-      : clampRange(this.exportRange, this.index.count);
+    return this.exportRange === null ? full : clampRange(this.exportRange, this.index.count);
   }
 
   private get exportRunning(): boolean {
     return this.exportStatus?.state === "running";
   }
 
-  private toggleExport(): void {
+  private toggleExport = (): void => {
     this.exportOpen = !this.exportOpen;
     this.exportError = undefined;
     if (this.exportOpen) void this.subscribeExport();
     else this.unsubscribeExport();
-  }
+  };
 
   /**
    * Follow this camera's export status for as long as the panel is open.
@@ -1064,9 +1035,7 @@ export class WebcamTimelapseCard extends LitElement {
   /** A stable string key for a refused WebSocket command. */
   private exportErrorKey(error: unknown): string {
     const code =
-      typeof error === "object" && error !== null && "code" in error
-        ? String((error as { code: unknown }).code)
-        : "";
+      typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
     return code || "unknown";
   }
 
@@ -1088,7 +1057,7 @@ export class WebcamTimelapseCard extends LitElement {
     return computed || value;
   };
 
-  private async startExport(): Promise<void> {
+  private startExport = async (): Promise<void> => {
     const range = this.exportSelection;
     if (!this.hass?.callWS || !this.config || range === null) return;
 
@@ -1120,9 +1089,9 @@ export class WebcamTimelapseCard extends LitElement {
     } catch (error) {
       this.exportError = this.exportErrorKey(error);
     }
-  }
+  };
 
-  private async cancelExport(): Promise<void> {
+  private cancelExport = async (): Promise<void> => {
     if (!this.hass?.callWS || !this.config) return;
     try {
       await this.hass.callWS({
@@ -1132,17 +1101,17 @@ export class WebcamTimelapseCard extends LitElement {
     } catch (error) {
       this.exportError = this.exportErrorKey(error);
     }
-  }
+  };
 
-  private markExportStart(): void {
+  private markExportStart = (): void => {
     const range = this.exportSelection;
     if (range) this.exportRange = withStart(range, this.position, this.index.count);
-  }
+  };
 
-  private markExportEnd(): void {
+  private markExportEnd = (): void => {
     const range = this.exportSelection;
     if (range) this.exportRange = withEnd(range, this.position, this.index.count);
-  }
+  };
 
   /** `hours` back from the newest frame; null selects the whole archive. */
   private presetExport(hours: number | null): void {
@@ -1160,10 +1129,7 @@ export class WebcamTimelapseCard extends LitElement {
   // --- render ------------------------------------------------------
 
   private get timeZone(): string {
-    return (
-      this.hass?.config?.time_zone ??
-      Intl.DateTimeFormat().resolvedOptions().timeZone
-    );
+    return this.hass?.config?.time_zone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   }
 
   private get language(): string {
@@ -1194,20 +1160,16 @@ export class WebcamTimelapseCard extends LitElement {
   protected override render(): TemplateResult {
     if (!this.config || !this.hass) return html`<ha-card></ha-card>`;
 
-    const slot = this.index.t0 === null
-      ? null
-      : this.index.t0 + this.position * this.index.step;
+    const slot = this.index.t0 === null ? null : this.index.t0 + this.position * this.index.step;
 
     return html`
       <ha-card .header=${this.config.title ?? nothing}>
         ${renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
         ${this.renderStage(slot)}
-        ${hasFrames(this.index)
-          ? this.renderTimeline(slot)
-          : nothing}
-        ${hasFrames(this.index) && this.config.show_export !== false
-          ? this.renderExport()
-          : nothing}
+        ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}
+        ${
+          hasFrames(this.index) && this.config.show_export !== false ? this.renderExport() : nothing
+        }
       </ha-card>
     `;
   }
@@ -1217,15 +1179,17 @@ export class WebcamTimelapseCard extends LitElement {
       return html`
         <div class="stage">
           <div class="empty">
-            ${this.indexError
-              ? html`
+            ${
+              this.indexError
+                ? html`
                   <div>${this.t("empty.index_failed")}</div>
                   <div class="detail">${this.indexError}</div>
                 `
-              : html`
+                : html`
                   <div>${this.t("empty.no_frames")}</div>
                   <div>${this.t("empty.first_soon")}</div>
-                `}
+                `
+            }
           </div>
         </div>
       `;
@@ -1263,25 +1227,31 @@ export class WebcamTimelapseCard extends LitElement {
           <img class="layer a" alt="" decoding="async" fetchpriority="high" />
           <img class="layer b" alt="" decoding="async" fetchpriority="high" />
         </div>
-        ${this.frameError
-          ? html`<div class="empty">
+        ${
+          this.frameError
+            ? html`<div class="empty">
               <div>${this.t("empty.frame_failed")}</div>
               <div class="detail">${this.frameError}</div>
             </div>`
-          : nothing}
-        ${slot !== null
-          ? html`<div class="stamp">
+            : nothing
+        }
+        ${
+          slot !== null
+            ? html`<div class="stamp">
               <time datetime=${new Date(slot * 1000).toISOString()}>
                 ${formatStamp(slot, this.timeZone, this.language)}
               </time>
             </div>`
-          : nothing}
+            : nothing
+        }
         ${slot !== null ? this.renderReadouts(slot) : nothing}
-        ${this.onGap
-          ? html`<div class="badge gap">${this.t("badge.gap")}</div>`
-          : this.atLive
-            ? html`<div class="badge live">${this.t("badge.live")}</div>`
-            : nothing}
+        ${
+          this.onGap
+            ? html`<div class="badge gap">${this.t("badge.gap")}</div>`
+            : this.atLive
+              ? html`<div class="badge live">${this.t("badge.live")}</div>`
+              : nothing
+        }
         ${this.renderControls()}
       </div>
     `;
@@ -1335,17 +1305,8 @@ export class WebcamTimelapseCard extends LitElement {
       const stats = seriesStats(points);
       const reading = resolveAt(points, at, stats.staleAfter);
       const name =
-        row.name ??
-        (this.hass?.states[row.entity]?.attributes.friendly_name as
-          | string
-          | undefined) ??
-        row.entity;
-      const unit =
-        row.unit ??
-        (this.hass?.states[row.entity]?.attributes.unit_of_measurement as
-          | string
-          | undefined) ??
-        "";
+        row.name ?? this.hass?.states[row.entity]?.attributes.friendly_name ?? row.entity;
+      const unit = row.unit ?? this.hass?.states[row.entity]?.attributes.unit_of_measurement ?? "";
       const color = row.color ?? "var(--wtl-accent)";
 
       const value =
@@ -1365,9 +1326,7 @@ export class WebcamTimelapseCard extends LitElement {
       const drawGraph = row.graph === true && this.config?.show_graph !== false;
       const windowed = drawGraph ? windowAround(points, at, graphHours) : [];
       const nights =
-        drawGraph && this.config?.show_sun === true
-          ? this.nightsAround(at, graphHours)
-          : [];
+        drawGraph && this.config?.show_sun === true ? this.nightsAround(at, graphHours) : [];
       const graph = drawGraph
         ? sparkline({
             points: windowed,
@@ -1389,13 +1348,16 @@ export class WebcamTimelapseCard extends LitElement {
       // it is the only thing the autoscale destroys that the numeric
       // readout beside it does not already carry.
       const extent = graph === null ? 0 : extentOf(windowed);
-      const scale = graph === null
-        ? nothing
-        : html`<div class="spark-scale">
+      const scale =
+        graph === null
+          ? nothing
+          : html`<div class="spark-scale">
             <span
-              >${extent === 0
-                ? this.t("spark.flat")
-                : this.t("spark.range", `${formatExtent(extent)}${unit ? ` ${unit}` : ""}`)}</span
+              >${
+                extent === 0
+                  ? this.t("spark.flat")
+                  : this.t("spark.range", `${formatExtent(extent)}${unit ? ` ${unit}` : ""}`)
+              }</span
             >
             <span>${formatSpan(graphHours)}</span>
           </div>`;
@@ -1422,25 +1384,20 @@ export class WebcamTimelapseCard extends LitElement {
           tabindex="0"
           aria-label=${this.t("actions.show_entity", name)}
           @click=${() => this.fireMoreInfo(row.entity)}
-          @keydown=${(event: KeyboardEvent) =>
-            this.onActivateKey(event, row.entity)}
+          @keydown=${(event: KeyboardEvent) => this.onActivateKey(event, row.entity)}
         >
           ${icon}
           <span class="readout-name" style="color:${color}">${name}</span>
           <span class="readout-value">${value}</span>
-          ${reading !== null
-            ? html`<span class="readout-at"
-                >${formatClock(
-                  Math.round(reading.at / 1000),
-                  this.timeZone,
-                  this.language,
-                )}</span
+          ${
+            reading !== null
+              ? html`<span class="readout-at"
+                >${formatClock(Math.round(reading.at / 1000), this.timeZone, this.language)}</span
               >`
-            : nothing}
+              : nothing
+          }
         </div>
-        ${graph
-          ? html`<div class="spark-wrap">${graph}${scale}</div>`
-          : nothing}
+        ${graph ? html`<div class="spark-wrap">${graph}${scale}</div>` : nothing}
       `;
     });
 
@@ -1449,9 +1406,7 @@ export class WebcamTimelapseCard extends LitElement {
     // telling a reading apart from the picture behind it.
     return html`<div class=${classes}>
       <div class="readout-head">
-        ${group.title
-          ? html`<div class="readout-title">${group.title}</div>`
-          : nothing}
+        ${group.title ? html`<div class="readout-title">${group.title}</div>` : nothing}
         ${this.renderFoldToggle(group.side, false)}
       </div>
       ${rendered}
@@ -1589,7 +1544,7 @@ export class WebcamTimelapseCard extends LitElement {
    * started inside a control's shadow root, where `target` is retargeted
    * to the host and the class check would miss.
    */
-  private onStageClick(event: MouseEvent): void {
+  private onStageClick = (event: MouseEvent): void => {
     const path = event.composedPath();
     // Only the segment below the stage. composedPath runs all the way up
     // through Home Assistant's own DOM to window, so searching the whole
@@ -1607,7 +1562,7 @@ export class WebcamTimelapseCard extends LitElement {
     );
     if (aimedElsewhere) return;
     if (this.config) this.fireMoreInfo(this.config.camera_entity);
-  }
+  };
 
   private renderControls(): TemplateResult {
     return html`
@@ -1668,16 +1623,14 @@ export class WebcamTimelapseCard extends LitElement {
     // said anything about wanting the dark stretches unmarked.
     const nights =
       this.config?.show_sun === true && this.index.t0 !== null
-        ? this.nightsBetween(
-            this.index.t0 * 1000,
-            (this.index.t0 + last * this.index.step) * 1000,
-          )
+        ? this.nightsBetween(this.index.t0 * 1000, (this.index.t0 + last * this.index.step) * 1000)
         : [];
 
     return html`
       <div class="timeline">
-        ${ticks
-          ? html`<div class="band dates" aria-hidden="true">
+        ${
+          ticks
+            ? html`<div class="band dates" aria-hidden="true">
               ${days.map((tick) =>
                 tick.label
                   ? html`<span class="lab date" style="left:${tick.left}%"
@@ -1686,11 +1639,13 @@ export class WebcamTimelapseCard extends LitElement {
                   : nothing,
               )}
             </div>`
-          : nothing}
+            : nothing
+        }
 
         <div class="track">
-          ${nights.length > 0
-            ? html`<div class="nights" aria-hidden="true">
+          ${
+            nights.length > 0
+              ? html`<div class="nights" aria-hidden="true">
                 ${nights.map(
                   (band) =>
                     html`<span
@@ -1701,14 +1656,13 @@ export class WebcamTimelapseCard extends LitElement {
                     ></span>`,
                 )}
               </div>`
-            : nothing}
+              : nothing
+          }
           ${this.renderExportBand()}
-          ${ticks
-            ? html`<div class="marks" aria-hidden="true">
-                ${times.map(
-                  (tick) =>
-                    html`<span class="mark" style="left:${tick.left}%"></span>`,
-                )}
+          ${
+            ticks
+              ? html`<div class="marks" aria-hidden="true">
+                ${times.map((tick) => html`<span class="mark" style="left:${tick.left}%"></span>`)}
                 ${days.map(
                   (tick) =>
                     html`<span
@@ -1717,7 +1671,8 @@ export class WebcamTimelapseCard extends LitElement {
                     ></span>`,
                 )}
               </div>`
-            : nothing}
+              : nothing
+          }
           <div class="rail"></div>
         <div class="fill" style="width:${fill}%"></div>
         ${this.index.gaps.map(([start, length]) => {
@@ -1735,16 +1690,15 @@ export class WebcamTimelapseCard extends LitElement {
           step="1"
           .value=${String(this.position)}
           aria-label=${this.t("track.label")}
-          aria-valuetext=${slot !== null
-            ? formatStamp(slot, this.timeZone, this.language)
-            : ""}
+          aria-valuetext=${slot !== null ? formatStamp(slot, this.timeZone, this.language) : ""}
           @input=${this.onScrub}
           @change=${this.onScrubCommit}
           />
         </div>
 
-        ${ticks
-          ? html`<div class="band times" aria-hidden="true">
+        ${
+          ticks
+            ? html`<div class="band times" aria-hidden="true">
               ${times.map((tick) =>
                 tick.label
                   ? html`<span class="lab time" style="left:${tick.left}%"
@@ -1753,7 +1707,8 @@ export class WebcamTimelapseCard extends LitElement {
                   : nothing,
               )}
             </div>`
-          : nothing}
+            : nothing
+        }
       </div>
     `;
   }
@@ -1843,8 +1798,9 @@ export class WebcamTimelapseCard extends LitElement {
           </div>
         </div>
 
-        ${presets.length > 0
-          ? html`<div class="export-row">
+        ${
+          presets.length > 0
+            ? html`<div class="export-row">
               ${presets.map(
                 (hours) =>
                   html`<button
@@ -1852,9 +1808,11 @@ export class WebcamTimelapseCard extends LitElement {
                     ?disabled=${running}
                     @click=${() => this.presetExport(hours)}
                   >
-                    ${hours < 48
-                      ? this.t("export.preset_hours", String(hours))
-                      : this.t("export.preset_days", String(hours / 24))}
+                    ${
+                      hours < 48
+                        ? this.t("export.preset_hours", String(hours))
+                        : this.t("export.preset_days", String(hours / 24))
+                    }
                   </button>`,
               )}
               <button
@@ -1865,7 +1823,8 @@ export class WebcamTimelapseCard extends LitElement {
                 ${this.t("export.preset_all")}
               </button>
             </div>`
-          : nothing}
+            : nothing
+        }
 
         <div class="export-row" role="group" aria-label=${this.t("export.fps")}>
           <span class="export-label">${this.t("export.fps")}</span>
@@ -1896,19 +1855,17 @@ export class WebcamTimelapseCard extends LitElement {
             />
             ${this.t("export.timestamp")}
           </label>
-          ${this.exportStamp
-            ? this.renderExportSize(
-                TIMESTAMP_SIZE,
-                this.exportStampSize,
-                running,
-                (size) => {
+          ${
+            this.exportStamp
+              ? this.renderExportSize(TIMESTAMP_SIZE, this.exportStampSize, running, (size) => {
                   this.exportStampSize = size;
-                },
-              )
-            : nothing}
+                })
+              : nothing
+          }
         </div>
-        ${hasReadings
-          ? html`<div class="export-row">
+        ${
+          hasReadings
+            ? html`<div class="export-row">
                 <label class="export-check">
                   <input
                     type="checkbox"
@@ -1920,31 +1877,37 @@ export class WebcamTimelapseCard extends LitElement {
                   />
                   ${this.t("export.readings")}
                 </label>
-                ${this.exportReadings
-                  ? this.renderExportSize(
-                      READINGS_SIZE,
-                      this.exportReadingsSize,
-                      running,
-                      (size) => {
-                        this.exportReadingsSize = size;
-                      },
-                    )
-                  : nothing}
+                ${
+                  this.exportReadings
+                    ? this.renderExportSize(
+                        READINGS_SIZE,
+                        this.exportReadingsSize,
+                        running,
+                        (size) => {
+                          this.exportReadingsSize = size;
+                        },
+                      )
+                    : nothing
+                }
               </div>
               ${this.exportReadings ? this.renderExportPositions(running) : nothing}`
-          : nothing}
+            : nothing
+        }
 
         <div class="export-summary">
-          ${frames === 0
-            ? this.t("export.summary_empty")
-            : this.t("export.summary")
-                .replace("{frames}", String(frames))
-                .replace("{length}", formatLength(frames / this.exportFps))}
+          ${
+            frames === 0
+              ? this.t("export.summary_empty")
+              : this.t("export.summary")
+                  .replace("{frames}", String(frames))
+                  .replace("{length}", formatLength(frames / this.exportFps))
+          }
         </div>
 
-        ${running
-          ? nothing
-          : html`<div class="export-row">
+        ${
+          running
+            ? nothing
+            : html`<div class="export-row">
               <button
                 class="export-go"
                 ?disabled=${frames === 0}
@@ -1953,13 +1916,16 @@ export class WebcamTimelapseCard extends LitElement {
                 <ha-icon icon="mdi:movie-open-outline"></ha-icon>
                 ${this.t("export.start")}
               </button>
-            </div>`}
+            </div>`
+        }
         ${this.renderExportStatus()}
-        ${this.exportStatus?.folder
-          ? html`<div class="export-folder">
+        ${
+          this.exportStatus?.folder
+            ? html`<div class="export-folder">
               ${this.t("export.folder", this.exportStatus.folder)}
             </div>`
-          : nothing}
+            : nothing
+        }
       </div>
     `;
   }
@@ -1988,8 +1954,7 @@ export class WebcamTimelapseCard extends LitElement {
         .value=${String(value)}
         aria-valuetext=${label}
         ?disabled=${disabled}
-        @input=${(event: Event) =>
-          onChange(Number((event.target as HTMLInputElement).value))}
+        @input=${(event: Event) => onChange(Number((event.target as HTMLInputElement).value))}
       />
       <span class="export-size-value">${label}</span>
     </label>`;
@@ -2047,11 +2012,13 @@ export class WebcamTimelapseCard extends LitElement {
       const share = progress(status);
       return html`<div class="export-status" role="status">
         <span>
-          ${status.total > 0
-            ? this.t("export.running")
-                .replace("{done}", String(status.done))
-                .replace("{total}", String(status.total))
-            : this.t("export.preparing")}
+          ${
+            status.total > 0
+              ? this.t("export.running")
+                  .replace("{done}", String(status.done))
+                  .replace("{total}", String(status.total))
+              : this.t("export.preparing")
+          }
         </span>
         <div
           class="export-progress"
@@ -2076,8 +2043,9 @@ export class WebcamTimelapseCard extends LitElement {
           ${formatSize(result.size_bytes)}
         </span>
         <span class="detail">${this.t("export.saved", result.path)}</span>
-        ${this.exportUrl
-          ? html`<a
+        ${
+          this.exportUrl
+            ? html`<a
               class="export-download"
               href=${this.exportUrl}
               download=${result.file_name}
@@ -2087,7 +2055,8 @@ export class WebcamTimelapseCard extends LitElement {
               <ha-icon icon="mdi:download"></ha-icon>
               ${this.t("export.download")}
             </a>`
-          : nothing}
+            : nothing
+        }
       </div>`;
     }
 
@@ -2132,7 +2101,6 @@ export class WebcamTimelapseCard extends LitElement {
     }
     return this.rulerCache;
   }
-
 }
 
 const windowWithCards = window as WindowWithCustomCards;

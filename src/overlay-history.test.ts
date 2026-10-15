@@ -1,12 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
+  fetchOverlayHistory,
   type HistoryPoint,
   resolveAt,
   seriesStats,
   stalenessThreshold,
   windowAround,
 } from "./overlay-history";
+import type { HomeAssistant } from "./types";
 import { formatExtent, formatSpan, safeImageUri } from "./utils";
 
 const HOUR = 3_600_000;
@@ -91,9 +93,7 @@ describe("stalenessThreshold", () => {
       at: T0 + i * 6 * HOUR,
       value: i,
     }));
-    expect(stalenessThreshold(sixHourly)).toBeGreaterThan(
-      stalenessThreshold(minutely),
-    );
+    expect(stalenessThreshold(sixHourly)).toBeGreaterThan(stalenessThreshold(minutely));
   });
 
   it("applies a floor so a sparse series does not flag everything", () => {
@@ -263,9 +263,7 @@ describe("safeImageUri", () => {
     expect(safeImageUri("/api/camera_proxy/camera.x?token=1")).toBe(
       "/api/camera_proxy/camera.x?token=1",
     );
-    expect(safeImageUri("https://example.invalid/a.jpg")).toBe(
-      "https://example.invalid/a.jpg",
-    );
+    expect(safeImageUri("https://example.invalid/a.jpg")).toBe("https://example.invalid/a.jpg");
   });
 
   it("refuses script and data URLs", () => {
@@ -273,5 +271,135 @@ describe("safeImageUri", () => {
     expect(safeImageUri("data:image/png;base64,AAAA")).toBeUndefined();
     expect(safeImageUri("http://insecure.invalid/a.jpg")).toBeUndefined();
     expect(safeImageUri(undefined)).toBeUndefined();
+  });
+});
+
+/**
+ * A hass whose callWS answers from `reply` and records every request.
+ *
+ * The module caches per entity and coalesces per entity set, so each test
+ * uses its own entity ids to stay independent of the others.
+ */
+function fakeHass(reply: (msg: Record<string, unknown>) => Promise<unknown>) {
+  const calls: Record<string, unknown>[] = [];
+  const hass = {
+    states: {},
+    callWS: (msg: Record<string, unknown>) => {
+      calls.push(msg);
+      return reply(msg);
+    },
+  } as unknown as HomeAssistant;
+  return { hass, calls };
+}
+
+describe("fetchOverlayHistory", () => {
+  it("reads both shapes of last_updated", async () => {
+    const { hass } = fakeHass(async () => ({
+      "sensor.lu_seconds": [{ lu: T0 / 1000, s: "1.5" }],
+      "sensor.lu_iso": [{ last_updated: new Date(T0).toISOString(), state: "2" }],
+    }));
+
+    const out = await fetchOverlayHistory(hass, ["sensor.lu_seconds", "sensor.lu_iso"], {
+      days: 1,
+    });
+
+    expect(out.get("sensor.lu_seconds")).toEqual([{ at: T0, value: 1.5 }]);
+    expect(out.get("sensor.lu_iso")).toEqual([{ at: T0, value: 2 }]);
+  });
+
+  it("drops states without a measurement or a timestamp, and sorts by time", async () => {
+    const { hass } = fakeHass(async () => ({
+      "sensor.gaps": [
+        { lu: (T0 + HOUR) / 1000, s: "5" },
+        { lu: T0 / 1000, s: "unavailable" },
+        { lu: T0 / 1000, s: "Unknown" },
+        { lu: T0 / 1000, s: "" },
+        { lu: (T0 - HOUR) / 1000, s: "4" },
+        { s: "6" }, // no timestamp
+      ],
+    }));
+
+    const out = await fetchOverlayHistory(hass, ["sensor.gaps"], { days: 1 });
+
+    expect(out.get("sensor.gaps")).toEqual([
+      { at: T0 - HOUR, value: 4 },
+      { at: T0 + HOUR, value: 5 },
+    ]);
+  });
+
+  it("asks for a minimal response unless a time attribute is wanted", async () => {
+    const { hass, calls } = fakeHass(async () => ({}));
+
+    await fetchOverlayHistory(hass, ["sensor.minimal"], { days: 2 });
+    await fetchOverlayHistory(hass, ["sensor.with_attr"], {
+      days: 2,
+      timeAttributes: { "sensor.with_attr": "timestamp" },
+    });
+
+    expect(calls[0]).toMatchObject({
+      type: "history/history_during_period",
+      entity_ids: ["sensor.minimal"],
+      minimal_response: true,
+      no_attributes: true,
+    });
+    expect(calls[1]).toMatchObject({ minimal_response: false, no_attributes: false });
+  });
+
+  it("takes the time from the configured attribute when it parses", async () => {
+    const measured = T0 - 10 * 60_000;
+    const { hass } = fakeHass(async () => ({
+      "sensor.gauge": [
+        { lu: T0 / 1000, s: "1", a: { timestamp: new Date(measured).toISOString() } },
+        { lu: (T0 + HOUR) / 1000, s: "2", attributes: { timestamp: "not a date" } },
+        { lu: (T0 + 2 * HOUR) / 1000, s: "3", a: {} },
+      ],
+    }));
+
+    const out = await fetchOverlayHistory(hass, ["sensor.gauge"], {
+      days: 1,
+      timeAttributes: { "sensor.gauge": "timestamp" },
+    });
+
+    // An attribute that is missing or does not parse falls back to
+    // last_updated rather than dropping the reading.
+    expect(out.get("sensor.gauge")).toEqual([
+      { at: measured, value: 1 },
+      { at: T0 + HOUR, value: 2 },
+      { at: T0 + 2 * HOUR, value: 3 },
+    ]);
+  });
+
+  it("shares one request between concurrent callers", async () => {
+    const { hass, calls } = fakeHass(async () => ({ "sensor.b": [], "sensor.a": [] }));
+
+    const [first, second] = await Promise.all([
+      fetchOverlayHistory(hass, ["sensor.a", "sensor.b"], { days: 3 }),
+      fetchOverlayHistory(hass, ["sensor.b", "sensor.a"], { days: 3 }),
+    ]);
+
+    expect(calls).toHaveLength(1);
+    expect(second).toBe(first);
+  });
+
+  it("serves the last good data when a request fails", async () => {
+    let fail = false;
+    const { hass } = fakeHass(async () => {
+      if (fail) throw new Error("socket closed");
+      return { "sensor.flaky": [{ lu: T0 / 1000, s: "7" }] };
+    });
+
+    await fetchOverlayHistory(hass, ["sensor.flaky"], { days: 1 });
+    fail = true;
+    const out = await fetchOverlayHistory(hass, ["sensor.flaky"], { days: 1 });
+
+    expect(out.get("sensor.flaky")).toEqual([{ at: T0, value: 7 }]);
+  });
+
+  it("returns nothing without a socket or without entities", async () => {
+    const { hass, calls } = fakeHass(async () => ({}));
+
+    expect(await fetchOverlayHistory({ states: {} }, ["sensor.x"], { days: 1 })).toEqual(new Map());
+    expect(await fetchOverlayHistory(hass, [], { days: 1 })).toEqual(new Map());
+    expect(calls).toHaveLength(0);
   });
 });

@@ -53,6 +53,25 @@ CONF_QUALITY: Final = "quality"
 CONF_LIVE_REFRESH: Final = "live_refresh"
 CONF_FRAMES_PATH: Final = "frames_path"
 CONF_HEADERS: Final = "headers"
+CONF_CAPTURE_LIGHTS: Final = "capture_lights"
+CONF_LIGHT_SETTLE: Final = "light_settle"
+CONF_LIGHTS_MODE: Final = "lights_mode"
+CONF_LIGHTS_WINDOW_START: Final = "lights_window_start"
+CONF_LIGHTS_WINDOW_END: Final = "lights_window_end"
+# Read, never written: the on/off switch that `lights_mode` replaced. An
+# entry saved before the mode existed still carries it, and "night" is what
+# it meant.
+CONF_LIGHTS_NIGHT_ONLY: Final = "lights_night_only"
+
+# When the capture lights are used.
+LIGHTS_MODE_ALWAYS: Final = "always"
+LIGHTS_MODE_NIGHT: Final = "night"  # sunset to sunrise
+LIGHTS_MODE_WINDOW: Final = "window"  # between two clock times
+LIGHTS_MODES: Final[tuple[str, ...]] = (
+    LIGHTS_MODE_ALWAYS,
+    LIGHTS_MODE_NIGHT,
+    LIGHTS_MODE_WINDOW,
+)
 
 # --- Defaults -------------------------------------------------------------
 
@@ -62,6 +81,14 @@ DEFAULT_RETENTION_DAYS: Final = 14
 DEFAULT_MAX_WIDTH: Final = 1024  # px; 0 == keep native width
 DEFAULT_QUALITY: Final = 78  # WebP quality
 DEFAULT_LIVE_REFRESH: Final = 30  # seconds; 0 == archive-only
+# Seconds between switching the capture lights on and fetching the frame.
+# A camera's auto-exposure needs a moment to adapt to the new light level,
+# and a cheap one may hand back a frame it buffered while it was still
+# dark; three seconds covers both on the ESP32 class of hardware.
+DEFAULT_LIGHT_SETTLE: Final = 3
+DEFAULT_LIGHTS_MODE: Final = LIGHTS_MODE_ALWAYS
+DEFAULT_LIGHTS_WINDOW_START: Final = "20:00:00"
+DEFAULT_LIGHTS_WINDOW_END: Final = "06:00:00"
 
 # --- Bounds ---------------------------------------------------------------
 
@@ -102,6 +129,14 @@ MIN_QUALITY: Final = 40
 MAX_QUALITY: Final = 95
 MIN_LIVE_REFRESH: Final = 0
 MAX_LIVE_REFRESH: Final = 600
+MIN_LIGHT_SETTLE: Final = 0
+# Capped well under the shortest capture interval (60 s) so one capture's
+# lights are always off again before the next tick wants them.
+MAX_LIGHT_SETTLE: Final = 30
+
+# Domains that can be picked as a capture light. Switches are included
+# because a lamp on a smart plug is a switch as far as HA is concerned.
+CAPTURE_LIGHT_DOMAINS: Final[tuple[str, ...]] = ("light", "switch")
 
 # Hard ceiling on a single downloaded image. The image URL is user-supplied,
 # and HA's container on the reference host is capped at 1 GiB — an unguarded

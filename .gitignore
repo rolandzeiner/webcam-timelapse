@@ -88,7 +88,9 @@ Desktop.ini
 # ───────────────────────────────────────────────────────────────────
 # IDE / editor state
 # ───────────────────────────────────────────────────────────────────
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.iml
 .cursor/
@@ -173,3 +175,5 @@ custom_components/*/_dev_fixture.py
 
 # Card toolchain
 node_modules/
+.vitest/
+coverage/

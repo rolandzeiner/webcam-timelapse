@@ -34,6 +34,23 @@
               "frames_path": "Leer lassen, um die Bilder im Konfigurationsordner von Home Assistant zu speichern, wo Backups sie überspringen.",
               "username": "Nur nötig, wenn die Kamera per HTTP-Basisauthentifizierung geschützt ist."
             }
+          },
+          "lighting": {
+            "name": "Licht für die Aufnahme",
+            "data": {
+              "capture_lights": "Einzuschaltende Lichter",
+              "light_settle": "Wartezeit vor der Aufnahme",
+              "lights_mode": "Wann verwenden",
+              "lights_window_start": "Zeitfenster von",
+              "lights_window_end": "Zeitfenster bis"
+            },
+            "data_description": {
+              "capture_lights": "Werden kurz vor jedem gespeicherten Bild eingeschaltet und direkt danach wieder ausgeschaltet. Lichter, die bereits an sind, bleiben unverändert.",
+              "light_settle": "Gibt der Kamera Zeit, sich an das Licht anzupassen. Erhöhe den Wert, wenn Bilder zu dunkel werden.",
+              "lights_mode": "Nachts richtet sich nach Sonnenuntergang und Sonnenaufgang am Standort deines Zuhauses und wandert daher mit den Jahreszeiten. Ein Zeitfenster verwendet die beiden Uhrzeiten darunter.",
+              "lights_window_start": "Nur bei „Nur in einem Zeitfenster“ verwendet. Ein Fenster über Mitternacht, etwa 20:00 bis 06:00, funktioniert.",
+              "lights_window_end": "Ab dieser Uhrzeit werden die Lichter nicht mehr verwendet."
+            }
           }
         }
       },
@@ -58,6 +75,23 @@
               "username": "Benutzer:in",
               "password": "Passwort"
             }
+          },
+          "lighting": {
+            "name": "Licht für die Aufnahme",
+            "data": {
+              "capture_lights": "Einzuschaltende Lichter",
+              "light_settle": "Wartezeit vor der Aufnahme",
+              "lights_mode": "Wann verwenden",
+              "lights_window_start": "Zeitfenster von",
+              "lights_window_end": "Zeitfenster bis"
+            },
+            "data_description": {
+              "capture_lights": "Werden kurz vor jedem gespeicherten Bild eingeschaltet und direkt danach wieder ausgeschaltet. Lichter, die bereits an sind, bleiben unverändert.",
+              "light_settle": "Gibt der Kamera Zeit, sich an das Licht anzupassen. Erhöhe den Wert, wenn Bilder zu dunkel werden.",
+              "lights_mode": "Nachts richtet sich nach Sonnenuntergang und Sonnenaufgang am Standort deines Zuhauses und wandert daher mit den Jahreszeiten. Ein Zeitfenster verwendet die beiden Uhrzeiten darunter.",
+              "lights_window_start": "Nur bei „Nur in einem Zeitfenster“ verwendet. Ein Fenster über Mitternacht, etwa 20:00 bis 06:00, funktioniert.",
+              "lights_window_end": "Ab dieser Uhrzeit werden die Lichter nicht mehr verwendet."
+            }
           }
         }
       },
@@ -77,7 +111,9 @@
       "invalid_scheme": "Es werden nur http:// und https:// unterstützt.",
       "invalid_interval": "Wähle eines der angebotenen Aufnahmeintervalle.",
       "not_an_image": "Diese URL hat eine Seite geliefert, kein Bild. Verwende den direkten Link zur Bilddatei.",
-      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet."
+      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet.",
+      "invalid_light": "Als Licht für die Aufnahme können nur Lichter und Schalter verwendet werden.",
+      "invalid_light_window": "Das Zeitfenster muss zu unterschiedlichen Uhrzeiten beginnen und enden."
     },
     "abort": {
       "already_configured": "Diese Bild-URL ist bereits eingerichtet.",
@@ -110,6 +146,23 @@
               "username": "Benutzer:in",
               "password": "Passwort"
             }
+          },
+          "lighting": {
+            "name": "Licht für die Aufnahme",
+            "data": {
+              "capture_lights": "Einzuschaltende Lichter",
+              "light_settle": "Wartezeit vor der Aufnahme",
+              "lights_mode": "Wann verwenden",
+              "lights_window_start": "Zeitfenster von",
+              "lights_window_end": "Zeitfenster bis"
+            },
+            "data_description": {
+              "capture_lights": "Werden kurz vor jedem gespeicherten Bild eingeschaltet und direkt danach wieder ausgeschaltet. Lichter, die bereits an sind, bleiben unverändert.",
+              "light_settle": "Gibt der Kamera Zeit, sich an das Licht anzupassen. Erhöhe den Wert, wenn Bilder zu dunkel werden.",
+              "lights_mode": "Nachts richtet sich nach Sonnenuntergang und Sonnenaufgang am Standort deines Zuhauses und wandert daher mit den Jahreszeiten. Ein Zeitfenster verwendet die beiden Uhrzeiten darunter.",
+              "lights_window_start": "Nur bei „Nur in einem Zeitfenster“ verwendet. Ein Fenster über Mitternacht, etwa 20:00 bis 06:00, funktioniert.",
+              "lights_window_end": "Ab dieser Uhrzeit werden die Lichter nicht mehr verwendet."
+            }
           }
         }
       }
@@ -121,7 +174,9 @@
       "invalid_scheme": "Es werden nur http:// und https:// unterstützt.",
       "invalid_interval": "Wähle eines der angebotenen Aufnahmeintervalle.",
       "not_an_image": "Diese URL hat eine Seite geliefert, kein Bild. Verwende den direkten Link zur Bilddatei.",
-      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet."
+      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet.",
+      "invalid_light": "Als Licht für die Aufnahme können nur Lichter und Schalter verwendet werden.",
+      "invalid_light_window": "Das Zeitfenster muss zu unterschiedlichen Uhrzeiten beginnen und enden."
     }
   },
   "selector": {
@@ -155,6 +210,13 @@
         "1280": "1280 px",
         "1600": "1600 px",
         "1920": "1920 px"
+      }
+    },
+    "lights_mode": {
+      "options": {
+        "always": "Bei jeder Aufnahme",
+        "night": "Nur nachts (Sonnenuntergang bis Sonnenaufgang)",
+        "window": "Nur in einem Zeitfenster"
       }
     }
   },

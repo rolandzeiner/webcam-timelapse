@@ -24,6 +24,7 @@ particular camera or a particular kind of sensor.
 - [Install](#install)
 - [Set up a camera](#set-up-a-camera)
 - [Settings](#settings)
+- [Lights for capture](#lights-for-capture)
 - [How much disk it uses](#how-much-disk-it-uses)
 - [The card](#the-card)
 - [Overlay readings](#overlay-readings)
@@ -51,6 +52,9 @@ frame by frame.
 **Build a construction or garden timelapse.** Point it at any site camera and
 play back weeks at 64×.
 
+**Photograph something that sits in the dark.** Have Home Assistant switch a
+light on for the second each frame is taken, and off again after.
+
 **Prove when something happened.** Every frame is timestamped and kept on
 disk, so you can find the exact capture.
 
@@ -71,6 +75,9 @@ work.
 [![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rolandzeiner&repository=webcam-timelapse&category=integration)
 
 Needs Home Assistant **2025.5.0** or newer.
+
+The card needs a browser from 2023 or newer: Chrome or Edge 110, Safari 16,
+or Firefox 115. On an older wall tablet, update its browser or WebView first.
 
 ## Set up a camera
 
@@ -107,10 +114,49 @@ Every setting can be changed later without losing captured frames.
 | Storage folder | *(automatic)* | Leave empty unless you want frames somewhere else |
 | Verify SSL certificate | on | Turn off only for a camera with a self-signed certificate |
 | Username / password | — | For a camera behind HTTP basic authentication |
+| Lights to switch on | — | Lights and switches to turn on for each capture. See [Lights for capture](#lights-for-capture) |
+| Wait before capturing | 3 s | How long the lights are on before the frame is fetched |
+| When to use them | At every capture | Every capture, only at night (sunset to sunrise), or only within a time window |
+| Time window from / to | 20:00 / 06:00 | The window for *Only within a time window*. It may cross midnight |
 
 **Changing the capture interval to a longer one hides older frames.** Frames
 taken every minute have no place on a five-minute timeline. They stay on disk
 and expire normally, and switching back makes them visible again.
+
+## Lights for capture
+
+A camera pointed at something that is dark for half the day records half a
+timelapse. Pick one or more lights — or switches, for a lamp on a smart plug —
+under **Lights for capture** in the camera's settings, and they are switched
+on just before each frame is saved and off again straight after.
+
+**Only lights that were off are touched.** A light that is already on is left
+on afterwards: the capture did not switch it on, so it is not the capture's to
+switch off.
+
+**A light somebody else used stays on.** If a person or an automation acts on
+one of the lights during the few seconds it is lit for a capture — a motion
+light firing as you walk in — it is left alone instead of being switched off
+under you.
+
+**Raise the wait if frames come out dark.** A camera needs a moment to adjust
+its exposure, and a cheap one may hand back a picture it took before the light
+came on. Three seconds suits most; up to thirty is allowed.
+
+**Choose when the lights are used.** *At every capture* is the default.
+*Only at night* uses them between sunset and sunrise, worked out from your
+home's location, so the hours follow the seasons. *Only within a time window*
+uses two clock times you set instead — a window that crosses midnight, such as
+20:00 to 06:00, works. Outside those hours frames are still captured, just
+without the lights.
+
+**The live view never switches a light.** Only the scheduled captures and the
+`capture_now` action do. The camera entity refreshes every 30 seconds by
+default, and lighting the room that often would be a strobe — so at night the
+live view stays dark between captures.
+
+A capture is never skipped because a light failed to switch. The frame is
+taken anyway and the problem is written to the log.
 
 ## How much disk it uses
 

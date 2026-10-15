@@ -32,9 +32,7 @@ export function formatExtent(value: number): string {
   if (value >= 100) return Math.round(value).toString();
   const text = value.toPrecision(2);
   // Only ever strip inside a decimal — "40" must not become "4".
-  return text.includes(".")
-    ? text.replace(/0+$/, "").replace(/\.$/, "")
-    : text;
+  return text.includes(".") ? text.replace(/0+$/, "").replace(/\.$/, "") : text;
 }
 
 /**

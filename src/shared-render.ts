@@ -1,40 +1,15 @@
-// Shared render helpers + small utilities. Extracted so the
-// version-banner + the WS card-version probe live in one place — the
-// card stays focused on its domain rendering rather than carrying its
-// own copy of the integration-upgrade plumbing.
+// Version-banner and WS card-version probe helpers, kept out of the card
+// so it stays focused on its domain rendering rather than carrying the
+// integration-upgrade plumbing.
 //
 // Conventions:
 // - Pure functions: no `this`, take what they need as arguments,
 //   return a TemplateResult or a Promise. The card keeps its own
-//   reactive state (@state _versionMismatch) and calls these helpers
-//   from render() / firstUpdated() / willUpdate().
+//   reactive state (@state versionMismatch) and calls these helpers
+//   from willUpdate() / render(); see both in webcam-timelapse-card.ts.
 // - Localisation goes through the card's translate callback so the
 //   helper does not own a hidden module-level language state. Pass
 //   the card's `t(key)` shortcut in as a parameter.
-//
-// Wire-up at the card class:
-//
-//     @state private _versionMismatch: string | null = null;
-//
-//     protected override willUpdate(changed: PropertyValues): void {
-//       if (changed.has("hass") && this.hass && !this._versionChecked) {
-//         this._versionChecked = true;
-//         void checkCardVersionWS(
-//           this.hass,
-//           "skill_demo_austria/card_version",
-//           CARD_VERSION,
-//         ).then((v) => { this._versionMismatch = v; });
-//       }
-//     }
-//
-//     protected render(): TemplateResult {
-//       return html`
-//         <ha-card>
-//           ${renderVersionBanner(this._versionMismatch, (k) => this._t(k))}
-//           ${/* … */}
-//         </ha-card>
-//       `;
-//     }
 
 import { html, nothing, type TemplateResult } from "lit";
 
@@ -74,11 +49,14 @@ export async function checkCardVersionWS(
  * the way: cache wipe is best-effort; the reload must happen
  * regardless.
  */
-export function reloadAfterCacheWipe(): void {
+function reloadAfterCacheWipe(): void {
   try {
-    window.caches?.keys?.().then((keys) => {
-      keys.forEach((k) => window.caches?.delete?.(k));
-    });
+    window.caches
+      ?.keys?.()
+      .then((keys) => {
+        keys.forEach((k) => window.caches?.delete?.(k));
+      })
+      .catch(() => {});
   } catch {
     // best-effort cache wipe
   }

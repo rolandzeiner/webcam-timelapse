@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { nightBands, nightSpans } from "./sun";
 
@@ -74,9 +74,7 @@ describe("nightSpans", () => {
 
   it("returns nothing under the midnight sun", () => {
     const noon = Date.parse("2026-06-21T12:00:00Z");
-    expect(nightSpans(noon - 2 * DAY, noon + 2 * DAY, 69.65, 18.96)).toEqual(
-      [],
-    );
+    expect(nightSpans(noon - 2 * DAY, noon + 2 * DAY, 69.65, 18.96)).toEqual([]);
   });
 
   it("includes the night straddling the start of the window", () => {
@@ -113,12 +111,7 @@ describe("nightBands", () => {
   const NOON = Date.parse("2026-08-08T12:00:00Z");
 
   it("positions each band as a fraction of the window", () => {
-    const bands = nightBands(
-      NOON - DAY,
-      NOON + DAY,
-      WIESELBURG.lat,
-      WIESELBURG.lon,
-    );
+    const bands = nightBands(NOON - DAY, NOON + DAY, WIESELBURG.lat, WIESELBURG.lon);
 
     expect(bands.length).toBeGreaterThan(0);
     for (const band of bands) {
@@ -129,12 +122,7 @@ describe("nightBands", () => {
   });
 
   it("gives roughly a third of a summer window to night", () => {
-    const bands = nightBands(
-      NOON - DAY,
-      NOON + DAY,
-      WIESELBURG.lat,
-      WIESELBURG.lon,
-    );
+    const bands = nightBands(NOON - DAY, NOON + DAY, WIESELBURG.lat, WIESELBURG.lon);
     const dark = bands.reduce((sum, band) => sum + band.width, 0);
     // Early August at 48°N: a shade over nine hours of darkness a day.
     expect(dark).toBeGreaterThan(0.35);
@@ -147,12 +135,7 @@ describe("nightBands", () => {
     // This is the one place that judgement is made, for both the charts
     // and the scrubber.
     const wide = nightBands(NOON - DAY, NOON + DAY, WIESELBURG.lat, WIESELBURG.lon);
-    const dense = nightBands(
-      NOON - 90 * DAY,
-      NOON + 90 * DAY,
-      WIESELBURG.lat,
-      WIESELBURG.lon,
-    );
+    const dense = nightBands(NOON - 90 * DAY, NOON + 90 * DAY, WIESELBURG.lat, WIESELBURG.lon);
 
     expect(wide.length).toBeGreaterThan(0);
     expect(dense).toEqual([]);
@@ -163,12 +146,7 @@ describe("nightBands", () => {
     // of day-wide bands whose individual widths could each fall under the
     // legibility floor and take the whole thing off screen.
     const midwinter = Date.parse("2026-12-21T12:00:00Z");
-    const bands = nightBands(
-      midwinter - 5 * DAY,
-      midwinter + 5 * DAY,
-      69.65,
-      18.96,
-    );
+    const bands = nightBands(midwinter - 5 * DAY, midwinter + 5 * DAY, 69.65, 18.96);
 
     expect(bands).toEqual([{ left: 0, width: 1 }]);
   });
