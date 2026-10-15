@@ -193,7 +193,7 @@ export interface NightBand {
  * the scrubber, so the two cannot drift into disagreeing about when a
  * window is too wide to shade.
  */
-export const MIN_NIGHT_FRACTION = 4 / 234;
+const MIN_NIGHT_FRACTION = 4 / 234;
 
 /**
  * Night across `[from, to]`, ready to position, or nothing when the

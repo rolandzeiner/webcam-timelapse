@@ -176,3 +176,4 @@ custom_components/*/_dev_fixture.py
 # Card toolchain
 node_modules/
 .vitest/
+coverage/

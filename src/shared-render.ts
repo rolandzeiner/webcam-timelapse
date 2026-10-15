@@ -74,7 +74,7 @@ export async function checkCardVersionWS(
  * the way: cache wipe is best-effort; the reload must happen
  * regardless.
  */
-export function reloadAfterCacheWipe(): void {
+function reloadAfterCacheWipe(): void {
   try {
     window.caches
       ?.keys?.()
