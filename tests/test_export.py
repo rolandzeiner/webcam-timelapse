@@ -266,9 +266,9 @@ async def test_max_width_scales_the_video_down(exporter: VideoExporter) -> None:
     ("aspect", "position", "expected"),
     [
         ("native", 50, (WIDTH, HEIGHT)),
-        ("16:9", 50, (64, 36)),  # 64x48 is 4:3: the height is cut
-        ("9:16", 50, (26, 48)),  # and here the width
-        ("1:1", 0, (48, 48)),
+        ("landscape", 50, (64, 36)),  # 64x48 is 4:3: the height is cut
+        ("portrait", 50, (26, 48)),  # and here the width
+        ("square", 0, (48, 48)),
     ],
 )
 async def test_aspect_crops_the_video(
@@ -288,7 +288,7 @@ async def test_aspect_crops_the_video(
 async def test_max_width_applies_to_the_cropped_picture(
     exporter: VideoExporter,
 ) -> None:
-    result = await exporter.async_export(ExportOptions(aspect="1:1", max_width=32))
+    result = await exporter.async_export(ExportOptions(aspect="square", max_width=32))
 
     assert (result["width"], result["height"]) == (32, 32)
 

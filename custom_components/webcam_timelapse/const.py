@@ -203,14 +203,14 @@ DEFAULT_EXPORT_TIMESTAMP_SIZE: Final = 15
 MIN_EXPORT_TIMESTAMP_SIZE: Final = 5
 MAX_EXPORT_TIMESTAMP_SIZE: Final = 50
 
-# Shapes a video can be cropped to, as width:height. "native" keeps the
-# frames' own shape; the others cut the picture down to fit, and the
+# Shapes a video can be cropped to: landscape is 16:9, portrait 9:16 and
+# square 1:1 (width:height). "native" keeps the frames' own shape; the others cut the picture down to fit, and the
 # overlay is laid out on what is left — never cropped with it.
 EXPORT_ASPECTS: Final[dict[str, float | None]] = {
     "native": None,
-    "16:9": 16 / 9,
-    "9:16": 9 / 16,
-    "1:1": 1.0,
+    "landscape": 16 / 9,
+    "portrait": 9 / 16,
+    "square": 1.0,
 }
 DEFAULT_EXPORT_ASPECT: Final = "native"
 # Where the crop sits along the axis it slides on: 0 is the left (or top)

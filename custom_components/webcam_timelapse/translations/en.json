@@ -222,9 +222,9 @@
     "export_aspect": {
       "options": {
         "native": "Native",
-        "16:9": "Landscape 16:9",
-        "9:16": "Portrait 9:16",
-        "1:1": "Square 1:1"
+        "landscape": "Landscape 16:9",
+        "portrait": "Portrait 9:16",
+        "square": "Square 1:1"
       }
     }
   },

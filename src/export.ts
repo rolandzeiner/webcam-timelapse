@@ -96,6 +96,18 @@ const ASPECT_RATIOS: Record<Exclude<ExportAspect, "native">, number> = {
   "1:1": 1,
 };
 
+/**
+ * The names the integration takes. Home Assistant only allows
+ * `[a-z0-9-_]` in a selector option, which is what the action's form is
+ * translated by, so the ratios themselves cannot be the values.
+ */
+export const ASPECT_REQUEST: Record<ExportAspect, string> = {
+  native: "native",
+  "16:9": "landscape",
+  "9:16": "portrait",
+  "1:1": "square",
+};
+
 /** The mdi icon on each format's tile. */
 export const ASPECT_ICONS: Record<ExportAspect, string> = {
   native: "mdi:camera-outline",
@@ -497,7 +509,7 @@ export function exportRequest(
     readings_size: clampSize(choices.readingsSize, READINGS_SIZE),
     readings_position: choices.positions.right ?? null,
     readings_position_left: choices.positions.left ?? null,
-    aspect: choices.aspect,
+    aspect: ASPECT_REQUEST[choices.aspect],
     crop_position: Math.min(100, Math.max(0, Math.round(choices.cropPosition))),
     every: Math.min(60, Math.max(1, Math.round(choices.every))),
     language,

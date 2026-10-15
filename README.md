@@ -558,7 +558,7 @@ minutes, and returns where it is — so the next step of an automation can send
 it somewhere. `start` and `end` are optional and default to the whole archive.
 `overlay` takes the readings in the same form as the card's configuration;
 `readings_size`, `timestamp_size`, `readings_position`,
-`readings_position_left`, `aspect` (`native`, `16:9`, `9:16` or `1:1`),
+`readings_position_left`, `aspect` (`native`, `landscape` for 16:9, `portrait` for 9:16 or `square`),
 `crop_position` (0 to 100, 50 is the middle) and `every` (use every nth frame)
 work as in the card's export panel.
 

@@ -222,9 +222,9 @@
     "export_aspect": {
       "options": {
         "native": "Wie Kamera",
-        "16:9": "Querformat 16:9",
-        "9:16": "Hochformat 9:16",
-        "1:1": "Quadrat 1:1"
+        "landscape": "Querformat 16:9",
+        "portrait": "Hochformat 9:16",
+        "square": "Quadrat 1:1"
       }
     }
   },

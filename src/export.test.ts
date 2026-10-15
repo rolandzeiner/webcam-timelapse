@@ -302,7 +302,7 @@ describe("request", () => {
       resolve,
     );
 
-    expect(request).toMatchObject({ aspect: "9:16", crop_position: 100, every: 60 });
+    expect(request).toMatchObject({ aspect: "portrait", crop_position: 100, every: 60 });
   });
 
   it("leaves the readings out when they are switched off", () => {

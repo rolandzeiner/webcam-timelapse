@@ -393,7 +393,7 @@ async def test_service_passes_sizes_and_positions_through(
                 "readings_size": 25,
                 "timestamp_size": 10,
                 "readings_position": "bottom",
-                "aspect": "9:16",
+                "aspect": "portrait",
                 "crop_position": 20,
                 "every": 5,
             },
@@ -404,7 +404,7 @@ async def test_service_passes_sizes_and_positions_through(
     assert (options.readings_size, options.timestamp_size) == (25, 10)
     assert options.readings_position == "bottom"
     assert options.readings_position_left is None
-    assert (options.aspect, options.crop_position, options.every) == ("9:16", 20, 5)
+    assert (options.aspect, options.crop_position, options.every) == ("portrait", 20, 5)
     assert options.crop == (9 / 16, 0.2)
 
 
