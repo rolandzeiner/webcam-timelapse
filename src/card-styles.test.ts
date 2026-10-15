@@ -197,7 +197,7 @@ describe("controls overlay", () => {
  */
 function narrowBlock(maxWidth = SINGLE_BREAKPOINT): string {
   const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
-  const start = css.indexOf(`@container (max-width: ${maxWidth}px)`);
+  const start = css.indexOf(`@container wtl-card (max-width: ${maxWidth}px)`);
   if (start === -1) return "";
   const next = css.indexOf("@container", start + 1);
   return css.slice(start, next === -1 ? undefined : next);
@@ -214,11 +214,23 @@ function escape(selector: string): string {
 }
 
 /** The breakpoints, read off the stylesheet rather than hard-coded twice. */
-const BREAKPOINTS = [...cardStyles.cssText.matchAll(/@container\s*\(max-width:\s*(\d+)px\)/g)].map(
-  (match) => Number(match[1]),
-);
+const BREAKPOINTS = [
+  ...cardStyles.cssText.matchAll(/@container\s+wtl-card\s*\(max-width:\s*(\d+)px\)/g),
+].map((match) => Number(match[1]));
 const SINGLE_BREAKPOINT = Math.min(...BREAKPOINTS);
 const PAIR_BREAKPOINT = Math.max(...BREAKPOINTS);
+
+describe("container queries", () => {
+  // .stage is a size container for the export crop. An unnamed query
+  // resolves against the nearest container, so one written for the card
+  // would quietly start measuring the stage for everything inside it.
+  it("name the card's container on every query", () => {
+    const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+    const queries = [...css.matchAll(/@container\s+([^{]*)\{/g)].map((match) => match[1]!.trim());
+    expect(queries.length).toBeGreaterThan(0);
+    for (const query of queries) expect(query.startsWith("wtl-card ")).toBe(true);
+  });
+});
 
 describe("narrow layout", () => {
   it("moves the readout to the top centre", () => {

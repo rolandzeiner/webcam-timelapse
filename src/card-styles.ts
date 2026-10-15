@@ -38,6 +38,10 @@ export const cardStyles = css`
        -- so it costs nothing there. */
     block-size: 100%;
     container-type: inline-size;
+    /* Named, because .stage is a container too (for the crop's cq
+       units): an unnamed @container query from inside the stage would
+       measure the stage instead of the card. */
+    container-name: wtl-card;
   }
 
   ha-card {
@@ -1242,7 +1246,7 @@ export const cardStyles = css`
      Stacked rather than side by side, because below this width there is
      no arrangement of two blocks along the bottom edge that clears the
      centred pill at all. */
-  @container (max-width: 700px) {
+  @container wtl-card (max-width: 700px) {
     /* The wrapper becomes a box only here. Every declaration in this
        block is scoped to .pair, which is what keeps a single block on
        exactly the layout it had before the second one existed. */
@@ -1279,7 +1283,7 @@ export const cardStyles = css`
      past 600px — hence 620px, with a little margin because the readout's
      width follows its content. Below that the readout moves to the top,
      where nothing else is competing for the space. */
-  @container (max-width: 620px) {
+  @container wtl-card (max-width: 620px) {
     /* Cleared explicitly: the base rule pins the bottom-right corner, and
        an unset side would leave the box anchored to both. */
     .readout {

@@ -200,7 +200,7 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private frameSize: readonly [number, number] | null = null;
   /** A drag in progress on a range handle or on the crop window. */
   private exportDrag:
-    | { kind: "start" | "end"; track: DOMRect }
+    | { kind: "start" | "end"; track: DOMRect; before: ExportRange | null; position: number }
     | { kind: "crop"; from: number; crop: number; travel: number; axis: "x" | "y" }
     | undefined;
   /** Positions the viewer picked; a block not in here keeps its card side. */
@@ -1021,8 +1021,14 @@ export class WebcamTimelapseCard extends LitElement {
     if (!track || this.exportRunning) return;
     event.preventDefault();
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    this.exportDrag = { kind, track: track.getBoundingClientRect() };
-    this.onHandleMove(event);
+    // Nothing changes on the press itself (WCAG 2.5.2): the range moves
+    // only once the pointer does, and a cancelled drag puts it back.
+    this.exportDrag = {
+      kind,
+      track: track.getBoundingClientRect(),
+      before: this.exportRange,
+      position: this.position,
+    };
   }
 
   /**
@@ -1076,9 +1082,18 @@ export class WebcamTimelapseCard extends LitElement {
     );
   };
 
-  private endExportDrag = (): void => {
-    if (this.exportDrag && this.exportDrag.kind !== "crop") this.loadPendingPosition();
+  private endExportDrag = (event: PointerEvent): void => {
+    const drag = this.exportDrag;
     this.exportDrag = undefined;
+    if (!drag) return;
+    if (event.type === "pointercancel") {
+      if (drag.kind === "crop") this.exportCrop = drag.crop;
+      else {
+        this.exportRange = drag.before;
+        this.scrubTo(drag.position);
+      }
+    }
+    if (drag.kind !== "crop") this.loadPendingPosition();
   };
 
   private toggleExport = (): void => {
@@ -2162,7 +2177,7 @@ export class WebcamTimelapseCard extends LitElement {
                 this.exportCrop = 50;
               }}
             >
-              <ha-icon icon=${ASPECT_ICONS[aspect]}></ha-icon>
+              <ha-icon icon=${ASPECT_ICONS[aspect]} aria-hidden="true"></ha-icon>
               <span>${this.t(`export.aspects.${aspect === "native" ? "native" : aspect.replace(":", "_")}`)}</span>
               <span class="export-ratio">
                 ${aspect === "native" ? (size ? ratioLabel(size) : "") : aspect}
@@ -2211,7 +2226,7 @@ export class WebcamTimelapseCard extends LitElement {
       ${
         soft && video
           ? html`<p class="export-note" role="status">
-            <ha-icon icon="mdi:information-outline"></ha-icon>
+            <ha-icon icon="mdi:information-outline" aria-hidden="true"></ha-icon>
             <span>${this.t("export.soft_crop", `${video[0]} × ${video[1]}`)}</span>
           </p>`
           : nothing
@@ -2260,7 +2275,7 @@ export class WebcamTimelapseCard extends LitElement {
       }
       ${
         short && typeof free === "number"
-          ? html`<p class="export-warning" role="alert">
+          ? html`<p class="export-warning" role="status">
             ${this.t("export.low_disk", formatSize(free))}
           </p>`
           : nothing
