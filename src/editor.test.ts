@@ -3,6 +3,22 @@ import { describe, expect, it } from "vite-plus/test";
 import source from "./editor.ts?raw";
 import fieldsSource from "./editor-fields.ts?raw";
 
+describe("expansion panels", () => {
+  it("never binds expanded, so the panel can finish its own animation", () => {
+    // Bound to editor state, `expanded` flips before the panel measures
+    // its body; nothing animates, transitionend never fires, the body keeps
+    // a pixel height and its content spills over the panels below it.
+    expect(source).not.toMatch(/\.expanded=\$\{/);
+    expect(source).not.toMatch(/\?expanded=\$\{/);
+  });
+
+  it("does not nest panels: a reading opens inline in its group's list", () => {
+    const panels = source.match(/<ha-expansion-panel/g) ?? [];
+    expect(panels.length).toBe(1);
+    expect(source).toMatch(/aria-expanded=\$\{focused \? "true" : "false"\}/);
+  });
+});
+
 describe("editor element choice", () => {
   it("never uses ha-textfield", () => {
     // ha-textfield is not registered in the card-editor context: it

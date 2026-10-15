@@ -48,8 +48,14 @@ export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCar
 
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private config?: WebcamTimelapseCardConfig;
-  /** Open panels: group ids, and `right:2` for a readings row. */
-  @state() private open = new Set<string>();
+  /**
+   * Groups whose panel is open, so their bodies are built only then. A
+   * record of what the panel did, never an instruction to it: see
+   * renderGroup for why `expanded` is not bound.
+   */
+  @state() private open = new Set<GroupId>();
+  /** The readings row whose settings are showing; one at a time. */
+  @state() private openRow: { side: ReadoutSide; index: number } | undefined;
   /**
    * Whether ha-expansion-panel is registered. Home Assistant loads it
    * lazily — ha-form pulls it in for an `expandable` schema — so a card
@@ -163,63 +169,44 @@ export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCar
 
   // --- groups ---------------------------------------------------------
 
-  private setOpen(key: string, expanded: boolean): void {
-    const open = new Set(this.open);
-    if (expanded) open.add(key);
-    else open.delete(key);
-    this.open = open;
-  }
-
   /**
-   * A collapsible group. Its body is rendered only while open: behind a
-   * closed panel the forms would still be built and updated on every
-   * keystroke elsewhere in the editor.
+   * A collapsible group. Its body is built only while it is open: behind a
+   * closed panel the forms would otherwise still be rendered and updated on
+   * every keystroke elsewhere in the editor.
+   *
+   * `expanded` is deliberately not bound. The panel owns it. When it is
+   * clicked it fires expanded-will-change, renders its slot, measures the
+   * slot's height, pins that height in pixels and animates to it, and only
+   * transitionend unpins it again. Bound to this editor's state, the
+   * re-render triggered by expanded-will-change sets `expanded` before the
+   * panel measures: the container is then already at its full height, there
+   * is nothing to animate, transitionend never fires, and the pixel height
+   * stays. 300 ms later the panel sets overflow to visible, and everything
+   * the body grows by afterwards — a form finishing its render, a row
+   * opening — spills over the panels below.
    */
-  private renderPanel(
-    key: string,
-    header: string,
-    secondary: string,
-    leading: TemplateResult,
-    body: () => TemplateResult,
-  ): TemplateResult {
-    // Rows are panels too, and before ha-expansion-panel exists they are
-    // drawn open and flat rather than as an element that renders nothing.
-    if (!this.panels) {
-      return html`<div class="ed-flat">
-        <div class="ed-flat-head">${leading}<span>${header}</span></div>
-        ${body()}
-      </div>`;
-    }
-    const expanded = this.open.has(key);
+  private renderGroup(group: { id: GroupId; icon: string }): TemplateResult {
     return html`<ha-expansion-panel
       outlined
-      .header=${header}
-      .secondary=${secondary}
-      .expanded=${expanded}
+      .header=${this.t(`editor.groups.${group.id}`)}
+      .secondary=${groupSummary(group.id, this.config!, this.t)}
       @expanded-will-change=${(event: CustomEvent<{ expanded: boolean }>) => {
-        // Rows are panels inside a group's panel, and the event bubbles:
-        // without this a row opening would open or close its group too.
         event.stopPropagation();
-        if (event.target === event.currentTarget) this.setOpen(key, event.detail.expanded);
+        const open = new Set(this.open);
+        if (event.detail.expanded) open.add(group.id);
+        else open.delete(group.id);
+        this.open = open;
       }}
     >
-      ${leading}
-      ${expanded ? body() : nothing}
+      <ha-icon slot="leading-icon" icon=${group.icon}></ha-icon>
+      ${this.open.has(group.id) ? this.renderGroupBody(group.id) : nothing}
     </ha-expansion-panel>`;
   }
 
-  private renderGroup(group: { id: GroupId; icon: string }): TemplateResult {
-    const icon = html`<ha-icon slot="leading-icon" icon=${group.icon}></ha-icon>`;
-    return this.renderPanel(
-      group.id,
-      this.t(`editor.groups.${group.id}`),
-      groupSummary(group.id, this.config!, this.t),
-      icon,
-      () =>
-        isReadings(group.id)
-          ? this.renderReadings(group.id)
-          : html`<div class="ed-body">${this.renderForm(GROUP_FIELDS[group.id])}</div>`,
-    );
+  private renderGroupBody(id: GroupId): TemplateResult {
+    return isReadings(id)
+      ? this.renderReadings(id)
+      : html`<div class="ed-body">${this.renderForm(GROUP_FIELDS[id])}</div>`;
   }
 
   /** Before ha-expansion-panel exists: the same groups, through ha-form. */
@@ -268,46 +255,46 @@ export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCar
     return this.config?.[BLOCK_KEYS[side].rows] ?? [];
   }
 
-  /**
-   * Save a block's rows, carrying each row's open state along with it so a
-   * row that moves or loses a neighbour stays open or closed as it was.
-   */
-  private saveRows(side: ReadoutSide, rows: OverlayEntityConfig[], moved: (number | null)[]): void {
-    const open = new Set([...this.open].filter((key) => !key.startsWith(`${side}:`)));
-    moved.forEach((from, to) => {
-      if (from === null ? false : this.open.has(`${side}:${from}`)) open.add(`${side}:${to}`);
-    });
-    this.open = open;
+  private isFocused(side: ReadoutSide, index: number): boolean {
+    return this.openRow?.side === side && this.openRow.index === index;
+  }
+
+  private toggleFocus(side: ReadoutSide, index: number): void {
+    this.openRow = this.isFocused(side, index) ? undefined : { side, index };
+  }
+
+  private saveRows(side: ReadoutSide, rows: OverlayEntityConfig[]): void {
     this.applyChanges({ [BLOCK_KEYS[side].rows]: rows });
   }
 
   private addRow(side: ReadoutSide): void {
     const rows = this.rows(side);
-    this.saveRows(side, [...rows, { entity: "" }], [...rows.map((_, i) => i), null]);
+    this.saveRows(side, [...rows, { entity: "" }]);
     // A new row opens, so its entity picker is the next thing on screen.
-    this.setOpen(`${side}:${rows.length}`, true);
+    this.openRow = { side, index: rows.length };
   }
 
   private removeRow(side: ReadoutSide, index: number): void {
-    const rows = this.rows(side);
-    const kept = rows.map((_, i) => i).filter((i) => i !== index);
     this.saveRows(
       side,
-      kept.map((i) => rows[i]!),
-      kept,
+      this.rows(side).filter((_, i) => i !== index),
     );
+    // The open row goes with the one removed, or moves up with its own.
+    if (this.openRow?.side === side) {
+      if (this.openRow.index === index) this.openRow = undefined;
+      else if (this.openRow.index > index) this.openRow = { side, index: this.openRow.index - 1 };
+    }
   }
 
   private moveRow(side: ReadoutSide, index: number, delta: -1 | 1): void {
-    const order = this.rows(side).map((_, i) => i);
+    const rows = [...this.rows(side)];
     const target = index + delta;
-    if (target < 0 || target >= order.length) return;
-    [order[index], order[target]] = [order[target]!, order[index]!];
-    this.saveRows(
-      side,
-      order.map((i) => this.rows(side)[i]!),
-      order,
-    );
+    if (target < 0 || target >= rows.length) return;
+    [rows[index], rows[target]] = [rows[target]!, rows[index]!];
+    this.saveRows(side, rows);
+    // The settings stay with the reading they belong to, not with the slot.
+    if (this.isFocused(side, index)) this.openRow = { side, index: target };
+    else if (this.isFocused(side, target)) this.openRow = { side, index };
   }
 
   /** `patch` may set a key to undefined, which tidyConfig then drops. */
@@ -323,13 +310,13 @@ export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCar
       ${this.renderForm([{ name: BLOCK_KEYS[side].title, selector: { text: {} } }])}
       ${
         rows.length > 0
-          ? html`<div class="ed-rows">
+          ? html`<ul class="ed-rows">
             ${rows.map((row, index) => this.renderRow(side, row, index, rows.length))}
-          </div>`
+          </ul>`
           : nothing
       }
       <div>
-        <ha-button @click=${() => this.addRow(side)}>
+        <ha-button appearance="plain" @click=${() => this.addRow(side)}>
           <ha-icon icon="mdi:plus" slot="icon" aria-hidden="true"></ha-icon>
           ${this.t("editor.add_entity")}
         </ha-button>
@@ -358,72 +345,93 @@ export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCar
       .join(" · ");
   }
 
+  /**
+   * One reading in the block's list.
+   *
+   * A row of its own rather than a panel inside the group's panel: one row
+   * open at a time, its settings inline beneath it, the way list items work
+   * in clock-weather-card's rows editor. The head is a real button with
+   * aria-expanded; reordering and removing are icon buttons beside it, so
+   * neither needs the row open.
+   */
   private renderRow(
     side: ReadoutSide,
     row: OverlayEntityConfig,
     index: number,
     count: number,
   ): TemplateResult {
-    const config: NormalisedConfig = normaliseConfig(this.config!);
     const title = this.rowTitle(row);
-    // The reading's own colour, so the list can be matched to the overlay
-    // at a glance. Unset, it is the accent the card draws it in.
-    const dot = html`<span
-      slot="leading-icon"
-      class="ed-dot"
-      style="background:${row.color ?? "var(--primary-color)"}"
-      aria-hidden="true"
-    ></span>`;
+    const summary = this.rowSummary(row, title);
+    const focused = this.isFocused(side, index);
+    return html`<li class="ed-row ${focused ? "open" : ""}">
+      <div class="ed-row-head">
+        <button
+          class="ed-row-main"
+          type="button"
+          aria-expanded=${focused ? "true" : "false"}
+          @click=${() => this.toggleFocus(side, index)}
+        >
+          <span
+            class="ed-dot"
+            style="background:${row.color ?? "var(--primary-color)"}"
+            aria-hidden="true"
+          ></span>
+          <span class="ed-row-titles">
+            <span class="ed-row-name">${title}</span>
+            ${summary ? html`<span class="ed-row-summary">${summary}</span>` : nothing}
+          </span>
+          <ha-icon class="ed-chevron" icon="mdi:chevron-down" aria-hidden="true"></ha-icon>
+        </button>
+        <ha-icon-button
+          .label=${this.t("editor.move_up")}
+          .disabled=${index === 0}
+          @click=${() => this.moveRow(side, index, -1)}
+        >
+          <ha-icon icon="mdi:arrow-up" aria-hidden="true"></ha-icon>
+        </ha-icon-button>
+        <ha-icon-button
+          .label=${this.t("editor.move_down")}
+          .disabled=${index === count - 1}
+          @click=${() => this.moveRow(side, index, 1)}
+        >
+          <ha-icon icon="mdi:arrow-down" aria-hidden="true"></ha-icon>
+        </ha-icon-button>
+        <ha-icon-button .label=${this.t("editor.remove")} @click=${() => this.removeRow(side, index)}>
+          <ha-icon icon="mdi:delete-outline" aria-hidden="true"></ha-icon>
+        </ha-icon-button>
+      </div>
+      ${focused ? this.renderRowSettings(side, row, index) : nothing}
+    </li>`;
+  }
 
-    return this.renderPanel(`${side}:${index}`, title, this.rowSummary(row, title), dot, () => {
-      // Unset, a row's graph window is the card's, so that is what it shows.
-      const data: Data = { ...normaliseRow(row, config.graph_hours) };
-      return html`<div class="ed-body">
-          <ha-form
-            .hass=${this.hass}
-            .data=${data}
-            .schema=${rowSchema(row, config)}
-            .computeLabel=${this.computeLabel}
-            .computeHelper=${this.computeRowHelper}
-            @value-changed=${(event: CustomEvent<{ value: Data }>) => {
-              event.stopPropagation();
-              const next = event.detail.value;
-              const changes = Object.fromEntries(
-                Object.keys(next)
-                  .filter((key) => next[key] !== data[key])
-                  .map((key) => [key, next[key]]),
-              );
-              if (Object.keys(changes).length > 0) this.patchRow(side, index, changes);
-            }}
-          ></ha-form>
-
-          ${this.renderColor(side, row, index)}
-
-          <div class="ed-actions">
-            <ha-icon-button
-              .label=${this.t("editor.move_up")}
-              .disabled=${index === 0}
-              @click=${() => this.moveRow(side, index, -1)}
-            >
-              <ha-icon icon="mdi:arrow-up" aria-hidden="true"></ha-icon>
-            </ha-icon-button>
-            <ha-icon-button
-              .label=${this.t("editor.move_down")}
-              .disabled=${index === count - 1}
-              @click=${() => this.moveRow(side, index, 1)}
-            >
-              <ha-icon icon="mdi:arrow-down" aria-hidden="true"></ha-icon>
-            </ha-icon-button>
-            <ha-icon-button
-              class="ed-remove"
-              .label=${this.t("editor.remove")}
-              @click=${() => this.removeRow(side, index)}
-            >
-              <ha-icon icon="mdi:delete-outline" aria-hidden="true"></ha-icon>
-            </ha-icon-button>
-          </div>
-        </div>`;
-    });
+  private renderRowSettings(
+    side: ReadoutSide,
+    row: OverlayEntityConfig,
+    index: number,
+  ): TemplateResult {
+    const config: NormalisedConfig = normaliseConfig(this.config!);
+    // Unset, a row's graph window is the card's, so that is what it shows.
+    const data: Data = { ...normaliseRow(row, config.graph_hours) };
+    return html`<div class="ed-row-body">
+      <ha-form
+        .hass=${this.hass}
+        .data=${data}
+        .schema=${rowSchema(row, config)}
+        .computeLabel=${this.computeLabel}
+        .computeHelper=${this.computeRowHelper}
+        @value-changed=${(event: CustomEvent<{ value: Data }>) => {
+          event.stopPropagation();
+          const next = event.detail.value;
+          const changes = Object.fromEntries(
+            Object.keys(next)
+              .filter((key) => next[key] !== data[key])
+              .map((key) => [key, next[key]]),
+          );
+          if (Object.keys(changes).length > 0) this.patchRow(side, index, changes);
+        }}
+      ></ha-form>
+      ${this.renderColor(side, row, index)}
+    </div>`;
   }
 
   /**
@@ -452,7 +460,10 @@ export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCar
       </label>
       ${
         row.color
-          ? html`<ha-button @click=${() => this.patchRow(side, index, { color: undefined })}>
+          ? html`<ha-button
+            appearance="plain"
+            @click=${() => this.patchRow(side, index, { color: undefined })}
+          >
             ${this.t("editor.color_reset")}
           </ha-button>`
           : nothing

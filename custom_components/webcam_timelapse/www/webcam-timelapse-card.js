@@ -1210,18 +1210,96 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
     line-height: 1.45;
   }
 
+  /* The readings as one list in one outline, rows divided by a rule —
+     the shape of HA's own entity lists, and quieter than a box per row. */
   .ed-rows {
-    display: grid;
-    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--divider-color);
+    border-radius: var(--ha-border-radius-md, 8px);
+    overflow: hidden;
   }
 
-  /* A reading's colour, as the leading icon of its row. Same box as an
-     mdi icon so the headers of rows and groups line up. */
+  .ed-row + .ed-row {
+    border-top: 1px solid var(--divider-color);
+  }
+
+  .ed-row-head {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding-inline-end: 4px;
+    color: var(--secondary-text-color);
+  }
+
+  /* The whole name area opens the row: a big target, a real button. */
+  .ed-row-main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 56px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 8px 8px 12px;
+    border: 0;
+    background: none;
+    color: var(--primary-text-color);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .ed-row-main:hover {
+    background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  }
+
+  .ed-row-main:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
+
+  .ed-row-titles {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ed-row-name {
+    font-weight: var(--ha-font-weight-medium, 500);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ed-row-summary {
+    color: var(--secondary-text-color);
+    font-size: var(--ha-font-size-s, 12px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ed-chevron {
+    flex: none;
+    color: var(--secondary-text-color);
+  }
+
+  .ed-row.open .ed-chevron {
+    transform: rotate(180deg);
+  }
+
+  .ed-row-body {
+    display: grid;
+    gap: 12px;
+    padding: 4px 12px 12px;
+  }
+
+  /* A reading's colour, so the list can be matched to the overlay. */
   .ed-dot {
-    display: block;
+    flex: none;
     width: 14px;
     height: 14px;
-    margin: 5px;
     border-radius: 50%;
     box-shadow: 0 0 0 1px var(--divider-color);
   }
@@ -1275,34 +1353,11 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
     gap: 2px;
   }
 
-  .ed-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 4px;
-    padding-top: 4px;
-    border-top: 1px solid var(--divider-color);
-  }
-
-  /* Remove sits apart from the two moves, so it is not pressed by a
-     thumb on its way to the arrow beside it. */
-  .ed-remove {
-    margin-inline-start: auto;
-    order: -1;
-  }
-
-  .ed-flat,
   .ed-fallback {
     display: grid;
     gap: 8px;
   }
 
-  .ed-flat {
-    padding: 12px;
-    border: 1px solid var(--divider-color);
-    border-radius: var(--ha-border-radius-md, 8px);
-  }
-
-  .ed-flat-head,
   .ed-fallback h4 {
     display: flex;
     align-items: center;
@@ -1434,19 +1489,15 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
       .computeLabel=${this.computeLabel}
       .computeHelper=${this.computeHelper}
       @value-changed=${e=>{e.stopPropagation();let t=e.detail.value,i=Object.fromEntries(n.filter(e=>t[e.name]!==r[e.name]).map(e=>[e.name,t[e.name]]));Object.keys(i).length>0&&this.applyChanges(i)}}
-    ></ha-form>`}setOpen(e,t){let n=new Set(this.open);t?n.add(e):n.delete(e),this.open=n}renderPanel(e,t,n,r,i){if(!this.panels)return N`<div class="ed-flat">
-        <div class="ed-flat-head">${r}<span>${t}</span></div>
-        ${i()}
-      </div>`;let a=this.open.has(e);return N`<ha-expansion-panel
+    ></ha-form>`}renderGroup(e){return N`<ha-expansion-panel
       outlined
-      .header=${t}
-      .secondary=${n}
-      .expanded=${a}
-      @expanded-will-change=${t=>{t.stopPropagation(),t.target===t.currentTarget&&this.setOpen(e,t.detail.expanded)}}
+      .header=${this.t(`editor.groups.${e.id}`)}
+      .secondary=${Je(e.id,this.config,this.t)}
+      @expanded-will-change=${t=>{t.stopPropagation();let n=new Set(this.open);t.detail.expanded?n.add(e.id):n.delete(e.id),this.open=n}}
     >
-      ${r}
-      ${a?i():F}
-    </ha-expansion-panel>`}renderGroup(e){let t=N`<ha-icon slot="leading-icon" icon=${e.icon}></ha-icon>`;return this.renderPanel(e.id,this.t(`editor.groups.${e.id}`),Je(e.id,this.config,this.t),t,()=>Ze(e.id)?this.renderReadings(e.id):N`<div class="ed-body">${this.renderForm(Ke[e.id])}</div>`)}renderFallback(){let e=Ge.filter(e=>!Ze(e.id)),t=H(this.config);return N`
+      <ha-icon slot="leading-icon" icon=${e.icon}></ha-icon>
+      ${this.open.has(e.id)?this.renderGroupBody(e.id):F}
+    </ha-expansion-panel>`}renderGroupBody(e){return Ze(e)?this.renderReadings(e):N`<div class="ed-body">${this.renderForm(Ke[e])}</div>`}renderFallback(){let e=Ge.filter(e=>!Ze(e.id)),t=H(this.config);return N`
       ${[`right`,`left`].map(e=>N`<div class="ed-fallback">
           <h4>${this.t(`editor.groups.${e}`)}</h4>
           ${this.renderReadings(e)}
@@ -1459,59 +1510,67 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
         .computeHelper=${this.computeHelper}
         @value-changed=${e=>{e.stopPropagation(),this.applyChanges(e.detail.value)}}
       ></ha-form>
-    `}rows(e){return this.config?.[U[e].rows]??[]}saveRows(e,t,n){let r=new Set([...this.open].filter(t=>!t.startsWith(`${e}:`)));n.forEach((t,n)=>{t!==null&&this.open.has(`${e}:${t}`)&&r.add(`${e}:${n}`)}),this.open=r,this.applyChanges({[U[e].rows]:t})}addRow(e){let t=this.rows(e);this.saveRows(e,[...t,{entity:``}],[...t.map((e,t)=>t),null]),this.setOpen(`${e}:${t.length}`,!0)}removeRow(e,t){let n=this.rows(e),r=n.map((e,t)=>t).filter(e=>e!==t);this.saveRows(e,r.map(e=>n[e]),r)}moveRow(e,t,n){let r=this.rows(e).map((e,t)=>t),i=t+n;i<0||i>=r.length||([r[t],r[i]]=[r[i],r[t]],this.saveRows(e,r.map(t=>this.rows(e)[t]),r))}patchRow(e,t,n){let r=this.rows(e).map((e,r)=>r===t?{...e,...n}:e);this.applyChanges({[U[e].rows]:r})}renderReadings(e){let t=this.rows(e);return N`<div class="ed-body">
+    `}rows(e){return this.config?.[U[e].rows]??[]}isFocused(e,t){return this.openRow?.side===e&&this.openRow.index===t}toggleFocus(e,t){this.openRow=this.isFocused(e,t)?void 0:{side:e,index:t}}saveRows(e,t){this.applyChanges({[U[e].rows]:t})}addRow(e){let t=this.rows(e);this.saveRows(e,[...t,{entity:``}]),this.openRow={side:e,index:t.length}}removeRow(e,t){this.saveRows(e,this.rows(e).filter((e,n)=>n!==t)),this.openRow?.side===e&&(this.openRow.index===t?this.openRow=void 0:this.openRow.index>t&&(this.openRow={side:e,index:this.openRow.index-1}))}moveRow(e,t,n){let r=[...this.rows(e)],i=t+n;i<0||i>=r.length||([r[t],r[i]]=[r[i],r[t]],this.saveRows(e,r),this.isFocused(e,t)?this.openRow={side:e,index:i}:this.isFocused(e,i)&&(this.openRow={side:e,index:t}))}patchRow(e,t,n){let r=this.rows(e).map((e,r)=>r===t?{...e,...n}:e);this.applyChanges({[U[e].rows]:r})}renderReadings(e){let t=this.rows(e);return N`<div class="ed-body">
       <p class="ed-hint">${this.t(`editor.overlay_${e}_hint`)}</p>
       ${this.renderForm([{name:U[e].title,selector:{text:{}}}])}
-      ${t.length>0?N`<div class="ed-rows">
+      ${t.length>0?N`<ul class="ed-rows">
             ${t.map((n,r)=>this.renderRow(e,n,r,t.length))}
-          </div>`:F}
+          </ul>`:F}
       <div>
-        <ha-button @click=${()=>this.addRow(e)}>
+        <ha-button appearance="plain" @click=${()=>this.addRow(e)}>
           <ha-icon icon="mdi:plus" slot="icon" aria-hidden="true"></ha-icon>
           ${this.t(`editor.add_entity`)}
         </ha-button>
       </div>
-    </div>`}rowTitle(e){let t=e.entity?this.hass?.states[e.entity]?.attributes.friendly_name:void 0;return e.name||t||e.entity||this.t(`editor.new_entity`)}rowSummary(e,t){let n=e.unit??(e.entity?this.hass?.states[e.entity]?.attributes.unit_of_measurement:void 0);return[e.entity&&e.entity!==t?e.entity:null,n||null,e.graph?this.t(`editor.graph`):null].filter(e=>e!==null).join(` · `)}renderRow(e,t,n,r){let i=H(this.config),a=this.rowTitle(t),o=N`<span
-      slot="leading-icon"
-      class="ed-dot"
-      style="background:${t.color??`var(--primary-color)`}"
-      aria-hidden="true"
-    ></span>`;return this.renderPanel(`${e}:${n}`,a,this.rowSummary(t,a),o,()=>{let a={...Ve(t,i.graph_hours)};return N`<div class="ed-body">
-          <ha-form
-            .hass=${this.hass}
-            .data=${a}
-            .schema=${qe(t,i)}
-            .computeLabel=${this.computeLabel}
-            .computeHelper=${this.computeRowHelper}
-            @value-changed=${t=>{t.stopPropagation();let r=t.detail.value,i=Object.fromEntries(Object.keys(r).filter(e=>r[e]!==a[e]).map(e=>[e,r[e]]));Object.keys(i).length>0&&this.patchRow(e,n,i)}}
-          ></ha-form>
-
-          ${this.renderColor(e,t,n)}
-
-          <div class="ed-actions">
-            <ha-icon-button
-              .label=${this.t(`editor.move_up`)}
-              .disabled=${n===0}
-              @click=${()=>this.moveRow(e,n,-1)}
-            >
-              <ha-icon icon="mdi:arrow-up" aria-hidden="true"></ha-icon>
-            </ha-icon-button>
-            <ha-icon-button
-              .label=${this.t(`editor.move_down`)}
-              .disabled=${n===r-1}
-              @click=${()=>this.moveRow(e,n,1)}
-            >
-              <ha-icon icon="mdi:arrow-down" aria-hidden="true"></ha-icon>
-            </ha-icon-button>
-            <ha-icon-button
-              class="ed-remove"
-              .label=${this.t(`editor.remove`)}
-              @click=${()=>this.removeRow(e,n)}
-            >
-              <ha-icon icon="mdi:delete-outline" aria-hidden="true"></ha-icon>
-            </ha-icon-button>
-          </div>
-        </div>`})}renderColor(e,t,n){let r=t=>this.patchRow(e,n,{color:t.target.value}),i=t.color&&/^#[0-9a-f]{6}$/i.test(t.color)?t.color:this.accent;return N`<div class="ed-color">
+    </div>`}rowTitle(e){let t=e.entity?this.hass?.states[e.entity]?.attributes.friendly_name:void 0;return e.name||t||e.entity||this.t(`editor.new_entity`)}rowSummary(e,t){let n=e.unit??(e.entity?this.hass?.states[e.entity]?.attributes.unit_of_measurement:void 0);return[e.entity&&e.entity!==t?e.entity:null,n||null,e.graph?this.t(`editor.graph`):null].filter(e=>e!==null).join(` · `)}renderRow(e,t,n,r){let i=this.rowTitle(t),a=this.rowSummary(t,i),o=this.isFocused(e,n);return N`<li class="ed-row ${o?`open`:``}">
+      <div class="ed-row-head">
+        <button
+          class="ed-row-main"
+          type="button"
+          aria-expanded=${o?`true`:`false`}
+          @click=${()=>this.toggleFocus(e,n)}
+        >
+          <span
+            class="ed-dot"
+            style="background:${t.color??`var(--primary-color)`}"
+            aria-hidden="true"
+          ></span>
+          <span class="ed-row-titles">
+            <span class="ed-row-name">${i}</span>
+            ${a?N`<span class="ed-row-summary">${a}</span>`:F}
+          </span>
+          <ha-icon class="ed-chevron" icon="mdi:chevron-down" aria-hidden="true"></ha-icon>
+        </button>
+        <ha-icon-button
+          .label=${this.t(`editor.move_up`)}
+          .disabled=${n===0}
+          @click=${()=>this.moveRow(e,n,-1)}
+        >
+          <ha-icon icon="mdi:arrow-up" aria-hidden="true"></ha-icon>
+        </ha-icon-button>
+        <ha-icon-button
+          .label=${this.t(`editor.move_down`)}
+          .disabled=${n===r-1}
+          @click=${()=>this.moveRow(e,n,1)}
+        >
+          <ha-icon icon="mdi:arrow-down" aria-hidden="true"></ha-icon>
+        </ha-icon-button>
+        <ha-icon-button .label=${this.t(`editor.remove`)} @click=${()=>this.removeRow(e,n)}>
+          <ha-icon icon="mdi:delete-outline" aria-hidden="true"></ha-icon>
+        </ha-icon-button>
+      </div>
+      ${o?this.renderRowSettings(e,t,n):F}
+    </li>`}renderRowSettings(e,t,n){let r=H(this.config),i={...Ve(t,r.graph_hours)};return N`<div class="ed-row-body">
+      <ha-form
+        .hass=${this.hass}
+        .data=${i}
+        .schema=${qe(t,r)}
+        .computeLabel=${this.computeLabel}
+        .computeHelper=${this.computeRowHelper}
+        @value-changed=${t=>{t.stopPropagation();let r=t.detail.value,a=Object.fromEntries(Object.keys(r).filter(e=>r[e]!==i[e]).map(e=>[e,r[e]]));Object.keys(a).length>0&&this.patchRow(e,n,a)}}
+      ></ha-form>
+      ${this.renderColor(e,t,n)}
+    </div>`}renderColor(e,t,n){let r=t=>this.patchRow(e,n,{color:t.target.value}),i=t.color&&/^#[0-9a-f]{6}$/i.test(t.color)?t.color:this.accent;return N`<div class="ed-color">
       <label class="swatch">
         <input
           type="color"
@@ -1525,7 +1584,10 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
           <span class="ed-hint">${t.color?t.color:this.t(`editor.color_default`)}</span>
         </span>
       </label>
-      ${t.color?N`<ha-button @click=${()=>this.patchRow(e,n,{color:void 0})}>
+      ${t.color?N`<ha-button
+            appearance="plain"
+            @click=${()=>this.patchRow(e,n,{color:void 0})}
+          >
             ${this.t(`editor.color_reset`)}
           </ha-button>`:F}
     </div>`}render(){return!this.hass||!this.config?N`${F}`:N`<div class="ed">
@@ -1533,7 +1595,7 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
       <div class="ed-groups">
         ${this.panels?Ge.map(e=>this.renderGroup(e)):this.renderFallback()}
       </div>
-    </div>`}};G([Me({attribute:!1})],K.prototype,`hass`,void 0),G([z()],K.prototype,`config`,void 0),G([z()],K.prototype,`open`,void 0),G([z()],K.prototype,`panels`,void 0),K=G([ke(`webcam-timelapse-card-editor`)],K);var Qe=class{constructor(e){this.task=e,this.running=!1,this.queued=!1,this.waiters=[]}request(){return new Promise(e=>{this.waiters.push(e),this.running?this.queued=!0:this.drain()})}get busy(){return this.running}async drain(){this.running=!0;try{do{this.queued=!1;let e=this.waiters;this.waiters=[];try{await this.task()}catch{}for(let t of e)t()}while(this.queued)}finally{this.running=!1}}},$e=`0.8.0`,et=`webcam-timelapse-card`,tt=`webcam_timelapse/index`,nt=`webcam_timelapse/card_version`,rt=`webcam_timelapse/luma`,it=`webcam_timelapse/export/start`,at=`webcam_timelapse/export/subscribe`,ot=`webcam_timelapse/export/cancel`,st=`media_source/resolve_media`,ct={radius:6,maxGain:1.5};function lt(e,t=.15){if(e.length===0)return 0;let n=e.toSorted((e,t)=>e-t),r=Math.floor(n.length*t),i=n.length-2*r>=3?n.slice(r,n.length-r):n;return i.reduce((e,t)=>e+t,0)/i.length}function ut(e,t=ct){let n=new Float32Array(e.length).fill(1),{radius:r,maxGain:i}=t;if(r<1||e.length===0)return n;let a=1/i;for(let t=0;t<e.length;t++){let o=e[t];if(o==null||o<8)continue;let s=Math.max(0,t-r),c=Math.min(e.length-1,t+r),l=[];for(let t=s;t<=c;t++){let n=e[t];n!=null&&n>=8&&l.push(n)}if(l.length<3)continue;let u=lt(l);n[t]=Math.min(Math.max(u/o,a),i)}return n}function dt(e){let t=Math.min(Math.max(e,0),100);return t===0?0:Math.max(1,Math.round(t/100*12))}var ft={base:``,ext:`.webp`,step:600,t0:null,count:0,gaps:[],retention_days:0,online:!0,newest_slot:null};function pt(e,t){return e.t0===null||t<0||t>=e.count?null:e.t0+t*e.step}function mt(e,t){let n=pt(e,t);return n===null?null:`${e.base}${n}${e.ext}`}function ht(e){let t=new Uint8Array(e.count).fill(1);for(let[n,r]of e.gaps){let i=Math.max(0,n),a=Math.min(e.count,n+r);for(let e=i;e<a;e++)t[e]=0}return t}function q(e,t,n=1){for(let r=t;r>=0&&r<e.length;r+=n)if(e[r])return r;return null}function gt(e){return e.t0!==null&&e.count>0}var _t=class{constructor(e){this.size=e,this.cursor=0,this.slots=Array.from({length:e},()=>null)}prefetch(e){let t=new Image;t.decoding=`async`,t.fetchPriority=`low`,t.src=e,this.slots[this.cursor]=t,this.cursor=(this.cursor+1)%this.size}clear(){this.slots.fill(null),this.cursor=0}};function vt(e){return Math.min(Math.max(Math.round(4*e),4),16)}var yt=500,bt=1e3/33;1e3/yt;function xt(e){let t=Math.max(e,0)*2;if(t<=0)return{stride:1,frameDelay:yt};let n=Math.max(1,Math.round(t/bt));return{stride:n,frameDelay:Math.max(1e3*n/t,33)}}function St(e,t,n){let r=q(e,t+Math.max(1,n));if(r!==null)return r;let i=q(e,e.length-1,-1);return i!==null&&i>t?i:null}function Ct(e,t,n,r,i){let a=Math.max(1,r),o=i>t+n*a?t:Math.max(i,t),s=[];for(let r=1;r<=n;r++){let n=t+r*a;if(n<=o)continue;let i=q(e,n);if(i===null)break;i>o&&(s.push(i),o=i)}return s}function wt(e){return e.currentSrc!==e.requested||!e.complete?`pending`:e.naturalWidth>0?`ready`:`failed`}function Tt(e){return e.configured&&!e.reducedMotion&&!e.alreadyPlaying}function Et(e,t,n){return n.reducedMotion?0:n.playing?e>4?0:Math.min(120,Math.round(t/2)):120}function Dt(e){return e?.trim()||void 0}function Ot(e){let t=[],n=e?.entities_left??[];n.length>0&&t.push({side:`left`,title:Dt(e?.overlay_title_left),entities:n});let r=e?.entities??[];return r.length>0&&t.push({side:`right`,title:Dt(e?.overlay_title),entities:r}),t}function kt(e){return Ot(e).flatMap(e=>e.entities)}var At=[12,24,30,60],jt=[`left`,`right`,`top`,`bottom`],Mt={min:10,max:80,step:5,default:30},Nt={min:5,max:50,step:5,default:15},Pt=[`native`,`16:9`,`9:16`,`1:1`],Ft={"16:9":16/9,"9:16":9/16,"1:1":1},It={native:`mdi:camera-outline`,"16:9":`mdi:crop-landscape`,"9:16":`mdi:crop-portrait`,"1:1":`mdi:crop-square`},Lt={native:{timestamp:Nt.default,readings:Mt.default},"16:9":{timestamp:Nt.default,readings:Mt.default},"1:1":{timestamp:20,readings:40},"9:16":{timestamp:30,readings:55}},Rt=[1,2,5,10],J=e=>Math.max(2,e-e%2);function zt(e,t,n){let[r,i]=e;if(t===`native`)return[0,0,r,i];let a=Ft[t],o=Math.min(1,Math.max(0,n/100));if(r/i>a){let e=Math.min(J(Bt(i*a)),J(r)),t=Bt((r-e)*o);return[t,0,t+e,J(i)]}let s=Math.min(J(Bt(r/a)),J(i)),c=Bt((i-s)*o);return[0,c,J(r),c+s]}function Bt(e){let t=Math.floor(e),n=e-t;return n>.5?t+1:n<.5||t%2==0?t:t+1}function Vt(e,t){let[n,r,i,a]=zt(e,t,50);return i-n<J(e[0])?`x`:a-r<J(e[1])?`y`:null}function Ht(e,t,n){let[r,i,a,o]=zt(e,t,n),[s,c]=e;return{left:r/s*100,top:i/c*100,width:(a-r)/s*100,height:(o-i)/c*100}}function Ut(e,t,n){let[r,i,a,o]=zt(e,t,n);return[J(a-r),J(o-i)]}function Wt(e,t){return e<=0?0:Math.ceil(e/Math.max(1,t))}var Gt=.1,Kt={low:.7,high:1.3};function qt(e,t){let n=e*t[0]*t[1]*Gt/8;return{bytes:n,low:n*Kt.low,high:n*Kt.high}}var Jt=[[`16:9`,16/9],[`4:3`,4/3],[`3:2`,3/2],[`5:4`,5/4],[`1:1`,1],[`21:9`,21/9],[`9:16`,9/16],[`3:4`,3/4]];function Yt(e){let t=e[0]/e[1],n=Jt.find(([,e])=>Math.abs(t/e-1)<.01);return n?n[0]:`${t.toFixed(2)}:1`}var Xt=[24,72,168];function Zt(e){return e.t0===null||e.count===0?null:{start:0,end:e.count-1}}function Qt(e,t){let n=Math.max(0,t-1),r=e=>Math.min(Math.max(Math.round(e),0),n),i=r(e.start),a=r(e.end);return i<=a?{start:i,end:a}:{start:a,end:i}}function $t(e,t,n){let r=Qt({start:t,end:t},n).start;return{start:r,end:Math.max(e.end,r)}}function en(e,t,n){let r=Qt({start:t,end:t},n).end;return{start:Math.min(e.start,r),end:r}}function tn(e,t){let n=Zt(e);if(n===null)return null;let r=Math.round(t*3600/e.step);return{start:Math.max(0,n.end-r),end:n.end}}function nn(e,t){return e.count*e.step>t*3600}function rn(e,t){let n=0,r=Math.min(t.end,e.length-1);for(let i=Math.max(0,t.start);i<=r;i++)e[i]&&n++;return n}function an(e,t){let n=pt(e,t.start),r=pt(e,t.end);return n===null||r===null?null:{start:n,end:r}}function on(e,t){let n=Math.max(1,t-1);return{left:e.start/n*100,width:(e.end-e.start)/n*100}}function sn(e){if(!Number.isFinite(e)||e<=0)return`0 s`;if(e<60)return e<10?`${(Math.round(e*10)/10).toString()} s`:`${Math.round(e)} s`;let t=Math.round(e),n=e=>String(e).padStart(2,`0`),r=Math.floor(t/60);return r<60?`${r}:${n(t%60)} min`:`${Math.floor(r/60)}:${n(r%60)}:${n(t%60)} h`}function cn(e){return`/media-browser/browser/${encodeURIComponent(`,${e}`)}`}function Y(e){if(!Number.isFinite(e)||e<=0)return`0 MB`;let t=e/1e6;return t>=1e3?`${(t/1e3).toFixed(1)} GB`:t>=10?`${Math.round(t)} MB`:`${t.toFixed(1)} MB`}function ln(e){return!e||e.total<=0?0:Math.min(1,Math.max(0,e.done/e.total))}function un(e){let t=/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/.exec(e.trim());return t?`#${t.slice(1,4).map(e=>Math.min(255,Number(e)).toString(16).padStart(2,`0`)).join(``)}`:e}function dn(e,t){return Number.isFinite(e)?Math.min(t.max,Math.max(t.min,Math.round(e))):t.default}function fn(e,t){if(kt(e).length===0)return null;let n=H(e),r=e=>(e??[]).map(e=>e.color?{...e,color:un(t(e.color))}:e);return{entities:r(e.entities),entities_left:r(e.entities_left),overlay_title:e.overlay_title??``,overlay_title_left:e.overlay_title_left??``,graph_hours:n.graph_hours,show_graph:n.show_graph,show_sun:n.show_sun,accent_color:un(t(`var(--wtl-accent)`))}}function pn(e,t,n,r,i,a){let o=an(t,n);return o===null?null:{entity_id:e.camera_entity,start:o.start,end:o.end,fps:r.fps,deflicker:Math.min(100,Math.max(0,Math.round(H(e).deflicker))),timestamp:r.timestamp,timestamp_size:dn(r.timestampSize,Nt),overlay:r.readings?fn(e,a):null,readings_size:dn(r.readingsSize,Mt),readings_position:r.positions.right??null,readings_position_left:r.positions.left??null,aspect:r.aspect,crop_position:Math.min(100,Math.max(0,Math.round(r.cropPosition))),every:Math.min(60,Math.max(1,Math.round(r.every))),language:i}}var mn=/* @__PURE__ */ new Map;function X(e,t){let n=`${e}|${JSON.stringify(t)}`,r=mn.get(n);return r===void 0&&(r=new Intl.DateTimeFormat(e,t),mn.set(n,r)),r}function hn(e,t){return X(`en-CA`,{timeZone:t,year:`numeric`,month:`2-digit`,day:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}function gn(e,t){let n=X(`en-GB`,{timeZone:t,hour:`2-digit`,minute:`2-digit`,second:`2-digit`,hour12:!1}).formatToParts(/* @__PURE__ */ new Date(e*1e3)),r=0,i=0,a=0;for(let e of n)e.type===`hour`?r=Number(e.value):e.type===`minute`?i=Number(e.value):e.type===`second`&&(a=Number(e.value));return r===24&&(r=0),r*3600+i*60+a}function _n(e,t,n,r){let i={timeZone:t,day:`2-digit`,month:`2-digit`};return r===`long`&&(i.weekday=`long`),r===`short`&&(i.weekday=`short`),X(n,i).format(/* @__PURE__ */ new Date(e*1e3))}function vn(e){return e>=560?`long`:e>=380?`short`:`date`}function yn(e,t,n){let r=Math.max(1,Math.floor(t/n));return Math.max(1,Math.ceil(e/r))}function bn(e,t,n,r){if(e.t0===null||e.count===0)return[];let i=vn(r),a=i===`long`?110:i===`short`?78:58,o=[],s=hn(e.t0,t);for(let n=1;n<e.count;n++){let r=pt(e,n);if(r===null)continue;let i=hn(r,t);i!==s&&(o.push({position:n,slot:r,date:i}),s=i)}let c=yn(o.length,r,a),l=Math.max(1,e.count-1);return o.map((e,r)=>{let a=e.date.endsWith(`-01`),o=a||r%c===0;return{position:e.position,left:e.position/l*100,label:o?_n(e.slot,t,n,i):``,isMonthStart:a}})}var xn=[600,900,1800,3600,7200,10800,21600,43200],Sn=9,Cn=46;function wn(e,t,n){if(e<=0)return null;let r=e/Math.max(2,Math.floor(n/Sn));for(let e of xn)if(e>=r&&e>=t)return e;return null}function Tn(e,t,n,r){if(e.t0===null||e.count===0)return[];let i=e.t0,a=Math.max(1,e.count-1),o=i+a*e.step,s=wn(o-i,e.step,r);if(s===null)return[];let c=s/(o-i)*r,l=Math.max(1,Math.ceil(Cn/c)),u=Math.min(43200,s*l),d=[],f=gn(i,t)%s,p=f===0?i:i+(s-f),m=-1/0;for(let c=0;p<=o&&c<4096;c++){let o=gn(p,t),c=o%s;if(c===0){let s=Math.round((p-i)/e.step),c=s/a*100,l=c/100*r,f=``;o%u===0&&l-m>=Cn&&(f=Dn(p,t,n),m=l),d.push({position:s,left:c,label:f})}p+=s-c}return d}function En(e,t,n){return X(n,{timeZone:t,weekday:`short`,day:`2-digit`,month:`2-digit`,hour:`2-digit`,minute:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}function Dn(e,t,n){return X(n,{timeZone:t,hour:`2-digit`,minute:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}var On=/* @__PURE__ */ new Set([`unknown`,`unavailable`,`none`,``]),kn=/* @__PURE__ */ new Map,An=/* @__PURE__ */ new Map;function jn(e){if(typeof e.lu==`number`)return Math.round(e.lu*1e3);let t=e.lu??e.last_updated??e.last_changed;return t?new Date(t).getTime():0}function Mn(e,t){let n=(e.a??e.attributes)?.[t];if(typeof n!=`string`&&typeof n!=`number`)return null;let r=new Date(n).getTime();return Number.isFinite(r)&&r>0?r:null}async function Nn(e,t,n){let r=e?.callWS?.bind(e);if(!r||t.length===0)return/* @__PURE__ */ new Map;let i=n.timeAttributes??{},a=`${t.toSorted().join(`,`)}|${n.days}`,o=An.get(a);if(o)return o;let s=/* @__PURE__ */ new Date,c=/* @__PURE__ */ new Date(s.getTime()-n.days*864e5),l=Object.keys(i).length>0,u=(async()=>{try{let e=await r({type:`history/history_during_period`,start_time:c.toISOString(),end_time:s.toISOString(),entity_ids:t,minimal_response:!l,no_attributes:!l,significant_changes_only:!0}),n=/* @__PURE__ */ new Map;for(let r of t){let t=i[r],a=(e?.[r]??[]).map(e=>{let n=String(e.s??e.state??``).trim(),r=On.has(n.toLowerCase())?NaN:parseFloat(n);return{at:(t?Mn(e,t):null)??jn(e),value:r}}).filter(e=>Number.isFinite(e.value)&&e.at>0).toSorted((e,t)=>e.at-t.at);n.set(r,a),kn.set(r,a)}return n}catch{return new Map(t.map(e=>[e,kn.get(e)??[]]))}finally{An.delete(a)}})();return An.set(a,u),u}function Pn(e,t,n){if(e.length===0)return null;let r=0,i=e.length-1,a=-1;for(;r<=i;){let n=r+i>>1;e[n].at<=t?(a=n,r=n+1):i=n-1}if(a===-1)return null;let o=e[a];return{value:o.value,at:o.at,stale:t-o.at>n}}function Fn(e){if(!Number.isFinite(e)||e<=0)return 0;let t=e*(1+1e-9),n=10**Math.floor(Math.log10(t)),r=t/n;return(r>=5?5:r>=2?2:1)*n}var In=/* @__PURE__ */ new WeakMap;function Ln(e){let t=In.get(e);if(t)return t;let n=[];for(let t=1;t<e.length;t++){let r=Math.abs(e[t].value-e[t-1].value);r>0&&n.push(r)}n.sort((e,t)=>e-t);let r=n[Math.floor(n.length*.1)],i={quantum:r===void 0?0:Fn(r),staleAfter:Rn(e)};return In.set(e,i),i}function Rn(e,t=54e5){if(e.length<3)return t;let n=[];for(let t=1;t<e.length;t++)n.push(e[t].at-e[t-1].at);n.sort((e,t)=>e-t);let r=n[n.length>>1]??t;return Math.max(r*2,t)}function zn(e,t,n){let r=n*36e5/2,i=t-r,a=t+r,o=e.filter(e=>e.at>=i&&e.at<=a);if(o[0]?.at===i)return o;let s;for(let t of e){if(t.at>=i)break;s=t}return s?[{at:i,value:s.value},...o]:o}async function Bn(e,t,n){if(!e?.callWS)return null;try{let r=await e.callWS({type:t});if(r?.version&&r.version!==n)return r.version}catch{}return null}function Vn(){try{window.caches?.keys?.().then(e=>{e.forEach(e=>window.caches?.delete?.(e))}).catch(()=>{})}catch{}window.location.reload()}function Hn(e,t){if(!e)return F;let n=t(`version_update`).replace(`{v}`,e),r=t(`version_reload`);return N`
+    </div>`}};G([Me({attribute:!1})],K.prototype,`hass`,void 0),G([z()],K.prototype,`config`,void 0),G([z()],K.prototype,`open`,void 0),G([z()],K.prototype,`openRow`,void 0),G([z()],K.prototype,`panels`,void 0),K=G([ke(`webcam-timelapse-card-editor`)],K);var Qe=class{constructor(e){this.task=e,this.running=!1,this.queued=!1,this.waiters=[]}request(){return new Promise(e=>{this.waiters.push(e),this.running?this.queued=!0:this.drain()})}get busy(){return this.running}async drain(){this.running=!0;try{do{this.queued=!1;let e=this.waiters;this.waiters=[];try{await this.task()}catch{}for(let t of e)t()}while(this.queued)}finally{this.running=!1}}},$e=`0.8.0`,et=`webcam-timelapse-card`,tt=`webcam_timelapse/index`,nt=`webcam_timelapse/card_version`,rt=`webcam_timelapse/luma`,it=`webcam_timelapse/export/start`,at=`webcam_timelapse/export/subscribe`,ot=`webcam_timelapse/export/cancel`,st=`media_source/resolve_media`,ct={radius:6,maxGain:1.5};function lt(e,t=.15){if(e.length===0)return 0;let n=e.toSorted((e,t)=>e-t),r=Math.floor(n.length*t),i=n.length-2*r>=3?n.slice(r,n.length-r):n;return i.reduce((e,t)=>e+t,0)/i.length}function ut(e,t=ct){let n=new Float32Array(e.length).fill(1),{radius:r,maxGain:i}=t;if(r<1||e.length===0)return n;let a=1/i;for(let t=0;t<e.length;t++){let o=e[t];if(o==null||o<8)continue;let s=Math.max(0,t-r),c=Math.min(e.length-1,t+r),l=[];for(let t=s;t<=c;t++){let n=e[t];n!=null&&n>=8&&l.push(n)}if(l.length<3)continue;let u=lt(l);n[t]=Math.min(Math.max(u/o,a),i)}return n}function dt(e){let t=Math.min(Math.max(e,0),100);return t===0?0:Math.max(1,Math.round(t/100*12))}var ft={base:``,ext:`.webp`,step:600,t0:null,count:0,gaps:[],retention_days:0,online:!0,newest_slot:null};function pt(e,t){return e.t0===null||t<0||t>=e.count?null:e.t0+t*e.step}function mt(e,t){let n=pt(e,t);return n===null?null:`${e.base}${n}${e.ext}`}function ht(e){let t=new Uint8Array(e.count).fill(1);for(let[n,r]of e.gaps){let i=Math.max(0,n),a=Math.min(e.count,n+r);for(let e=i;e<a;e++)t[e]=0}return t}function q(e,t,n=1){for(let r=t;r>=0&&r<e.length;r+=n)if(e[r])return r;return null}function gt(e){return e.t0!==null&&e.count>0}var _t=class{constructor(e){this.size=e,this.cursor=0,this.slots=Array.from({length:e},()=>null)}prefetch(e){let t=new Image;t.decoding=`async`,t.fetchPriority=`low`,t.src=e,this.slots[this.cursor]=t,this.cursor=(this.cursor+1)%this.size}clear(){this.slots.fill(null),this.cursor=0}};function vt(e){return Math.min(Math.max(Math.round(4*e),4),16)}var yt=500,bt=1e3/33;1e3/yt;function xt(e){let t=Math.max(e,0)*2;if(t<=0)return{stride:1,frameDelay:yt};let n=Math.max(1,Math.round(t/bt));return{stride:n,frameDelay:Math.max(1e3*n/t,33)}}function St(e,t,n){let r=q(e,t+Math.max(1,n));if(r!==null)return r;let i=q(e,e.length-1,-1);return i!==null&&i>t?i:null}function Ct(e,t,n,r,i){let a=Math.max(1,r),o=i>t+n*a?t:Math.max(i,t),s=[];for(let r=1;r<=n;r++){let n=t+r*a;if(n<=o)continue;let i=q(e,n);if(i===null)break;i>o&&(s.push(i),o=i)}return s}function wt(e){return e.currentSrc!==e.requested||!e.complete?`pending`:e.naturalWidth>0?`ready`:`failed`}function Tt(e){return e.configured&&!e.reducedMotion&&!e.alreadyPlaying}function Et(e,t,n){return n.reducedMotion?0:n.playing?e>4?0:Math.min(120,Math.round(t/2)):120}function Dt(e){return e?.trim()||void 0}function Ot(e){let t=[],n=e?.entities_left??[];n.length>0&&t.push({side:`left`,title:Dt(e?.overlay_title_left),entities:n});let r=e?.entities??[];return r.length>0&&t.push({side:`right`,title:Dt(e?.overlay_title),entities:r}),t}function kt(e){return Ot(e).flatMap(e=>e.entities)}var At=[12,24,30,60],jt=[`left`,`right`,`top`,`bottom`],Mt={min:10,max:80,step:5,default:30},Nt={min:5,max:50,step:5,default:15},Pt=[`native`,`16:9`,`9:16`,`1:1`],Ft={"16:9":16/9,"9:16":9/16,"1:1":1},It={native:`mdi:camera-outline`,"16:9":`mdi:crop-landscape`,"9:16":`mdi:crop-portrait`,"1:1":`mdi:crop-square`},Lt={native:{timestamp:Nt.default,readings:Mt.default},"16:9":{timestamp:Nt.default,readings:Mt.default},"1:1":{timestamp:20,readings:40},"9:16":{timestamp:30,readings:55}},Rt=[1,2,5,10],J=e=>Math.max(2,e-e%2);function zt(e,t,n){let[r,i]=e;if(t===`native`)return[0,0,r,i];let a=Ft[t],o=Math.min(1,Math.max(0,n/100));if(r/i>a){let e=Math.min(J(Bt(i*a)),J(r)),t=Bt((r-e)*o);return[t,0,t+e,J(i)]}let s=Math.min(J(Bt(r/a)),J(i)),c=Bt((i-s)*o);return[0,c,J(r),c+s]}function Bt(e){let t=Math.floor(e),n=e-t;return n>.5?t+1:n<.5||t%2==0?t:t+1}function Vt(e,t){let[n,r,i,a]=zt(e,t,50);return i-n<J(e[0])?`x`:a-r<J(e[1])?`y`:null}function Ht(e,t,n){let[r,i,a,o]=zt(e,t,n),[s,c]=e;return{left:r/s*100,top:i/c*100,width:(a-r)/s*100,height:(o-i)/c*100}}function Ut(e,t,n){let[r,i,a,o]=zt(e,t,n);return[J(a-r),J(o-i)]}function Wt(e,t){return e<=0?0:Math.ceil(e/Math.max(1,t))}var Gt=.1,Kt={low:.7,high:1.3};function qt(e,t){let n=e*t[0]*t[1]*Gt/8;return{bytes:n,low:n*Kt.low,high:n*Kt.high}}var Jt=[[`16:9`,16/9],[`4:3`,4/3],[`3:2`,3/2],[`5:4`,5/4],[`1:1`,1],[`21:9`,21/9],[`9:16`,9/16],[`3:4`,3/4]];function Yt(e){let t=e[0]/e[1],n=Jt.find(([,e])=>Math.abs(t/e-1)<.01);return n?n[0]:`${t.toFixed(2)}:1`}var Xt=[24,72,168];function Zt(e){return e.t0===null||e.count===0?null:{start:0,end:e.count-1}}function Qt(e,t){let n=Math.max(0,t-1),r=e=>Math.min(Math.max(Math.round(e),0),n),i=r(e.start),a=r(e.end);return i<=a?{start:i,end:a}:{start:a,end:i}}function $t(e,t,n){let r=Qt({start:t,end:t},n).start;return{start:r,end:Math.max(e.end,r)}}function en(e,t,n){let r=Qt({start:t,end:t},n).end;return{start:Math.min(e.start,r),end:r}}function tn(e,t){let n=Zt(e);if(n===null)return null;let r=Math.round(t*3600/e.step);return{start:Math.max(0,n.end-r),end:n.end}}function nn(e,t){return e.count*e.step>t*3600}function rn(e,t){let n=0,r=Math.min(t.end,e.length-1);for(let i=Math.max(0,t.start);i<=r;i++)e[i]&&n++;return n}function an(e,t){let n=pt(e,t.start),r=pt(e,t.end);return n===null||r===null?null:{start:n,end:r}}function on(e,t){let n=Math.max(1,t-1);return{left:e.start/n*100,width:(e.end-e.start)/n*100}}function sn(e){if(!Number.isFinite(e)||e<=0)return`0 s`;if(e<60)return e<10?`${(Math.round(e*10)/10).toString()} s`:`${Math.round(e)} s`;let t=Math.round(e),n=e=>String(e).padStart(2,`0`),r=Math.floor(t/60);return r<60?`${r}:${n(t%60)} min`:`${Math.floor(r/60)}:${n(r%60)}:${n(t%60)} h`}function cn(e){return`/media-browser/browser/${encodeURIComponent(`,${e}`)}`}function Y(e){if(!Number.isFinite(e)||e<=0)return`0 MB`;let t=e/1e6;return t>=1e3?`${(t/1e3).toFixed(1)} GB`:t>=10?`${Math.round(t)} MB`:`${t.toFixed(1)} MB`}function ln(e){return!e||e.total<=0?0:Math.min(1,Math.max(0,e.done/e.total))}function un(e){let t=/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/.exec(e.trim());return t?`#${t.slice(1,4).map(e=>Math.min(255,Number(e)).toString(16).padStart(2,`0`)).join(``)}`:e}function dn(e,t){return Number.isFinite(e)?Math.min(t.max,Math.max(t.min,Math.round(e))):t.default}function fn(e,t){if(kt(e).length===0)return null;let n=H(e),r=e=>(e??[]).map(e=>e.color?{...e,color:un(t(e.color))}:e);return{entities:r(e.entities),entities_left:r(e.entities_left),overlay_title:e.overlay_title??``,overlay_title_left:e.overlay_title_left??``,graph_hours:n.graph_hours,show_graph:n.show_graph,show_sun:n.show_sun,accent_color:un(t(`var(--wtl-accent)`))}}function pn(e,t,n,r,i,a){let o=an(t,n);return o===null?null:{entity_id:e.camera_entity,start:o.start,end:o.end,fps:r.fps,deflicker:Math.min(100,Math.max(0,Math.round(H(e).deflicker))),timestamp:r.timestamp,timestamp_size:dn(r.timestampSize,Nt),overlay:r.readings?fn(e,a):null,readings_size:dn(r.readingsSize,Mt),readings_position:r.positions.right??null,readings_position_left:r.positions.left??null,aspect:r.aspect,crop_position:Math.min(100,Math.max(0,Math.round(r.cropPosition))),every:Math.min(60,Math.max(1,Math.round(r.every))),language:i}}var mn=/* @__PURE__ */ new Map;function X(e,t){let n=`${e}|${JSON.stringify(t)}`,r=mn.get(n);return r===void 0&&(r=new Intl.DateTimeFormat(e,t),mn.set(n,r)),r}function hn(e,t){return X(`en-CA`,{timeZone:t,year:`numeric`,month:`2-digit`,day:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}function gn(e,t){let n=X(`en-GB`,{timeZone:t,hour:`2-digit`,minute:`2-digit`,second:`2-digit`,hour12:!1}).formatToParts(/* @__PURE__ */ new Date(e*1e3)),r=0,i=0,a=0;for(let e of n)e.type===`hour`?r=Number(e.value):e.type===`minute`?i=Number(e.value):e.type===`second`&&(a=Number(e.value));return r===24&&(r=0),r*3600+i*60+a}function _n(e,t,n,r){let i={timeZone:t,day:`2-digit`,month:`2-digit`};return r===`long`&&(i.weekday=`long`),r===`short`&&(i.weekday=`short`),X(n,i).format(/* @__PURE__ */ new Date(e*1e3))}function vn(e){return e>=560?`long`:e>=380?`short`:`date`}function yn(e,t,n){let r=Math.max(1,Math.floor(t/n));return Math.max(1,Math.ceil(e/r))}function bn(e,t,n,r){if(e.t0===null||e.count===0)return[];let i=vn(r),a=i===`long`?110:i===`short`?78:58,o=[],s=hn(e.t0,t);for(let n=1;n<e.count;n++){let r=pt(e,n);if(r===null)continue;let i=hn(r,t);i!==s&&(o.push({position:n,slot:r,date:i}),s=i)}let c=yn(o.length,r,a),l=Math.max(1,e.count-1);return o.map((e,r)=>{let a=e.date.endsWith(`-01`),o=a||r%c===0;return{position:e.position,left:e.position/l*100,label:o?_n(e.slot,t,n,i):``,isMonthStart:a}})}var xn=[600,900,1800,3600,7200,10800,21600,43200],Sn=9,Cn=46;function wn(e,t,n){if(e<=0)return null;let r=e/Math.max(2,Math.floor(n/Sn));for(let e of xn)if(e>=r&&e>=t)return e;return null}function Tn(e,t,n,r){if(e.t0===null||e.count===0)return[];let i=e.t0,a=Math.max(1,e.count-1),o=i+a*e.step,s=wn(o-i,e.step,r);if(s===null)return[];let c=s/(o-i)*r,l=Math.max(1,Math.ceil(Cn/c)),u=Math.min(43200,s*l),d=[],f=gn(i,t)%s,p=f===0?i:i+(s-f),m=-1/0;for(let c=0;p<=o&&c<4096;c++){let o=gn(p,t),c=o%s;if(c===0){let s=Math.round((p-i)/e.step),c=s/a*100,l=c/100*r,f=``;o%u===0&&l-m>=Cn&&(f=Dn(p,t,n),m=l),d.push({position:s,left:c,label:f})}p+=s-c}return d}function En(e,t,n){return X(n,{timeZone:t,weekday:`short`,day:`2-digit`,month:`2-digit`,hour:`2-digit`,minute:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}function Dn(e,t,n){return X(n,{timeZone:t,hour:`2-digit`,minute:`2-digit`}).format(/* @__PURE__ */ new Date(e*1e3))}var On=/* @__PURE__ */ new Set([`unknown`,`unavailable`,`none`,``]),kn=/* @__PURE__ */ new Map,An=/* @__PURE__ */ new Map;function jn(e){if(typeof e.lu==`number`)return Math.round(e.lu*1e3);let t=e.lu??e.last_updated??e.last_changed;return t?new Date(t).getTime():0}function Mn(e,t){let n=(e.a??e.attributes)?.[t];if(typeof n!=`string`&&typeof n!=`number`)return null;let r=new Date(n).getTime();return Number.isFinite(r)&&r>0?r:null}async function Nn(e,t,n){let r=e?.callWS?.bind(e);if(!r||t.length===0)return/* @__PURE__ */ new Map;let i=n.timeAttributes??{},a=`${t.toSorted().join(`,`)}|${n.days}`,o=An.get(a);if(o)return o;let s=/* @__PURE__ */ new Date,c=/* @__PURE__ */ new Date(s.getTime()-n.days*864e5),l=Object.keys(i).length>0,u=(async()=>{try{let e=await r({type:`history/history_during_period`,start_time:c.toISOString(),end_time:s.toISOString(),entity_ids:t,minimal_response:!l,no_attributes:!l,significant_changes_only:!0}),n=/* @__PURE__ */ new Map;for(let r of t){let t=i[r],a=(e?.[r]??[]).map(e=>{let n=String(e.s??e.state??``).trim(),r=On.has(n.toLowerCase())?NaN:parseFloat(n);return{at:(t?Mn(e,t):null)??jn(e),value:r}}).filter(e=>Number.isFinite(e.value)&&e.at>0).toSorted((e,t)=>e.at-t.at);n.set(r,a),kn.set(r,a)}return n}catch{return new Map(t.map(e=>[e,kn.get(e)??[]]))}finally{An.delete(a)}})();return An.set(a,u),u}function Pn(e,t,n){if(e.length===0)return null;let r=0,i=e.length-1,a=-1;for(;r<=i;){let n=r+i>>1;e[n].at<=t?(a=n,r=n+1):i=n-1}if(a===-1)return null;let o=e[a];return{value:o.value,at:o.at,stale:t-o.at>n}}function Fn(e){if(!Number.isFinite(e)||e<=0)return 0;let t=e*(1+1e-9),n=10**Math.floor(Math.log10(t)),r=t/n;return(r>=5?5:r>=2?2:1)*n}var In=/* @__PURE__ */ new WeakMap;function Ln(e){let t=In.get(e);if(t)return t;let n=[];for(let t=1;t<e.length;t++){let r=Math.abs(e[t].value-e[t-1].value);r>0&&n.push(r)}n.sort((e,t)=>e-t);let r=n[Math.floor(n.length*.1)],i={quantum:r===void 0?0:Fn(r),staleAfter:Rn(e)};return In.set(e,i),i}function Rn(e,t=54e5){if(e.length<3)return t;let n=[];for(let t=1;t<e.length;t++)n.push(e[t].at-e[t-1].at);n.sort((e,t)=>e-t);let r=n[n.length>>1]??t;return Math.max(r*2,t)}function zn(e,t,n){let r=n*36e5/2,i=t-r,a=t+r,o=e.filter(e=>e.at>=i&&e.at<=a);if(o[0]?.at===i)return o;let s;for(let t of e){if(t.at>=i)break;s=t}return s?[{at:i,value:s.value},...o]:o}async function Bn(e,t,n){if(!e?.callWS)return null;try{let r=await e.callWS({type:t});if(r?.version&&r.version!==n)return r.version}catch{}return null}function Vn(){try{window.caches?.keys?.().then(e=>{e.forEach(e=>window.caches?.delete?.(e))}).catch(()=>{})}catch{}window.location.reload()}function Hn(e,t){if(!e)return F;let n=t(`version_update`).replace(`{v}`,e),r=t(`version_reload`);return N`
     <div class="banner" role="alert" aria-live="assertive">
       <span>${n}</span>
       <button

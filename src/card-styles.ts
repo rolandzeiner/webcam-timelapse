@@ -1168,18 +1168,96 @@ export const cardStyles = css`
     line-height: 1.45;
   }
 
+  /* The readings as one list in one outline, rows divided by a rule —
+     the shape of HA's own entity lists, and quieter than a box per row. */
   .ed-rows {
-    display: grid;
-    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--divider-color);
+    border-radius: var(--ha-border-radius-md, 8px);
+    overflow: hidden;
   }
 
-  /* A reading's colour, as the leading icon of its row. Same box as an
-     mdi icon so the headers of rows and groups line up. */
+  .ed-row + .ed-row {
+    border-top: 1px solid var(--divider-color);
+  }
+
+  .ed-row-head {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding-inline-end: 4px;
+    color: var(--secondary-text-color);
+  }
+
+  /* The whole name area opens the row: a big target, a real button. */
+  .ed-row-main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 56px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 8px 8px 12px;
+    border: 0;
+    background: none;
+    color: var(--primary-text-color);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .ed-row-main:hover {
+    background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  }
+
+  .ed-row-main:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
+
+  .ed-row-titles {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ed-row-name {
+    font-weight: var(--ha-font-weight-medium, 500);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ed-row-summary {
+    color: var(--secondary-text-color);
+    font-size: var(--ha-font-size-s, 12px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ed-chevron {
+    flex: none;
+    color: var(--secondary-text-color);
+  }
+
+  .ed-row.open .ed-chevron {
+    transform: rotate(180deg);
+  }
+
+  .ed-row-body {
+    display: grid;
+    gap: 12px;
+    padding: 4px 12px 12px;
+  }
+
+  /* A reading's colour, so the list can be matched to the overlay. */
   .ed-dot {
-    display: block;
+    flex: none;
     width: 14px;
     height: 14px;
-    margin: 5px;
     border-radius: 50%;
     box-shadow: 0 0 0 1px var(--divider-color);
   }
@@ -1233,34 +1311,11 @@ export const cardStyles = css`
     gap: 2px;
   }
 
-  .ed-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 4px;
-    padding-top: 4px;
-    border-top: 1px solid var(--divider-color);
-  }
-
-  /* Remove sits apart from the two moves, so it is not pressed by a
-     thumb on its way to the arrow beside it. */
-  .ed-remove {
-    margin-inline-start: auto;
-    order: -1;
-  }
-
-  .ed-flat,
   .ed-fallback {
     display: grid;
     gap: 8px;
   }
 
-  .ed-flat {
-    padding: 12px;
-    border: 1px solid var(--divider-color);
-    border-radius: var(--ha-border-radius-md, 8px);
-  }
-
-  .ed-flat-head,
   .ed-fallback h4 {
     display: flex;
     align-items: center;
