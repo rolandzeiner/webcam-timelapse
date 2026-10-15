@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import configSource from "./config.ts?raw";
 import cardSource from "./webcam-timelapse-card.ts?raw";
 import { cardStyles } from "./card-styles";
 
@@ -197,7 +198,7 @@ describe("controls overlay", () => {
  */
 function narrowBlock(maxWidth = SINGLE_BREAKPOINT): string {
   const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
-  const start = css.indexOf(`@container (max-width: ${maxWidth}px)`);
+  const start = css.indexOf(`@container wtl-card (max-width: ${maxWidth}px)`);
   if (start === -1) return "";
   const next = css.indexOf("@container", start + 1);
   return css.slice(start, next === -1 ? undefined : next);
@@ -214,11 +215,23 @@ function escape(selector: string): string {
 }
 
 /** The breakpoints, read off the stylesheet rather than hard-coded twice. */
-const BREAKPOINTS = [...cardStyles.cssText.matchAll(/@container\s*\(max-width:\s*(\d+)px\)/g)].map(
-  (match) => Number(match[1]),
-);
+const BREAKPOINTS = [
+  ...cardStyles.cssText.matchAll(/@container\s+wtl-card\s*\(max-width:\s*(\d+)px\)/g),
+].map((match) => Number(match[1]));
 const SINGLE_BREAKPOINT = Math.min(...BREAKPOINTS);
 const PAIR_BREAKPOINT = Math.max(...BREAKPOINTS);
+
+describe("container queries", () => {
+  // .stage is a size container for the export crop. An unnamed query
+  // resolves against the nearest container, so one written for the card
+  // would quietly start measuring the stage for everything inside it.
+  it("name the card's container on every query", () => {
+    const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+    const queries = [...css.matchAll(/@container\s+([^{]*)\{/g)].map((match) => match[1]!.trim());
+    expect(queries.length).toBeGreaterThan(0);
+    for (const query of queries) expect(query.startsWith("wtl-card ")).toBe(true);
+  });
+});
 
 describe("narrow layout", () => {
   it("moves the readout to the top centre", () => {
@@ -366,11 +379,10 @@ describe("readout icon alignment", () => {
     expect(declarationsFor(".readout-icon")).toMatch(/align-self:\s*center/);
   });
 
-  it("spans ha-form across the whole entity row", () => {
-    // .ent-row is a two-column grid and ha-form is a direct child, so
-    // without an explicit span it lands in the narrow auto column beside
-    // the entity picker rather than under it.
-    expect(declarationsFor(".ent-row ha-form")).toMatch(/grid-column:\s*1\s*\/\s*-1/);
+  it("gives the editor's colour swatch a full-size target", () => {
+    // The one native input in the editor, so it gets no size from HA.
+    expect(declarationsFor('.swatch input[type="color"]')).toMatch(/width:\s*44px/);
+    expect(declarationsFor('.swatch input[type="color"]')).toMatch(/height:\s*44px/);
   });
 });
 
@@ -395,7 +407,7 @@ describe("night shading", () => {
     // camera pointed outdoors and noise for one pointed at a wall, and
     // the card cannot tell which it has.
     expect(cardSource).not.toMatch(/show_sun !== false/);
-    expect(cardSource).toMatch(/show_sun: false/);
+    expect(configSource).toMatch(/show_sun: false/);
   });
 
   it("follows the theme's own colour on the scrubber", () => {
@@ -706,8 +718,6 @@ describe("export entry point", () => {
     // in use or not.
     const controls = /private renderControls\(\)[\s\S]*?\n  \}/.exec(cardSource)?.[0];
     expect(controls).toMatch(/@click=\$\{this\.toggleExport\}/);
-    expect(cardSource).toMatch(
-      /show_export !== false && this\.exportOpen\s*\?\s*this\.renderExport\(\)/,
-    );
+    expect(cardSource).toMatch(/show_export && this\.exportOpen\s*\?\s*this\.renderExport\(\)/);
   });
 });

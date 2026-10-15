@@ -35,13 +35,10 @@
     "show_dayticks": "Show day markers",
     "show_graph": "Show graphs",
     "show_sun": "Mark night",
-    "playback": "Playback",
     "autoplay": "Play automatically",
     "speed": "Speed",
     "graph_hours": "Graph window",
-    "overlay_right": "Overlay readings (right)",
     "overlay_right_hint": "Values shown over the image are read at the moment you scrub to, not the current ones.",
-    "overlay_left": "Overlay readings (left)",
     "overlay_left_hint": "A second block on the other side of the picture. Leave it empty for one block on the right.",
     "add_entity": "Add entity",
     "entity": "Entity",
@@ -60,15 +57,41 @@
       "deflicker": "Evens out cloud-driven brightness jumps during playback. 0 turns it off.",
       "overlay_title": "Shown above the readings. Leave empty for no heading.",
       "overlay_title_left": "Shown above the readings. Leave empty for no heading.",
-      "show_icon": "Uses the entity's own icon from Home Assistant.",
-      "show_sun": "Shades the hours between sunset and sunrise on the graphs and the scrubber, using your Home Assistant location. Hidden when the bands get too fine to read.",
+      "show_sun": "Shades the hours between sunset and sunrise on the timeline and the graphs, using your Home Assistant location.",
       "show_export": "Adds an export button to the player bar. The video is rendered by Home Assistant and saved to the media folder."
     },
     "deflicker": "Smooth brightness",
     "show_icon": "Show icon",
     "overlay_title": "Heading",
     "overlay_title_left": "Heading",
-    "show_export": "Offer video export"
+    "show_export": "Offer video export",
+    "groups": {
+      "right": "Readings on the right",
+      "left": "Readings on the left",
+      "graphs": "Graphs",
+      "timeline": "Timeline",
+      "playback": "Playback"
+    },
+    "summary": {
+      "values_none": "No readings",
+      "values_one": "1 reading",
+      "values_many": "{v} readings",
+      "graph_window": "{v} h of history",
+      "hidden": "Hidden",
+      "day_marks": "Day markers",
+      "nights": "Nights shaded",
+      "no_marks": "No markers",
+      "autoplay": "Plays automatically",
+      "export_on": "Video export",
+      "export_off": "No video export"
+    },
+    "new_entity": "New entity",
+    "color_default": "Theme accent colour",
+    "color_reset": "Use default colour",
+    "row_helper": {
+      "show_icon": "Uses the entity's own icon from Home Assistant.",
+      "graph_hours": "Follows the card's graph window unless you change it."
+    }
   },
   "actions": {
     "show_camera": "Show camera details",
@@ -89,7 +112,6 @@
     "fps": "Frames per second",
     "timestamp": "Date and time",
     "readings": "Sensor readings",
-    "summary": "{frames} frames, {length} of video",
     "summary_empty": "No frames in this range.",
     "start": "Export",
     "cancel": "Cancel",
@@ -125,6 +147,31 @@
       "bottom": "Bottom"
     },
     "folder": "Videos are saved in {v}",
-    "browse": "Open in media browser"
+    "browse": "Open in media browser",
+    "every": "Frames used",
+    "every_all": "All",
+    "every_n": "1 in {v}",
+    "every_hint": "The timelapse runs faster, the video gets shorter and the file smaller.",
+    "format": "Format",
+    "aspects": {
+      "native": "As camera",
+      "16_9": "Landscape",
+      "9_16": "Portrait",
+      "1_1": "Square"
+    },
+    "format_native": "The video keeps the camera's shape.",
+    "format_same": "Matches the camera's shape, so nothing is cropped.",
+    "format_crop": "Only the camera picture is cropped. The date and readings are laid out again in the new shape. Drag the frame in the picture to move the crop.",
+    "crop": "Crop position",
+    "crop_center": "Center",
+    "crop_middle": "Middle",
+    "soft_crop": "This crop is only {v} pixels and looks soft on a phone. For a sharper video, pick a larger width under “Resize to” in the camera's settings.",
+    "sizes_hint": "This format keeps its own sizes, so the readings stay legible on a phone.",
+    "frames": "Frames",
+    "length": "Length",
+    "file_size": "File size",
+    "about": "about {v}",
+    "size_estimate": "Estimated: between {low} and {high}. A lot of movement in the picture makes the file larger.",
+    "low_disk": "Only {v} is free in the media folder. Choose a shorter range or fewer frames."
   }
 }

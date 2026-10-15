@@ -49,16 +49,21 @@ from homeassistant.util import slugify
 
 from . import frame_store
 from .const import (
+    DEFAULT_EXPORT_ASPECT,
+    DEFAULT_EXPORT_CROP_POSITION,
     DEFAULT_EXPORT_DEFLICKER,
+    DEFAULT_EXPORT_EVERY,
     DEFAULT_EXPORT_FPS,
     DEFAULT_EXPORT_READINGS_SIZE,
     DEFAULT_EXPORT_TIMESTAMP_SIZE,
     DOMAIN,
+    EXPORT_ASPECTS,
     EXPORT_EXTENSION,
     EXPORT_MIN_FREE_BYTES,
     EXPORT_SUBDIR,
     EXPORT_X264_CRF,
     EXPORT_X264_PRESET,
+    MAX_EXPORT_EVERY,
     MAX_EXPORT_FPS,
     MAX_EXPORT_READINGS_SIZE,
     MAX_EXPORT_TIMESTAMP_SIZE,
@@ -67,7 +72,7 @@ from .const import (
     MIN_EXPORT_TIMESTAMP_SIZE,
 )
 from .deflicker import deflicker_gains, radius_for_strength
-from .encode import ImageDecodeError, decode_frame, frame_size
+from .encode import ImageDecodeError, crop_box, decode_frame, frame_size
 from .overlay import (
     DEFAULT_ACCENT,
     POSITIONS,
@@ -175,6 +180,13 @@ EXPORT_FIELDS: Final[dict[vol.Marker, Any]] = {
     # block goes where the card draws it.
     vol.Optional("readings_position"): vol.Any(None, vol.In(POSITIONS)),
     vol.Optional("readings_position_left"): vol.Any(None, vol.In(POSITIONS)),
+    vol.Optional("aspect", default=DEFAULT_EXPORT_ASPECT): vol.In(list(EXPORT_ASPECTS)),
+    vol.Optional("crop_position", default=DEFAULT_EXPORT_CROP_POSITION): vol.All(
+        vol.Coerce(int), vol.Range(min=0, max=100)
+    ),
+    vol.Optional("every", default=DEFAULT_EXPORT_EVERY): vol.All(
+        vol.Coerce(int), vol.Range(min=1, max=MAX_EXPORT_EVERY)
+    ),
     vol.Optional("language"): cv.string,
 }
 
@@ -203,7 +215,19 @@ class ExportOptions:
     #: (`entities_left`) blocks go. None keeps the card's own side.
     readings_position: Position | None = None
     readings_position_left: Position | None = None
+    #: A key of EXPORT_ASPECTS: the shape the frames are cropped to.
+    aspect: str = DEFAULT_EXPORT_ASPECT
+    #: 0-100, where the crop sits along the axis it slides on.
+    crop_position: int = DEFAULT_EXPORT_CROP_POSITION
+    #: Use only every n-th frame of the range; 1 uses all of them.
+    every: int = DEFAULT_EXPORT_EVERY
     language: str | None = None
+
+    @property
+    def crop(self) -> tuple[float, float] | None:
+        """The crop as ``decode_frame`` takes it, or None for none."""
+        aspect = EXPORT_ASPECTS.get(self.aspect)
+        return None if aspect is None else (aspect, self.crop_position / 100)
 
     @classmethod
     def from_request(
@@ -222,6 +246,9 @@ class ExportOptions:
             readings_size=data["readings_size"],
             readings_position=data.get("readings_position"),
             readings_position_left=data.get("readings_position_left"),
+            aspect=data.get("aspect", DEFAULT_EXPORT_ASPECT),
+            crop_position=data.get("crop_position", DEFAULT_EXPORT_CROP_POSITION),
+            every=data.get("every", DEFAULT_EXPORT_EVERY),
             language=data.get("language"),
         )
 
@@ -326,6 +353,9 @@ def _plan(
         if (options.start is None or slot >= options.start)
         and (options.end is None or slot <= options.end)
     ]
+    # Thinned after the range is cut, so the first frame of the range is
+    # always the first frame of the video.
+    slots = slots[:: options.every]
     if not slots:
         raise ExportError("export_no_frames")
 
@@ -382,9 +412,13 @@ def _plan(
         )
 
     target = _free_name(output_dir, f"{name}_{_label(slots[0])}_{_label(slots[-1])}")
+    # Cropped first, then scaled: max_width is the width of the video, and
+    # the video is the cropped picture.
+    crop = options.crop
+    left, top, right, bottom = crop_box(native, *crop) if crop else (0, 0, *native)
     return _Plan(
         slots=slots,
-        size=_output_size(native, options.max_width),
+        size=_output_size((right - left, bottom - top), options.max_width),
         gains=gains,
         target=target,
         # Hidden while it is being written, so a half-finished file never
@@ -399,6 +433,7 @@ def _render_frame(
     size: tuple[int, int],
     gain: float,
     renderer: OverlayRenderer | None,
+    crop: tuple[float, float] | None = None,
 ) -> bytes | None:
     """One frame as raw RGB24, or None if it cannot be read. Blocking."""
     data = frame_store.read_frame(frames_dir, slot)
@@ -407,7 +442,7 @@ def _render_frame(
         # card — not a reason to throw the rest of the video away.
         return None
     try:
-        image = decode_frame(data, size, gain)
+        image = decode_frame(data, size, gain, crop)
     except ImageDecodeError:
         return None
     if renderer is not None:
@@ -796,6 +831,9 @@ class VideoExporter:
         #: first export there is nothing there, and the browser would open
         #: on an error instead of an empty folder.
         self._folder_exists = False
+        #: Free space where the next video would go, as last checked, so
+        #: the card can warn before an export rather than fail one.
+        self._free_bytes: int | None = None
 
     @property
     def status(self) -> ExportStatus:
@@ -839,9 +877,9 @@ class VideoExporter:
         return f"media-source://media_source/{media_key}/{relative}"
 
     async def async_check_folder(self) -> None:
-        """Look up whether the folder exists yet. Runs in the executor."""
-        self._folder_exists = await self._hass.async_add_executor_job(
-            self.folder.is_dir
+        """Look up whether the folder exists yet, and the space free there."""
+        self._folder_exists, self._free_bytes = await self._hass.async_add_executor_job(
+            _folder_state, self.folder
         )
 
     @callback
@@ -851,6 +889,7 @@ class VideoExporter:
             **self._status.as_dict(),
             "folder": str(self.folder),
             "folder_media_id": self.folder_media_id if self._folder_exists else None,
+            "free_bytes": self._free_bytes,
         }
 
     @callback
@@ -934,6 +973,8 @@ class VideoExporter:
             self._notify()
             raise ExportError("export_failed", error=str(err)) from err
 
+        # The video just took some of it.
+        await self.async_check_folder()
         self._status = ExportStatus(
             state=STATE_DONE,
             done=result["frames"],
@@ -1016,6 +1057,7 @@ class VideoExporter:
                                 plan.size,
                                 plan.gains.get(slot, 1.0),
                                 renderer,
+                                options.crop,
                             )
                         )
                         if len(rendering) < _RENDER_WORKERS:
@@ -1123,6 +1165,24 @@ def async_get_exporter(
 def async_forget_exporter(hass: HomeAssistant, entry_id: str) -> None:
     """Drop a removed entry's exporter."""
     hass.data.get(DOMAIN, {}).get(_DATA_EXPORTERS, {}).pop(entry_id, None)
+
+
+def _folder_state(folder: Path) -> tuple[bool, int | None]:
+    """Whether ``folder`` exists, and the bytes free on its volume. Blocking.
+
+    Before the first export the folder is not there yet, so the space is
+    read from the nearest folder above it that is: that is the volume it
+    will be created on.
+    """
+    exists = folder.is_dir()
+    probe = folder
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    try:
+        free: int | None = shutil.disk_usage(probe).free
+    except OSError:
+        free = None
+    return exists, free
 
 
 def _publish(partial_path: Path, target: Path) -> int:

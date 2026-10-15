@@ -202,3 +202,23 @@ MAX_EXPORT_READINGS_SIZE: Final = 80
 DEFAULT_EXPORT_TIMESTAMP_SIZE: Final = 15
 MIN_EXPORT_TIMESTAMP_SIZE: Final = 5
 MAX_EXPORT_TIMESTAMP_SIZE: Final = 50
+
+# Shapes a video can be cropped to: landscape is 16:9, portrait 9:16 and
+# square 1:1 (width:height). "native" keeps the frames' own shape; the others cut the picture down to fit, and the
+# overlay is laid out on what is left — never cropped with it.
+EXPORT_ASPECTS: Final[dict[str, float | None]] = {
+    "native": None,
+    "landscape": 16 / 9,
+    "portrait": 9 / 16,
+    "square": 1.0,
+}
+DEFAULT_EXPORT_ASPECT: Final = "native"
+# Where the crop sits along the axis it slides on: 0 is the left (or top)
+# edge of the frame, 100 the right (or bottom), 50 the middle.
+DEFAULT_EXPORT_CROP_POSITION: Final = 50
+
+# Use only every n-th frame of the range. A fortnight at one frame a minute
+# is 20,000 frames — 14 minutes at 24 fps — and most of what a long range
+# is exported for is the faster version of it.
+DEFAULT_EXPORT_EVERY: Final = 1
+MAX_EXPORT_EVERY: Final = 60

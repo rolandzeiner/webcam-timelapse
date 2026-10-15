@@ -218,6 +218,14 @@
         "night": "Nur nachts (Sonnenuntergang bis Sonnenaufgang)",
         "window": "Nur in einem Zeitfenster"
       }
+    },
+    "export_aspect": {
+      "options": {
+        "native": "Wie Kamera",
+        "landscape": "Querformat 16:9",
+        "portrait": "Hochformat 9:16",
+        "square": "Quadrat 1:1"
+      }
     }
   },
   "entity": {
@@ -335,6 +343,18 @@
         "readings_position_left": {
           "name": "Position der linken Sensorwerte",
           "description": "Dasselbe für den zweiten Block der Karte (entities_left)."
+        },
+        "aspect": {
+          "name": "Format",
+          "description": "Schneidet das Video auf dieses Format zu. Nur das Kamerabild wird zugeschnitten; Datum und Sensorwerte ordnen sich im neuen Format neu an. „Wie Kamera“ behält das Format der Bilder."
+        },
+        "crop_position": {
+          "name": "Bildausschnitt",
+          "description": "Wo der Ausschnitt sitzt, von 0 (linker oder oberer Rand) bis 100 (rechter oder unterer Rand). 50 ist die Mitte."
+        },
+        "every": {
+          "name": "Jedes n-te Bild verwenden",
+          "description": "1 verwendet alle Bilder. 5 verwendet jedes fünfte: Der Zeitraffer läuft fünfmal so schnell und das Video ist ein Fünftel so lang."
         }
       }
     }

@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import source from "./editor.ts?raw";
+import fieldsSource from "./editor-fields.ts?raw";
+
+describe("expansion panels", () => {
+  it("never binds expanded, so the panel can finish its own animation", () => {
+    // Bound to editor state, `expanded` flips before the panel measures
+    // its body; nothing animates, transitionend never fires, the body keeps
+    // a pixel height and its content spills over the panels below it.
+    expect(source).not.toMatch(/\.expanded=\$\{/);
+    expect(source).not.toMatch(/\?expanded=\$\{/);
+  });
+
+  it("does not nest panels: a reading opens inline in its group's list", () => {
+    const panels = source.match(/<ha-expansion-panel/g) ?? [];
+    expect(panels.length).toBe(1);
+    expect(source).toMatch(/aria-expanded=\$\{focused \? "true" : "false"\}/);
+  });
+});
 
 describe("editor element choice", () => {
   it("never uses ha-textfield", () => {
@@ -27,13 +44,13 @@ describe("editor element choice", () => {
     // frontend, label included, on every version the card supports.
     expect(source).not.toMatch(/<ha-formfield/);
     expect(source).not.toMatch(/<ha-switch/);
-    expect(source).toMatch(/name: "show_icon", selector: \{ boolean: \{\} \}/);
-    expect(source).toMatch(/name: "graph", selector: \{ boolean: \{\} \}/);
+    expect(fieldsSource).toMatch(/name: "show_icon", selector: \{ boolean: \{\} \}/);
+    expect(fieldsSource).toMatch(/name: "graph", selector: \{ boolean: \{\} \}/);
   });
 
   it("routes the overlay heading and row fields through ha-form", () => {
-    expect(source).toMatch(/OVERLAY_TITLE_SCHEMA/);
-    expect(source).toMatch(/ROW_SCHEMA/);
+    expect(source).toMatch(/BLOCK_KEYS\[side\]\.title/);
+    expect(source).toMatch(/\.schema=\$\{rowSchema\(row, config\)\}/);
     // Both must reach a real <ha-form>, not just be declared.
     expect(source.match(/<ha-form/g)?.length).toBeGreaterThanOrEqual(3);
   });
@@ -41,16 +58,16 @@ describe("editor element choice", () => {
   it("offers both readings blocks", () => {
     // The left block is only discoverable here. If the section is never
     // rendered, the feature exists in YAML only and nobody finds it.
-    expect(source).toMatch(/renderSection\("right"/);
-    expect(source).toMatch(/renderSection\("left"/);
-    expect(source).toMatch(/OVERLAY_TITLE_LEFT_SCHEMA/);
+    expect(fieldsSource).toMatch(/id: "right"/);
+    expect(fieldsSource).toMatch(/id: "left"/);
+    expect(fieldsSource).toMatch(/title: "overlay_title_left"/);
   });
 
   it("writes each block to its own config key", () => {
     // The right-hand block must keep writing to `entities`. Pointing it
     // anywhere else silently orphans every config already in the wild.
-    expect(source).toMatch(/right:\s*"entities"/);
-    expect(source).toMatch(/left:\s*"entities_left"/);
+    expect(fieldsSource).toMatch(/right: \{ rows: "entities"/);
+    expect(fieldsSource).toMatch(/left: \{ rows: "entities_left"/);
   });
 
   it("keeps every text and number input in a selector", () => {
