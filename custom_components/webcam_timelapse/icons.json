@@ -30,6 +30,7 @@
     "capture_now": "mdi:camera-plus-outline",
     "purge_frames": "mdi:delete-sweep-outline",
     "pause_capture": "mdi:pause-circle-outline",
-    "resume_capture": "mdi:play-circle-outline"
+    "resume_capture": "mdi:play-circle-outline",
+    "export_video": "mdi:movie-open-outline"
   }
 }

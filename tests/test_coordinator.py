@@ -15,11 +15,15 @@ from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.webcam_timelapse import frame_store
 from custom_components.webcam_timelapse.const import (
+    ALLOWED_CAPTURE_INTERVALS,
     CAMERA_STALE_TICKS,
+    CAPTURE_SECOND_MAX,
+    CAPTURE_SECOND_MIN,
     CONF_CAPTURE_INTERVAL,
     CONF_RETENTION_DAYS,
     DOMAIN,
 )
+from custom_components.webcam_timelapse.coordinator import capture_second_for
 from custom_components.webcam_timelapse.encode import ImageDecodeError
 
 from .conftest import fresh_result, make_entry, make_jpeg, setup_entry, unchanged_result
@@ -30,11 +34,26 @@ from .conftest import fresh_result, make_entry, make_jpeg, setup_entry, unchange
 # jumping backwards silently schedules nothing.
 BASE = dt.datetime(2026, 8, 1, 12, 0, 0, tzinfo=dt.UTC)
 
+# The second the default test entry captures on.
+TICK_SECOND = capture_second_for(make_entry().entry_id)
+
+# Entry ids picked for where they land: the first and the last allowed second.
+EARLY_ENTRY_ID = "01TESTENTRYID0000000000009"
+LATE_ENTRY_ID = "01TESTENTRYID0000000000059"
+
 
 async def fire_tick(
-    hass: HomeAssistant, freezer: FrozenDateTimeFactory, minutes: int
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    minutes: int,
+    *,
+    second: int = TICK_SECOND,
+    late: float = 0.0,
 ) -> None:
-    """Advance to `minutes` past BASE, on the capture offset, and fire.
+    """Advance to `minutes` past BASE, on an entry's capture second, and fire.
+
+    `second` is the capture second of the entry whose tick should fire, and
+    `late` is how many seconds after it the tick actually runs.
 
     Two non-obvious requirements, both paid for in debugging:
 
@@ -49,7 +68,7 @@ async def fire_tick(
        await — the capture is still mid-executor when assertions run, and the
        archive looks empty for no visible reason.
     """
-    target = BASE + dt.timedelta(minutes=minutes, seconds=5)
+    target = BASE + dt.timedelta(minutes=minutes, seconds=second + late)
     freezer.move_to(target)
     async_fire_time_changed(hass, target)
     await hass.async_block_till_done(wait_background_tasks=True)
@@ -110,6 +129,97 @@ async def test_paused_coordinator_skips_the_tick(
     await fire_tick(hass, freezer, 20)
 
     assert mock_fetch.call_count == 1
+
+
+# --- capture second -------------------------------------------------------
+
+
+def test_two_entries_get_different_capture_seconds() -> None:
+    """Pinned values: a salted `hash()` would fail this in most processes."""
+    assert capture_second_for(EARLY_ENTRY_ID) == CAPTURE_SECOND_MIN
+    assert capture_second_for(LATE_ENTRY_ID) == CAPTURE_SECOND_MAX
+
+
+def test_capture_seconds_cover_the_allowed_range_and_nothing_else() -> None:
+    seconds = {capture_second_for(f"01TESTENTRYID{n:013d}") for n in range(500)}
+
+    assert seconds == set(range(CAPTURE_SECOND_MIN, CAPTURE_SECOND_MAX + 1))
+
+
+async def test_two_entries_fetch_the_same_camera_on_their_own_seconds(
+    hass: HomeAssistant, mock_fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """Two installs of one public webcam must not ask in the same second."""
+    # Armed just before the grid minute, so the next tick of both entries
+    # is the one for 12:10 and not a 12:00 tick still waiting to run.
+    freezer.move_to(BASE + dt.timedelta(minutes=10, seconds=-1))
+    early = make_entry(entry_id=EARLY_ENTRY_ID, unique_id="early")
+    late = make_entry(entry_id=LATE_ENTRY_ID, unique_id="late")
+    assert await setup_entry(hass, early)
+    assert await setup_entry(hass, late)
+
+    await fire_tick(hass, freezer, 10, second=CAPTURE_SECOND_MIN)
+
+    assert early.runtime_data.data["frame_count"] == 1
+    assert late.runtime_data.data["frame_count"] == 0
+
+    await fire_tick(hass, freezer, 10, second=CAPTURE_SECOND_MAX)
+
+    assert late.runtime_data.data["frame_count"] == 1
+    # Fetched 24 seconds apart, filed under the same grid minute.
+    slot = int((BASE + dt.timedelta(minutes=10)).timestamp())
+    assert early.runtime_data.data["newest_slot"] == slot
+    assert late.runtime_data.data["newest_slot"] == slot
+
+
+@pytest.mark.parametrize("interval", ALLOWED_CAPTURE_INTERVALS)
+@pytest.mark.parametrize(
+    ("time_zone", "minutes"),
+    [
+        # The next top of the local hour, which is on every interval's grid.
+        ("UTC", 60),
+        # UTC+05:45 puts the 2-, 10- and 30-minute ticks exactly halfway
+        # between two slots, where rounding is at its most sensitive.
+        ("Asia/Kathmandu", 15),
+    ],
+)
+async def test_latest_capture_second_lands_in_the_slot_the_earliest_does(
+    hass: HomeAssistant,
+    mock_fetch: AsyncMock,
+    freezer: FrozenDateTimeFactory,
+    interval: int,
+    time_zone: str,
+    minutes: int,
+) -> None:
+    """Spreading the capture second must not move a frame to another slot."""
+    await hass.config.async_set_time_zone(time_zone)
+    freezer.move_to(BASE + dt.timedelta(minutes=minutes, seconds=-1))
+    entry = make_entry(entry_id=LATE_ENTRY_ID, **{CONF_CAPTURE_INTERVAL: interval})
+    assert await setup_entry(hass, entry)
+    coordinator = entry.runtime_data
+
+    # Half a second late is the most Home Assistant staggers a time listener.
+    await fire_tick(hass, freezer, minutes, second=CAPTURE_SECOND_MAX, late=0.5)
+
+    # Where the single capture second every entry used to share filed it.
+    grid = (BASE + dt.timedelta(minutes=minutes)).timestamp()
+    expected = frame_store.slot_for(grid + CAPTURE_SECOND_MIN, coordinator.step)
+    assert frame_store.scan_slots(coordinator.frames_dir) == [expected]
+
+
+async def test_a_tick_that_runs_late_still_lands_in_its_own_minute(
+    hass: HomeAssistant, mock_fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """On the one-minute grid, second 29 is one second from the next slot."""
+    freezer.move_to(BASE + dt.timedelta(minutes=10, seconds=-1))
+    entry = make_entry(entry_id=LATE_ENTRY_ID, **{CONF_CAPTURE_INTERVAL: 1})
+    assert await setup_entry(hass, entry)
+    coordinator = entry.runtime_data
+
+    await fire_tick(hass, freezer, 10, second=CAPTURE_SECOND_MAX, late=5)
+
+    slot = int((BASE + dt.timedelta(minutes=10)).timestamp())
+    assert frame_store.scan_slots(coordinator.frames_dir) == [slot]
 
 
 # --- freeze detection -----------------------------------------------------

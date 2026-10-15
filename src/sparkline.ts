@@ -152,8 +152,7 @@ export function sparkline(options: SparklineOptions): SVGTemplateResult | null {
   }
   const range = hi - lo || 1;
 
-  const x = (time: number): number =>
-    PADDING + ((time - t0) / span) * (WIDTH - PADDING * 2);
+  const x = (time: number): number => PADDING + ((time - t0) / span) * (WIDTH - PADDING * 2);
   const y = (value: number): number =>
     HEIGHT - PADDING - ((value - lo) / range) * (HEIGHT - PADDING * 2);
 

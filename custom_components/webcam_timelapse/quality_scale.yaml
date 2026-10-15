@@ -3,9 +3,9 @@ rules:
   action-setup:
     status: done
     comment: >-
-      Four actions (capture_now, purge_frames, pause_capture, resume_capture)
-      registered in async_setup via services.async_setup_services, not in
-      async_setup_entry.
+      Five actions (capture_now, purge_frames, pause_capture, resume_capture,
+      export_video) registered in async_setup via services.async_setup_services,
+      not in async_setup_entry.
   appropriate-polling:
     status: done
     comment: >-
@@ -29,10 +29,16 @@ rules:
     comment: tests/test_config_flow.py covers user, reconfigure, options and reauth.
   dependency-transparency:
     status: done
-    comment: Pillow only. Home Assistant ships it, so hassfest forbids listing it in the manifest.
+    comment: >-
+      Pillow, which Home Assistant ships, so hassfest forbids listing it in the
+      manifest. The video export also runs the ffmpeg binary Home Assistant's
+      container includes (located through the ffmpeg integration when it is
+      set up) and draws with a bundled DejaVu Sans, licence in fonts/.
   docs-actions:
     status: done
-    comment: README "Actions" documents all four, including the capture_now overwrite refusal.
+    comment: >-
+      README "Actions" documents all five, including the capture_now overwrite
+      refusal and export_video's options, with an automation example.
   docs-conditions:
     status: exempt
     comment: This integration does not have any conditions.
@@ -69,7 +75,10 @@ rules:
     status: done
     comment: >-
       Actions raise ServiceValidationError with translation_domain and
-      translation_key (unknown_entry, entry_not_loaded, slot_occupied).
+      translation_key (unknown_entry, entry_not_loaded, slot_occupied, and for
+      export_video export_running, export_no_frames, export_bad_range and
+      export_cancelled). Encoder and disk failures stay HomeAssistantError,
+      also translated, because they are faults rather than caller mistakes.
   config-entry-unloading:
     status: done
     comment: async_teardown cancels the capture schedule.
@@ -127,7 +136,9 @@ rules:
     comment: README "How data updates" covers the wall-clock grid, freeze detection and pruning.
   docs-examples:
     status: done
-    comment: README shows minimal and full card YAML plus an automation calling capture_now.
+    comment: >-
+      README shows minimal and full card YAML, an automation calling
+      capture_now, and one exporting the past week as a video.
   docs-known-limitations:
     status: done
     comment: >-

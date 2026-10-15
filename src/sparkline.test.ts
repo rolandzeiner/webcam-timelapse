@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import cardSource from "./webcam-timelapse-card.ts?raw";
 import { type HistoryPoint, resolveAt, windowAround } from "./overlay-history";
-import { sparkline } from "./sparkline";
+import { extentOf, sparkline } from "./sparkline";
 
 const HOUR = 3_600_000;
 const T0 = Date.UTC(2026, 7, 1, 12, 0, 0);
@@ -41,7 +41,6 @@ function pathsOf(result: unknown): string[] {
   }
   return found;
 }
-
 
 /**
  * The static text of a template and everything nested inside it.
@@ -87,12 +86,7 @@ function levelsOf(path: string): number[] {
   return [...path.matchAll(/V (-?[\d.]+)/g)].map((m) => Number(m[1]));
 }
 
-function draw(
-  points: HistoryPoint[],
-  at: number,
-  hours: number,
-  quantum?: number,
-) {
+function draw(points: HistoryPoint[], at: number, hours: number, quantum?: number) {
   return sparkline({
     points,
     at,
@@ -363,5 +357,24 @@ describe("the card's graph gate", () => {
     expect(cardSource).toMatch(
       /const drawGraph =\s*row\.graph === true && this\.config\?\.show_graph !== false;/,
     );
+  });
+});
+
+describe("extentOf", () => {
+  it("is how far the series moved, not where it sits", () => {
+    const points: HistoryPoint[] = [
+      { at: T0, value: 137 },
+      { at: T0 + HOUR, value: 141 },
+      { at: T0 + 2 * HOUR, value: 135 },
+    ];
+    expect(extentOf(points)).toBe(6);
+  });
+
+  it("is zero for a series that never moved", () => {
+    expect(extentOf([{ at: T0, value: 4 }])).toBe(0);
+  });
+
+  it("is zero with nothing to measure", () => {
+    expect(extentOf([])).toBe(0);
   });
 });

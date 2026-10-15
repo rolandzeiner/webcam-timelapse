@@ -83,12 +83,6 @@ updates:
       npm-security:
         applies-to: security-updates
         patterns: ["*"]
-    ignore:
-      # TypeScript 7 (tsgo) — hold. TS 7 drops the JS compiler API, so
-      # @rollup/plugin-typescript fails at config load even though
-      # `tsc --noEmit` passes. Revisit when the plugin supports TS 7.
-      - dependency-name: "typescript"
-        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: pre-commit
     directory: /

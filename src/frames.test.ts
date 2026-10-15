@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   BASE_FPS,
@@ -52,9 +52,7 @@ describe("slot addressing", () => {
   });
 
   it("builds frame URLs the integration actually serves", () => {
-    expect(urlAt(index(), 2)).toBe(
-      `/webcam_timelapse_frames/abc/${T0 + 1200}.webp`,
-    );
+    expect(urlAt(index(), 2)).toBe(`/webcam_timelapse_frames/abc/${T0 + 1200}.webp`);
   });
 
   it("exposes milliseconds for Intl formatting", () => {
@@ -99,7 +97,13 @@ describe("presence bitmap", () => {
 
   it("handles several holes", () => {
     const bitmap = presenceBitmap(
-      index({ count: 8, gaps: [[1, 1], [4, 2]] }),
+      index({
+        count: 8,
+        gaps: [
+          [1, 1],
+          [4, 2],
+        ],
+      }),
     );
     expect([...bitmap]).toEqual([1, 0, 1, 1, 0, 0, 1, 1]);
   });
@@ -160,8 +164,7 @@ describe("playbackCadence", () => {
   };
 
   /** Effective multiplier, where 1x is `BASE_FPS` frames per second. */
-  const effectiveSpeed = (speed: number): number =>
-    framesPerSecond(speed) / BASE_FPS;
+  const effectiveSpeed = (speed: number): number => framesPerSecond(speed) / BASE_FPS;
 
   it("is exact below the decode ceiling", () => {
     for (const speed of [1, 2, 4, 8]) {
@@ -184,9 +187,7 @@ describe("playbackCadence", () => {
     for (const speed of [1, 2, 4, 8, 16, 32, 64]) {
       // The decode floor is a hard wall: asking for a shorter tick than
       // this queues work that lands late and reads as stutter.
-      expect(playbackCadence(speed).frameDelay).toBeGreaterThanOrEqual(
-        MIN_FRAME_MS,
-      );
+      expect(playbackCadence(speed).frameDelay).toBeGreaterThanOrEqual(MIN_FRAME_MS);
       expect(framesPerSecond(speed)).toBeLessThanOrEqual(MAX_TICK_FPS * 4 + 1e-9);
     }
     // Everything at or above 32x pays for its speed in stride.
@@ -493,9 +494,7 @@ describe("fadeDurationMs", () => {
     // next swap, so both layers stay part-opaque and the stage ghosts
     // permanently — the bug a fixed 160 ms transition had from 4x up.
     for (const speed of [1, 2, 4, 8, 16, 32, 64]) {
-      expect(fadeDurationMs(speed, budget(speed), playing)).toBeLessThanOrEqual(
-        budget(speed),
-      );
+      expect(fadeDurationMs(speed, budget(speed), playing)).toBeLessThanOrEqual(budget(speed));
     }
   });
 
@@ -520,9 +519,7 @@ describe("fadeDurationMs", () => {
     // Checked here rather than in CSS: the transition is an inline style,
     // so a media query in the stylesheet could never override it.
     for (const state of [playing, idle]) {
-      expect(
-        fadeDurationMs(1, budget(1), { ...state, reducedMotion: true }),
-      ).toBe(0);
+      expect(fadeDurationMs(1, budget(1), { ...state, reducedMotion: true })).toBe(0);
     }
   });
 });

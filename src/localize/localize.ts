@@ -1,5 +1,8 @@
-import * as en from './languages/en.json';
-import * as de from './languages/de.json';
+// Default imports, not `import * as`: a namespace import exposes each
+// top-level key as a named export, and a key that is a reserved word
+// (`export`) cannot be one, so it went missing without an error.
+import de from "./languages/de.json";
+import en from "./languages/en.json";
 
 const languages: Record<string, Record<string, unknown>> = {
   en: en,
@@ -7,15 +10,15 @@ const languages: Record<string, Record<string, unknown>> = {
 };
 
 function resolveTranslation(path: string, dictionary: Record<string, unknown>): string | undefined {
-  const value = path.split('.').reduce<unknown>((acc, key) => {
-    if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+  const value = path.split(".").reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === "object" && key in (acc as Record<string, unknown>)) {
       return (acc as Record<string, unknown>)[key];
     }
 
     return undefined;
   }, dictionary);
 
-  return typeof value === 'string' ? value : undefined;
+  return typeof value === "string" ? value : undefined;
 }
 
 /**
@@ -32,15 +35,10 @@ function resolveTranslation(path: string, dictionary: Record<string, unknown>): 
  * responsibility, so this module has no DOM or hass dependency and is
  * trivially testable.
  */
-export function localize(
-  string: string,
-  lang: string | undefined = undefined,
-  search = '',
-  replace = '',
-): string {
+export function localize(string: string, lang?: string, search = "", replace = ""): string {
   // Normalise: HA uses BCP-47 ('en-GB', 'de-AT'); our dictionaries are
   // keyed by ISO-639-1 lowercase ('en', 'de'). Strip the region.
-  const code = (lang ?? 'en').toLowerCase().split(/[-_]/)[0] ?? 'en';
+  const code = (lang ?? "en").toLowerCase().split(/[-_]/)[0] ?? "en";
 
   // noUncheckedIndexedAccess narrows languages[k] to T | undefined; coerce
   // to the always-present `en` fallback at each lookup so resolveTranslation
@@ -52,7 +50,7 @@ export function localize(
   if (translated === undefined) translated = resolveTranslation(string, enDict);
   if (translated === undefined) translated = string;
 
-  if (search !== '' && replace !== '') {
+  if (search !== "" && replace !== "") {
     translated = translated.replace(search, replace);
   }
   return translated;

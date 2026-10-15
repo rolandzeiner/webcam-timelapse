@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import zlib
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -29,14 +30,18 @@ from . import frame_store
 from .capture import CacheValidators, FetchOutcome, fetch_frame
 from .const import (
     CAMERA_STALE_TICKS,
-    CAPTURE_SECOND,
+    CAPTURE_SECOND_MAX,
+    CAPTURE_SECOND_MIN,
     CONF_CAPTURE_INTERVAL,
+    CONF_CAPTURE_LIGHTS,
     CONF_FRAMES_PATH,
     CONF_HEADERS,
+    CONF_LIGHT_SETTLE,
     CONF_MAX_WIDTH,
     CONF_QUALITY,
     CONF_RETENTION_DAYS,
     DEFAULT_CAPTURE_INTERVAL,
+    DEFAULT_LIGHT_SETTLE,
     DEFAULT_MAX_WIDTH,
     DEFAULT_QUALITY,
     DEFAULT_RETENTION_DAYS,
@@ -44,12 +49,26 @@ from .const import (
     STORAGE_SUBDIR,
 )
 from .encode import ImageDecodeError, encode_webp, measure_luma
+from .lights import CaptureLights, lights_mode, lights_window
 
 _LOGGER = logging.getLogger(__name__)
 
 _ISSUE_CAMERA_OFFLINE = "camera_offline"
 
 type WebcamTimelapseConfigEntry = ConfigEntry["WebcamTimelapseCoordinator"]
+
+
+def capture_second_for(entry_id: str) -> int:
+    """Return the second past the minute on which this entry captures.
+
+    Derived from the entry id, so an entry keeps its second across restarts
+    and reloads while two installs watching the same camera almost always
+    get different ones. ``zlib.crc32`` rather than ``hash()``: Python salts
+    string hashes per process, so ``hash()`` would move every entry to a
+    new second on each start.
+    """
+    span = CAPTURE_SECOND_MAX - CAPTURE_SECOND_MIN + 1
+    return CAPTURE_SECOND_MIN + zlib.crc32(entry_id.encode()) % span
 
 
 class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -101,6 +120,16 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
         self.step: int = self.interval_minutes * 60
+        self.capture_second: int = capture_second_for(entry.entry_id)
+
+        self.capture_lights = CaptureLights(
+            hass,
+            entry.title,
+            list(config.get(CONF_CAPTURE_LIGHTS) or []),
+            settle_seconds=float(config.get(CONF_LIGHT_SETTLE, DEFAULT_LIGHT_SETTLE)),
+            mode=lights_mode(config),
+            window=lights_window(config),
+        )
 
         # Live-capture state
         self.last_frame: bytes | None = None
@@ -137,12 +166,17 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
         # Every allowed interval divides 60, so this lands on a clean
-        # wall-clock grid. CAPTURE_SECOND gives the camera a moment to
-        # finish writing the frame it publishes on the minute boundary.
+        # wall-clock grid. The second is this entry's own: late enough for
+        # the camera to finish writing the frame it publishes on the minute
+        # boundary, and different from the second most other installs of
+        # the same camera fetch on.
         minutes = list(range(0, 60, self.interval_minutes))
         self._unsub.append(
             async_track_time_change(
-                self.hass, self._async_tick, minute=minutes, second=CAPTURE_SECOND
+                self.hass,
+                self._async_tick,
+                minute=minutes,
+                second=self.capture_second,
             )
         )
 
@@ -305,15 +339,22 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_capture(self, slot: int, *, force: bool = False) -> bool:
         """Fetch, encode and store one frame. Returns True if stored."""
         async with self._capture_lock:
-            result = await fetch_frame(
-                self._session,
-                self.image_url,
-                validators=None if force else self._validators,
-                previous_digest=None if force else self._last_digest,
-                extra_headers=self._extra_headers,
-                auth_header=self._auth_header,
-                verify_ssl=self.verify_ssl,
-            )
+            # Lit for the fetch only. The encode below can take a quarter
+            # of a second on a slow core, and there is no reason to leave
+            # a room lit while a CPU compresses a picture already taken.
+            # The live-view refresh never comes through here, so it never
+            # switches a light: at a 30-second refresh that would be a
+            # strobe.
+            async with self.capture_lights.lit():
+                result = await fetch_frame(
+                    self._session,
+                    self.image_url,
+                    validators=None if force else self._validators,
+                    previous_digest=None if force else self._last_digest,
+                    extra_headers=self._extra_headers,
+                    auth_header=self._auth_header,
+                    verify_ssl=self.verify_ssl,
+                )
             self._validators = result.validators
 
             if result.outcome is FetchOutcome.UNCHANGED or result.raw is None:
@@ -357,7 +398,17 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Capture if a tick asked for it, then rebuild the archive state."""
         if self._capture_pending:
             self._capture_pending = False
-            slot = frame_store.slot_for(dt_util.utcnow().timestamp(), self.step)
+            # Take this entry's share of the capture second back out before
+            # snapping to the grid, so every entry rounds from
+            # CAPTURE_SECOND_MIN as it did when that was the only second.
+            # The clock is read here, not at the tick, and a busy event
+            # loop or a refresh already in flight makes that later. Left
+            # in, an entry on second 29 would sit half a second from the
+            # next slot on the one-minute grid.
+            now = dt_util.utcnow().timestamp()
+            slot = frame_store.slot_for(
+                now - (self.capture_second - CAPTURE_SECOND_MIN), self.step
+            )
             await self._async_capture(slot)
 
         return await self._async_scan_and_prune()

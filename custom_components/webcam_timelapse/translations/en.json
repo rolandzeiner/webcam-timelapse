@@ -34,6 +34,23 @@
               "frames_path": "Leave empty to store frames inside Home Assistant's config folder, where backups skip them.",
               "username": "Only needed if the camera is behind HTTP basic authentication."
             }
+          },
+          "lighting": {
+            "name": "Lights for capture",
+            "data": {
+              "capture_lights": "Lights to switch on",
+              "light_settle": "Wait before capturing",
+              "lights_mode": "When to use them",
+              "lights_window_start": "Time window from",
+              "lights_window_end": "Time window to"
+            },
+            "data_description": {
+              "capture_lights": "Switched on just before each frame is saved and off again straight after. Lights that are already on are left alone.",
+              "light_settle": "Gives the camera time to adjust to the light. Raise it if frames come out dark.",
+              "lights_mode": "At night follows sunset and sunrise at your home's location, so it moves with the seasons. A time window uses the two clock times below.",
+              "lights_window_start": "Only used with “Only within a time window”. A window across midnight, such as 20:00 to 06:00, works.",
+              "lights_window_end": "From this time on the lights are no longer used."
+            }
           }
         }
       },
@@ -58,6 +75,23 @@
               "username": "Username",
               "password": "Password"
             }
+          },
+          "lighting": {
+            "name": "Lights for capture",
+            "data": {
+              "capture_lights": "Lights to switch on",
+              "light_settle": "Wait before capturing",
+              "lights_mode": "When to use them",
+              "lights_window_start": "Time window from",
+              "lights_window_end": "Time window to"
+            },
+            "data_description": {
+              "capture_lights": "Switched on just before each frame is saved and off again straight after. Lights that are already on are left alone.",
+              "light_settle": "Gives the camera time to adjust to the light. Raise it if frames come out dark.",
+              "lights_mode": "At night follows sunset and sunrise at your home's location, so it moves with the seasons. A time window uses the two clock times below.",
+              "lights_window_start": "Only used with “Only within a time window”. A window across midnight, such as 20:00 to 06:00, works.",
+              "lights_window_end": "From this time on the lights are no longer used."
+            }
           }
         }
       },
@@ -77,7 +111,9 @@
       "invalid_scheme": "Only http:// and https:// addresses are supported.",
       "invalid_interval": "Choose one of the listed capture intervals.",
       "not_an_image": "That URL returned a page, not an image. Use the direct link to the image file.",
-      "timeout": "The camera did not respond in time."
+      "timeout": "The camera did not respond in time.",
+      "invalid_light": "Only lights and switches can be used as capture lights.",
+      "invalid_light_window": "The time window has to start and end at different times."
     },
     "abort": {
       "already_configured": "This image URL is already set up.",
@@ -110,6 +146,23 @@
               "username": "Username",
               "password": "Password"
             }
+          },
+          "lighting": {
+            "name": "Lights for capture",
+            "data": {
+              "capture_lights": "Lights to switch on",
+              "light_settle": "Wait before capturing",
+              "lights_mode": "When to use them",
+              "lights_window_start": "Time window from",
+              "lights_window_end": "Time window to"
+            },
+            "data_description": {
+              "capture_lights": "Switched on just before each frame is saved and off again straight after. Lights that are already on are left alone.",
+              "light_settle": "Gives the camera time to adjust to the light. Raise it if frames come out dark.",
+              "lights_mode": "At night follows sunset and sunrise at your home's location, so it moves with the seasons. A time window uses the two clock times below.",
+              "lights_window_start": "Only used with “Only within a time window”. A window across midnight, such as 20:00 to 06:00, works.",
+              "lights_window_end": "From this time on the lights are no longer used."
+            }
           }
         }
       }
@@ -121,10 +174,20 @@
       "invalid_scheme": "Only http:// and https:// addresses are supported.",
       "invalid_interval": "Choose one of the listed capture intervals.",
       "not_an_image": "That URL returned a page, not an image. Use the direct link to the image file.",
-      "timeout": "The camera did not respond in time."
+      "timeout": "The camera did not respond in time.",
+      "invalid_light": "Only lights and switches can be used as capture lights.",
+      "invalid_light_window": "The time window has to start and end at different times."
     }
   },
   "selector": {
+    "readings_position": {
+      "options": {
+        "left": "Left",
+        "right": "Right",
+        "top": "Top",
+        "bottom": "Bottom"
+      }
+    },
     "capture_interval": {
       "options": {
         "1": "Every minute",
@@ -147,6 +210,13 @@
         "1280": "1280 px",
         "1600": "1600 px",
         "1920": "1920 px"
+      }
+    },
+    "lights_mode": {
+      "options": {
+        "always": "At every capture",
+        "night": "Only at night (sunset to sunrise)",
+        "window": "Only within a time window"
       }
     }
   },
@@ -213,6 +283,60 @@
           "description": "Which configured webcam to resume."
         }
       }
+    },
+    "export_video": {
+      "name": "Export video",
+      "description": "Renders a stretch of the stored frames into an MP4 in the media folder. Finishes once the video is written, which can take a few minutes.",
+      "fields": {
+        "entry_id": {
+          "name": "Camera",
+          "description": "Which configured webcam to export from."
+        },
+        "start": {
+          "name": "From",
+          "description": "First moment to include. Leave empty to start at the oldest stored frame."
+        },
+        "end": {
+          "name": "To",
+          "description": "Last moment to include. Leave empty to end at the newest stored frame."
+        },
+        "fps": {
+          "name": "Frames per second",
+          "description": "Playback rate of the video. At 24, one day captured every 5 minutes plays in 12 seconds."
+        },
+        "max_width": {
+          "name": "Maximum width",
+          "description": "Scale the video down to this width. 0 keeps the size of the stored frames."
+        },
+        "deflicker": {
+          "name": "Smooth brightness",
+          "description": "Evens out cloud-driven brightness jumps, like the card does during playback. 0 turns it off."
+        },
+        "timestamp": {
+          "name": "Show date and time",
+          "description": "Stamps each frame with the moment it was captured."
+        },
+        "timestamp_size": {
+          "name": "Date and time size",
+          "description": "Width of the date and time, as a percentage of the video's width."
+        },
+        "overlay": {
+          "name": "Sensor readings",
+          "description": "Readings to draw on the video, in the same form as the card's configuration: entities, entities_left, overlay_title, overlay_title_left, graph_hours, show_graph and show_sun."
+        },
+        "readings_size": {
+          "name": "Sensor readings size",
+          "description": "Width of the readings block, as a percentage of the video's width. With two blocks, this is the wider one."
+        },
+        "readings_position": {
+          "name": "Readings position",
+          "description": "Where the card's readings block (its entities) goes. Left and right are the bottom corners, as on the card; top and bottom centre it on that edge. Leave empty to keep the card's place."
+        },
+        "readings_position_left": {
+          "name": "Left readings position",
+          "description": "The same for the card's second block (entities_left)."
+        }
+      }
     }
   },
   "exceptions": {
@@ -248,6 +372,30 @@
     },
     "decode_error": {
       "message": "The camera's response could not be read as an image: {error}."
+    },
+    "export_running": {
+      "message": "A video export is already running for this camera. Wait for it to finish, or cancel it."
+    },
+    "export_no_frames": {
+      "message": "There are no stored frames in that time range."
+    },
+    "export_bad_range": {
+      "message": "The end of the range is before its start."
+    },
+    "export_cancelled": {
+      "message": "The video export was cancelled."
+    },
+    "export_low_disk": {
+      "message": "Only {free} MB are free in the media folder. An export needs at least {needed} MB."
+    },
+    "export_ffmpeg_missing": {
+      "message": "The video could not be encoded because ffmpeg ({binary}) was not found."
+    },
+    "export_ffmpeg_failed": {
+      "message": "ffmpeg could not encode the video: {error}"
+    },
+    "export_failed": {
+      "message": "The video export failed: {error}"
     }
   },
   "issues": {

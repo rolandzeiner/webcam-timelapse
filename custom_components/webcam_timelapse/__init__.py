@@ -16,6 +16,7 @@ from homeassistant.helpers import device_registry as dr
 from .card_registration import JSModuleRegistration, async_register_frames_path
 from .const import DOMAIN, INTEGRATION_VERSION, STORAGE_SUBDIR
 from .coordinator import WebcamTimelapseConfigEntry, WebcamTimelapseCoordinator
+from .export import async_forget_exporter
 from .services import async_setup_services
 from .websocket import async_register_websocket_commands
 
@@ -119,7 +120,13 @@ async def async_unload_entry(
 async def async_remove_entry(
     hass: HomeAssistant, entry: WebcamTimelapseConfigEntry
 ) -> None:
-    """Delete this entry's frames, and the card resource on the last entry."""
+    """Delete this entry's frames, and the card resource on the last entry.
+
+    Exported videos are left where they are. They sit in the media folder
+    precisely because they are meant to outlast the archive they were cut
+    from, and removing a camera is not a request to delete them.
+    """
+    async_forget_exporter(hass, entry.entry_id)
     entry_frames = frames_root(hass) / entry.entry_id
     await hass.async_add_executor_job(
         lambda: shutil.rmtree(entry_frames, ignore_errors=True)

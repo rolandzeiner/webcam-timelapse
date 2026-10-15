@@ -1,12 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { overlayEntities, overlayGroups } from "./overlay-groups";
 import type { WebcamTimelapseCardConfig } from "./types";
 
 /** The two keys every test here needs; the rest of the config is irrelevant. */
-function config(
-  overrides: Partial<WebcamTimelapseCardConfig>,
-): WebcamTimelapseCardConfig {
+function config(overrides: Partial<WebcamTimelapseCardConfig>): WebcamTimelapseCardConfig {
   return { type: "custom:webcam-timelapse-card", camera_entity: "camera.x", ...overrides };
 }
 
@@ -16,9 +14,7 @@ describe("overlay groups", () => {
     // a second block uses `entities`, and every one of them must still
     // land in the corner it has always had. If this ever reports "left",
     // existing dashboards move on upgrade.
-    const groups = overlayGroups(
-      config({ entities: [{ entity: "sensor.level" }] }),
-    );
+    const groups = overlayGroups(config({ entities: [{ entity: "sensor.level" }] }));
 
     expect(groups).toHaveLength(1);
     expect(groups[0]?.side).toBe("right");
@@ -28,9 +24,7 @@ describe("overlay groups", () => {
     // The side is in the key name, not in how many blocks happen to be
     // configured — so the left block alone still renders left rather
     // than falling back to the original corner.
-    const groups = overlayGroups(
-      config({ entities_left: [{ entity: "sensor.temp" }] }),
-    );
+    const groups = overlayGroups(config({ entities_left: [{ entity: "sensor.temp" }] }));
 
     expect(groups).toHaveLength(1);
     expect(groups[0]?.side).toBe("left");

@@ -24,10 +24,12 @@ particular camera or a particular kind of sensor.
 - [Install](#install)
 - [Set up a camera](#set-up-a-camera)
 - [Settings](#settings)
+- [Lights for capture](#lights-for-capture)
 - [How much disk it uses](#how-much-disk-it-uses)
 - [The card](#the-card)
 - [Overlay readings](#overlay-readings)
 - [Smoothing cloud flicker](#smoothing-cloud-flicker)
+- [Exporting a video](#exporting-a-video)
 - [Entities](#entities)
 - [Actions](#actions)
 - [How data updates](#how-data-updates)
@@ -50,8 +52,14 @@ frame by frame.
 **Build a construction or garden timelapse.** Point it at any site camera and
 play back weeks at 64×.
 
+**Photograph something that sits in the dark.** Have Home Assistant switch a
+light on for the second each frame is taken, and off again after.
+
 **Prove when something happened.** Every frame is timestamped and kept on
 disk, so you can find the exact capture.
+
+**Keep the timelapse as a video.** Pick a stretch of the timeline and export
+it as an MP4, with the readings drawn on it if you want them.
 
 **Use it without the card.** Each camera also becomes a normal Home Assistant
 camera entity, so `camera.snapshot`, picture cards and the mobile app all
@@ -67,6 +75,9 @@ work.
 [![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rolandzeiner&repository=webcam-timelapse&category=integration)
 
 Needs Home Assistant **2025.5.0** or newer.
+
+The card needs a browser from 2023 or newer: Chrome or Edge 110, Safari 16,
+or Firefox 115. On an older wall tablet, update its browser or WebView first.
 
 ## Set up a camera
 
@@ -103,10 +114,49 @@ Every setting can be changed later without losing captured frames.
 | Storage folder | *(automatic)* | Leave empty unless you want frames somewhere else |
 | Verify SSL certificate | on | Turn off only for a camera with a self-signed certificate |
 | Username / password | — | For a camera behind HTTP basic authentication |
+| Lights to switch on | — | Lights and switches to turn on for each capture. See [Lights for capture](#lights-for-capture) |
+| Wait before capturing | 3 s | How long the lights are on before the frame is fetched |
+| When to use them | At every capture | Every capture, only at night (sunset to sunrise), or only within a time window |
+| Time window from / to | 20:00 / 06:00 | The window for *Only within a time window*. It may cross midnight |
 
 **Changing the capture interval to a longer one hides older frames.** Frames
 taken every minute have no place on a five-minute timeline. They stay on disk
 and expire normally, and switching back makes them visible again.
+
+## Lights for capture
+
+A camera pointed at something that is dark for half the day records half a
+timelapse. Pick one or more lights — or switches, for a lamp on a smart plug —
+under **Lights for capture** in the camera's settings, and they are switched
+on just before each frame is saved and off again straight after.
+
+**Only lights that were off are touched.** A light that is already on is left
+on afterwards: the capture did not switch it on, so it is not the capture's to
+switch off.
+
+**A light somebody else used stays on.** If a person or an automation acts on
+one of the lights during the few seconds it is lit for a capture — a motion
+light firing as you walk in — it is left alone instead of being switched off
+under you.
+
+**Raise the wait if frames come out dark.** A camera needs a moment to adjust
+its exposure, and a cheap one may hand back a picture it took before the light
+came on. Three seconds suits most; up to thirty is allowed.
+
+**Choose when the lights are used.** *At every capture* is the default.
+*Only at night* uses them between sunset and sunrise, worked out from your
+home's location, so the hours follow the seasons. *Only within a time window*
+uses two clock times you set instead — a window that crosses midnight, such as
+20:00 to 06:00, works. Outside those hours frames are still captured, just
+without the lights.
+
+**The live view never switches a light.** Only the scheduled captures and the
+`capture_now` action do. The camera entity refreshes every 30 seconds by
+default, and lighting the room that often would be a strobe — so at night the
+live view stays dark between captures.
+
+A capture is never skipped because a light failed to switch. The frame is
+taken anyway and the problem is written to the log.
 
 ## How much disk it uses
 
@@ -149,6 +199,7 @@ show_graph: true
 show_sun: false          # shade night behind the graphs and the scrubber
 graph_hours: 24
 deflicker: 50            # 0 turns it off
+show_export: true        # the Export video button in the player bar
 entities: []
 ```
 
@@ -364,6 +415,76 @@ setting `deflicker: 0` gives you the originals back exactly.
 Turn it up if playback still strobes. Turn it down if evening transitions look
 flattened.
 
+## Exporting a video
+
+Press the film button (**Export video**) in the player bar. Scrub to the
+frame the video should open on and press **Start at this frame**, scrub to the
+one it should close on and press **End at this frame**. The chosen stretch is tinted on the bar. The
+shortcuts select the last day, three days or week, or everything.
+
+The card shows how many frames that is and how long the video will run at the
+chosen frame rate. At 24 frames per second, a day captured every five minutes
+plays in 12 seconds.
+
+**Home Assistant makes the video, not your browser.** You can close the
+dashboard or lock your phone while it encodes; open the panel again later and
+the finished video is there to watch or download.
+
+**Videos are saved in your media folder**, in one folder per camera named
+after it — `/media/webcam_timelapse/<camera>/` on Home Assistant OS. The panel
+shows the folder, and the full path of each video once it is written. After
+the first export, **Open in media browser** takes you to the folder in
+**Media → My media**, which is also the easiest place to delete old ones.
+
+**Sensor readings** draws the card's overlay blocks on every frame — the same
+readings, labels, colours and graphs, each showing the value from the moment
+that frame was captured. **Date and time** stamps each frame in the top-left
+corner. Both can be switched off for a clean picture.
+
+**Each has a size**, set as a share of the video's width: the readings take
+30 % by default and the date and time 15 %. A long sensor name is shortened
+rather than shrinking every reading to make room for it, and text never gets
+too small to survive video compression — at a very small size the block ends
+up a little wider than asked instead.
+
+**The readings can sit left, right, top or bottom.** Left and right are the
+bottom corners, as on the card, and each block starts where the card has it.
+Top and bottom centre the block on that edge. Two blocks put in the same place
+are stacked rather than drawn over each other, and a block at the top keeps
+clear of the date and time.
+
+**Gaps are skipped**, as they are during playback, so a night without captures
+does not become seconds of frozen picture.
+
+The video uses the card's **Smooth brightness** setting, so it flickers no
+more than the playback you exported it from.
+
+Three things differ from the card on purpose:
+
+- **The timestamp includes the year** (`2026-08-01 12:30`). A video outlives
+  the dashboard it came from.
+- **The readings block keeps one width** for the whole video instead of
+  resizing with its contents, which would jitter at 24 frames per second.
+- **Entity icons are not drawn.** They belong to Home Assistant's frontend,
+  which the encoder does not have.
+
+**Readings older than your recorder keeps are hourly averages.** Home
+Assistant stores detailed history for ten days unless you have changed
+`purge_keep_days`. A camera that keeps frames for longer can export further
+back than that, and for those frames the overlay falls back to long-term
+statistics. A sensor without statistics shows a dash.
+
+**One export at a time per camera.** Encoding is the heaviest thing this
+integration does: a day of 1600 px frames captured every five minutes took
+about half a minute on a four-core mini PC, and a Raspberry Pi will need
+longer. Captures carry on meanwhile.
+
+**Exported videos are yours to tidy up.** They are not deleted with the frames
+they were made from, nor when the camera is removed.
+
+The export needs `ffmpeg`, which Home Assistant OS and the Container image
+include.
+
 ## Entities
 
 Each camera creates one device with these entities:
@@ -390,6 +511,7 @@ has a visible explanation.
 | `webcam_timelapse.purge_frames` | Deletes every stored frame for one camera |
 | `webcam_timelapse.pause_capture` | Stops capturing. Stored frames are kept |
 | `webcam_timelapse.resume_capture` | Starts capturing again |
+| `webcam_timelapse.export_video` | Renders a stretch of the archive to an MP4 in the media folder |
 
 Each takes an `entry_id`, which the UI offers as a picker.
 
@@ -408,12 +530,41 @@ actions:
       entry_id: 01ABCDEF...
 ```
 
+**`export_video` finishes when the video is written**, which can take
+minutes, and returns where it is — so the next step of an automation can send
+it somewhere. `start` and `end` are optional and default to the whole archive.
+`overlay` takes the readings in the same form as the card's configuration;
+`readings_size`, `timestamp_size`, `readings_position` and
+`readings_position_left` work as in the card's export panel.
+
+```yaml
+# Every Sunday night, keep the week as a video
+actions:
+  - action: webcam_timelapse.export_video
+    data:
+      entry_id: 01ABCDEF...
+      start: "{{ (now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S') }}"
+      fps: 30
+      overlay:
+        entities:
+          - entity: sensor.greenhouse_temperature
+            graph: true
+    response_variable: video
+  - action: notify.mobile_app_phone
+    data:
+      message: "This week's timelapse: {{ video.file_name }}"
+```
+
 ## How data updates
 
 Captures run on the **wall clock**, not on a timer from when Home Assistant
-started. At a ten-minute interval, frames land at :00, :10, :20 and so on,
-five seconds past the minute — so a camera that publishes on the minute has
-finished writing before the fetch.
+started. At a ten-minute interval, frames land at :00, :10, :20 and so on.
+
+The picture is fetched 5 to 29 seconds past the minute, so a camera that
+publishes on the minute has finished writing. Each camera you add gets a
+second in that range and keeps it. The second varies from one installation
+to the next, so people watching the same public webcam don't all fetch it at
+once.
 
 That fixed grid is what lets the card address frames by position and jump
 straight to any moment.
@@ -483,7 +634,8 @@ Go to **Settings → Devices & Services**, open the three-dot menu on the
 Webcam Timelapse entry and choose **Delete**.
 
 This deletes that camera's stored frames along with the entry. Other cameras
-are untouched. When the last entry is removed, the card is unregistered from
+are untouched, and so are any videos you exported — those stay in the media
+folder. When the last entry is removed, the card is unregistered from
 your dashboard resources.
 
 To uninstall completely, remove the repository in HACS and restart Home

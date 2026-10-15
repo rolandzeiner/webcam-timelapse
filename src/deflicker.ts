@@ -64,7 +64,7 @@ export const DEFAULT_DEFLICKER: DeflickerOptions = {
  */
 function trimmedMean(values: number[], trimFraction = 0.15): number {
   if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
+  const sorted = values.toSorted((a, b) => a - b);
   const cut = Math.floor(sorted.length * trimFraction);
   // Never trim away the whole window on a short one.
   const kept = sorted.length - 2 * cut >= 3 ? sorted.slice(cut, sorted.length - cut) : sorted;

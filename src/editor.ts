@@ -35,13 +35,9 @@ const SPEEDS = [1, 2, 4, 8, 16, 32, 64];
  * overlay heading. Nothing errors; the inputs are simply absent. `ha-form`
  * loads its own selectors, so anything routed through it is safe.
  */
-const OVERLAY_TITLE_SCHEMA = [
-  { name: "overlay_title", selector: { text: {} } },
-] as const;
+const OVERLAY_TITLE_SCHEMA = [{ name: "overlay_title", selector: { text: {} } }] as const;
 
-const OVERLAY_TITLE_LEFT_SCHEMA = [
-  { name: "overlay_title_left", selector: { text: {} } },
-] as const;
+const OVERLAY_TITLE_LEFT_SCHEMA = [{ name: "overlay_title_left", selector: { text: {} } }] as const;
 
 const ROW_SCHEMA = [
   {
@@ -59,6 +55,14 @@ const ROW_SCHEMA = [
           number: { min: 1, max: 8760, mode: "box", unit_of_measurement: "h" },
         },
       },
+      // The toggles are schema fields for the same reason the inputs are.
+      // They used to be hand-placed switches wrapped in ha-formfield for
+      // the label, and Home Assistant 2026.11 removes ha-formfield: the
+      // switches would have kept working with nothing written next to
+      // them. A boolean selector is drawn by whichever frontend is
+      // running, so it carries its label on every version.
+      { name: "show_icon", selector: { boolean: {} } },
+      { name: "graph", selector: { boolean: {} } },
     ],
   },
 ] as const;
@@ -68,10 +72,7 @@ interface HaFormEvent extends CustomEvent {
 }
 
 @customElement("webcam-timelapse-card-editor")
-export class WebcamTimelapseCardEditor
-  extends LitElement
-  implements LovelaceCardEditor
-{
+export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCardEditor {
   static override styles = cardStyles;
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -109,6 +110,7 @@ export class WebcamTimelapseCardEditor
           { name: "show_dayticks", selector: { boolean: {} } },
           { name: "show_graph", selector: { boolean: {} } },
           { name: "show_sun", selector: { boolean: {} } },
+          { name: "show_export", selector: { boolean: {} } },
         ],
       },
       {
@@ -150,8 +152,7 @@ export class WebcamTimelapseCardEditor
     ];
   }
 
-  private computeLabel = (schema: { name: string }): string =>
-    this.t(`editor.${schema.name}`);
+  private computeLabel = (schema: { name: string }): string => this.t(`editor.${schema.name}`);
 
   private computeHelper = (schema: { name: string }): string | undefined => {
     const helper = this.t(`editor.helper.${schema.name}`);
@@ -160,10 +161,10 @@ export class WebcamTimelapseCardEditor
     return helper.startsWith("editor.") ? undefined : helper;
   };
 
-  private onFormChange(event: HaFormEvent): void {
+  private onFormChange = (event: HaFormEvent): void => {
     event.stopPropagation();
     this.emit({ ...this.config, ...event.detail.value });
-  }
+  };
 
   private emit(config: WebcamTimelapseCardConfig): void {
     this.dispatchEvent(
@@ -220,22 +221,12 @@ export class WebcamTimelapseCardEditor
     this.updateRows(side, rows);
   }
 
-  private patchRow(
-    side: ReadoutSide,
-    index: number,
-    patch: Partial<OverlayEntityConfig>,
-  ): void {
-    const rows = this.rows(side).map((row, i) =>
-      i === index ? { ...row, ...patch } : row,
-    );
+  private patchRow(side: ReadoutSide, index: number, patch: Partial<OverlayEntityConfig>): void {
+    const rows = this.rows(side).map((row, i) => (i === index ? { ...row, ...patch } : row));
     this.updateRows(side, rows);
   }
 
-  private renderRow(
-    side: ReadoutSide,
-    row: OverlayEntityConfig,
-    index: number,
-  ): TemplateResult {
+  private renderRow(side: ReadoutSide, row: OverlayEntityConfig, index: number): TemplateResult {
     const label = row.name || row.entity || this.t("editor.entity");
     return html`
       <div class="ent-row" role="group" aria-label=${label}>
@@ -280,26 +271,6 @@ export class WebcamTimelapseCardEditor
                 })}
             />
           </label>
-
-          <ha-formfield .label=${this.t("editor.show_icon")}>
-            <ha-switch
-              .checked=${row.show_icon ?? false}
-              @change=${(e: Event) =>
-                this.patchRow(side, index, {
-                  show_icon: (e.target as HTMLInputElement).checked,
-                })}
-            ></ha-switch>
-          </ha-formfield>
-
-          <ha-formfield .label=${this.t("editor.graph")}>
-            <ha-switch
-              .checked=${row.graph ?? false}
-              @change=${(e: Event) =>
-                this.patchRow(side, index, {
-                  graph: (e.target as HTMLInputElement).checked,
-                })}
-            ></ha-switch>
-          </ha-formfield>
         </div>
 
         <div class="ent-actions">
@@ -354,10 +325,7 @@ export class WebcamTimelapseCardEditor
    * otherwise mean reading the YAML docs, and the card renders exactly
    * as before until a row is added to it.
    */
-  private renderSection(
-    side: ReadoutSide,
-    titleSchema: unknown,
-  ): TemplateResult {
+  private renderSection(side: ReadoutSide, titleSchema: unknown): TemplateResult {
     // Built outside the template on purpose. A nested backtick inside an
     // html`` body is valid JavaScript but it mis-segments the CI guard
     // that scans these templates for stray backticks, which would blunt

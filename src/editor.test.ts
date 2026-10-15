@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import source from "./editor.ts?raw";
 
@@ -14,6 +14,21 @@ describe("editor element choice", () => {
     // number inputs must go through ha-form selectors, which load their
     // own dependencies.
     expect(source).not.toMatch(/<ha-textfield/);
+  });
+
+  it("never uses ha-formfield, and labels the row toggles through ha-form", () => {
+    // Home Assistant 2026.11 removes ha-formfield. Wrapped around a
+    // hand-placed switch it was the only thing drawing the label, so the
+    // "Show icon" and "Graph" toggles would have turned into two bare
+    // switches with no text and no accessible name. Like ha-textfield,
+    // nothing errors.
+    //
+    // A boolean selector in the row schema is drawn by the running
+    // frontend, label included, on every version the card supports.
+    expect(source).not.toMatch(/<ha-formfield/);
+    expect(source).not.toMatch(/<ha-switch/);
+    expect(source).toMatch(/name: "show_icon", selector: \{ boolean: \{\} \}/);
+    expect(source).toMatch(/name: "graph", selector: \{ boolean: \{\} \}/);
   });
 
   it("routes the overlay heading and row fields through ha-form", () => {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import cardSource from "./webcam-timelapse-card.ts?raw";
 import { cardStyles } from "./card-styles";
@@ -71,9 +71,7 @@ describe("stage stacking", () => {
     // re-enter that competition, so this is a deliberate tripwire rather
     // than a style rule. If a new one is genuinely needed, work out where
     // it lands relative to .layers first, then change this test.
-    const declarations = cardStyles.cssText
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .match(/z-index\s*:/g);
+    const declarations = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "").match(/z-index\s*:/g);
 
     expect(declarations).toHaveLength(1);
     expect(declarationsFor(".layers")).toMatch(/z-index/);
@@ -121,9 +119,7 @@ describe("reduced motion", () => {
  * without one.
  */
 function px(selector: string, property: string): number {
-  const match = new RegExp(`${property}:\\s*(-?[\\d.]+)(px)?\\s*;`).exec(
-    declarationsFor(selector),
-  );
+  const match = new RegExp(`${property}:\\s*(-?[\\d.]+)(px)?\\s*;`).exec(declarationsFor(selector));
   if (match === null) throw new Error(`no ${property} on ${selector}`);
   return Number(match[1]);
 }
@@ -152,9 +148,7 @@ describe("timeline bands", () => {
   });
 
   it("keeps the tallest mark inside the track", () => {
-    expect(px(".mark.month", "height")).toBeLessThanOrEqual(
-      px(".track", "height"),
-    );
+    expect(px(".mark.month", "height")).toBeLessThanOrEqual(px(".track", "height"));
   });
 
   it("keeps the slider a large enough pointer target", () => {
@@ -192,7 +186,6 @@ describe("controls overlay", () => {
     expect(body).toMatch(/left:\s*50%/);
     expect(body).toMatch(/bottom:/);
   });
-
 });
 
 /**
@@ -221,9 +214,9 @@ function escape(selector: string): string {
 }
 
 /** The breakpoints, read off the stylesheet rather than hard-coded twice. */
-const BREAKPOINTS = [
-  ...cardStyles.cssText.matchAll(/@container\s*\(max-width:\s*(\d+)px\)/g),
-].map((match) => Number(match[1]));
+const BREAKPOINTS = [...cardStyles.cssText.matchAll(/@container\s*\(max-width:\s*(\d+)px\)/g)].map(
+  (match) => Number(match[1]),
+);
 const SINGLE_BREAKPOINT = Math.min(...BREAKPOINTS);
 const PAIR_BREAKPOINT = Math.max(...BREAKPOINTS);
 
@@ -247,8 +240,7 @@ describe("narrow layout", () => {
     // All three are top-anchored overlays on the frame. Sharing a top
     // edge is what makes them read as one row; any drift between these
     // three numbers shows up as boxes floating at unrelated heights.
-    const top = (body: string): string | undefined =>
-      /top:\s*(\d+)px/.exec(body)?.[1];
+    const top = (body: string): string | undefined => /top:\s*(\d+)px/.exec(body)?.[1];
 
     expect(top(narrowRule(".readout"))).toBe(top(declarationsFor(".stamp")));
     expect(top(narrowRule(".readout"))).toBe(top(declarationsFor(".badge")));
@@ -288,9 +280,7 @@ describe("two readout blocks", () => {
     // single-block card starts moving and this catches it.
     expect(declarationsFor(".readouts")).toMatch(/display:\s*contents/);
 
-    const selectors = [
-      ...narrowBlock(PAIR_BREAKPOINT).matchAll(/([^{}]+)\{/g),
-    ]
+    const selectors = [...narrowBlock(PAIR_BREAKPOINT).matchAll(/([^{}]+)\{/g)]
       .map((match) => match[1]!.trim())
       .filter((selector) => !selector.startsWith("@container"));
 
@@ -327,9 +317,9 @@ describe("two readout blocks", () => {
   });
 
   it("keeps the sparklines in the stacked layout too", () => {
-    expect(
-      narrowRule(".readouts.pair .spark-wrap", PAIR_BREAKPOINT),
-    ).not.toMatch(/display:\s*none/);
+    expect(narrowRule(".readouts.pair .spark-wrap", PAIR_BREAKPOINT)).not.toMatch(
+      /display:\s*none/,
+    );
   });
 
   it("switches earlier than a single block does", () => {
@@ -342,12 +332,9 @@ describe("two readout blocks", () => {
   });
 
   it("aligns the stacked pair with the timestamp and the badge", () => {
-    const top = (body: string): string | undefined =>
-      /top:\s*(\d+)px/.exec(body)?.[1];
+    const top = (body: string): string | undefined => /top:\s*(\d+)px/.exec(body)?.[1];
 
-    expect(top(narrowRule(".readouts.pair", PAIR_BREAKPOINT))).toBe(
-      top(declarationsFor(".stamp")),
-    );
+    expect(top(narrowRule(".readouts.pair", PAIR_BREAKPOINT))).toBe(top(declarationsFor(".stamp")));
   });
 });
 
@@ -383,9 +370,7 @@ describe("readout icon alignment", () => {
     // .ent-row is a two-column grid and ha-form is a direct child, so
     // without an explicit span it lands in the narrow auto column beside
     // the entity picker rather than under it.
-    expect(declarationsFor(".ent-row ha-form")).toMatch(
-      /grid-column:\s*1\s*\/\s*-1/,
-    );
+    expect(declarationsFor(".ent-row ha-form")).toMatch(/grid-column:\s*1\s*\/\s*-1/);
   });
 });
 
@@ -395,20 +380,14 @@ describe("night shading", () => {
     // would pull the track into the stacking competition .layers exists
     // to contain.
     const track = cardSource.slice(cardSource.indexOf('<div class="track">'));
-    expect(track.indexOf('class="nights"')).toBeLessThan(
-      track.indexOf('class="marks"'),
-    );
-    expect(track.indexOf('class="nights"')).toBeLessThan(
-      track.indexOf('class="rail"'),
-    );
+    expect(track.indexOf('class="nights"')).toBeLessThan(track.indexOf('class="marks"'));
+    expect(track.indexOf('class="nights"')).toBeLessThan(track.indexOf('class="rail"'));
   });
 
   it("does not tie night to the ruler toggle", () => {
     // Different questions. Someone who turned the day markers off has
     // said nothing about wanting the dark stretches unmarked.
-    expect(cardSource).toMatch(
-      /const nights =\s*this\.config\?\.show_sun === true/,
-    );
+    expect(cardSource).toMatch(/const nights =\s*this\.config\?\.show_sun === true/);
   });
 
   it("keeps night off unless it is asked for", () => {
@@ -441,9 +420,7 @@ describe("sparkline scale caption", () => {
     // How far it moved reads against the chart's vertical extent, how
     // long over against its horizontal one. Each label sits on the axis
     // it describes, or neither means anything.
-    expect(declarationsFor(".spark-scale")).toMatch(
-      /justify-content:\s*space-between/,
-    );
+    expect(declarationsFor(".spark-scale")).toMatch(/justify-content:\s*space-between/);
   });
 
   it("does not wrap the caption onto a second line", () => {
@@ -459,12 +436,27 @@ describe("folding a readings block away", () => {
     // few rows tall — but shrinking it is exactly where WCAG 2.5.8 gets
     // broken, so the floor is pinned here rather than remembered.
     const size = Number(
-      declarationsFor(".readout-fold").match(
-        /--mdc-icon-button-size:\s*(\d+)px/,
-      )?.[1],
+      declarationsFor(".readout-fold").match(/--mdc-icon-button-size:\s*(\d+)px/)?.[1],
     );
     expect(size).toBeGreaterThanOrEqual(24);
     expect(size).toBeLessThan(40);
+  });
+
+  it("sizes icon buttons for both generations of ha-icon-button", () => {
+    // Current HA reads --ha-icon-button-size, older frontends the mdc one.
+    // With only the old variable every button rendered at 48px, the eye
+    // included, which doubled the height of the readings' heading row.
+    for (const selector of [".readout-fold", ".controls", ".controls .play"]) {
+      const body = declarationsFor(selector);
+      const modern = body.match(/--ha-icon-button-size:\s*(\d+)px/)?.[1];
+      const legacy = body.match(/--mdc-icon-button-size:\s*(\d+)px/)?.[1];
+      expect(modern, selector).toBeDefined();
+      expect(modern, selector).toBe(legacy);
+    }
+  });
+
+  it("lets the eye overhang the heading instead of setting its height", () => {
+    expect(declarationsFor(".readout-head .readout-fold")).toMatch(/margin-block:\s*-4px/);
   });
 
   it("sheds the block's padding once folded", () => {
@@ -477,9 +469,7 @@ describe("folding a readings block away", () => {
     // The heading is optional. Justified from the end, a title-less block
     // still lands the eye on the block's trailing edge instead of its
     // leading one; the title takes the slack when there is one.
-    expect(declarationsFor(".readout-head")).toMatch(
-      /justify-content:\s*flex-end/,
-    );
+    expect(declarationsFor(".readout-head")).toMatch(/justify-content:\s*flex-end/);
     expect(declarationsFor(".readout-title")).toMatch(/flex:\s*1/);
   });
 
@@ -487,9 +477,7 @@ describe("folding a readings block away", () => {
     // A visible block offers "hide": the crossed-out eye is where you are
     // going, not where you are. The other way round is the toggle trap
     // where the control describes itself and everyone presses it twice.
-    expect(cardSource).toMatch(
-      /folded \? "mdi:eye-outline" : "mdi:eye-off-outline"/,
-    );
+    expect(cardSource).toMatch(/folded \? "mdi:eye-outline" : "mdi:eye-off-outline"/);
   });
 
   it("tells assistive tech whether the block is open", () => {
@@ -589,18 +577,14 @@ describe("transport control order", () => {
 });
 
 describe("ruler visibility", () => {
-  const colour = (body: string): string =>
-    /background:\s*([^;]+);/.exec(body)?.[1]?.trim() ?? "";
-  const alpha = (body: string): number =>
-    Number(/opacity:\s*([\d.]+)/.exec(body)?.[1] ?? 1);
+  const colour = (body: string): string => /background:\s*([^;]+);/.exec(body)?.[1]?.trim() ?? "";
+  const alpha = (body: string): number => Number(/opacity:\s*([\d.]+)/.exec(body)?.[1] ?? 1);
 
   it("does not paint the marks in the rail's own colour", () => {
     // The bug: both were var(--wtl-divider), the token for "barely
     // there". A scale drawn in the same colour as the bar it sits behind
     // dissolves into it and reads as hidden rather than quiet.
-    expect(colour(declarationsFor(".mark"))).not.toBe(
-      colour(declarationsFor(".rail")),
-    );
+    expect(colour(declarationsFor(".mark"))).not.toBe(colour(declarationsFor(".rail")));
   });
 
   it("grades the marks from minor to month", () => {
@@ -634,9 +618,7 @@ describe("more-info targets", () => {
     // composed:true the event stops at the card's shadow boundary and
     // never reaches the Lovelace view listening for it. bubbles alone is
     // not enough.
-    const event = /new CustomEvent\(\s*"hass-more-info",[\s\S]{0,240}?\}\)/.exec(
-      cardSource,
-    )?.[0];
+    const event = /new CustomEvent\(\s*"hass-more-info",[\s\S]{0,240}?\}\)/.exec(cardSource)?.[0];
 
     expect(event).toBeDefined();
     expect(event).toMatch(/bubbles:\s*true/);
@@ -691,7 +673,7 @@ describe("picture click target", () => {
   it("ignores clicks aimed at a control or a reading", () => {
     // Both sit inside the stage, so their clicks bubble through it.
     // Without the guard, tapping pause would also open the camera dialog.
-    const handler = /onStageClick\([\s\S]{0,1200}?\n  \}/.exec(cardSource)?.[0];
+    const handler = /onStageClick = \([\s\S]{0,1200}?\n  \};/.exec(cardSource)?.[0];
 
     expect(handler).toBeDefined();
     expect(handler).toMatch(/composedPath\(\)/);
@@ -704,7 +686,7 @@ describe("picture click target", () => {
     // DOM to window. Searching all of it for a class as common as
     // "controls" lets any ancestor above this card veto every click on
     // the picture — the whole feature dies silently.
-    const handler = /onStageClick\([\s\S]{0,900}?\n  \}/.exec(cardSource)?.[0];
+    const handler = /onStageClick = \([\s\S]{0,900}?\n  \};/.exec(cardSource)?.[0];
 
     expect(handler).toMatch(/currentTarget/);
     expect(handler).toMatch(/slice\(0, boundary\)/);
@@ -713,7 +695,19 @@ describe("picture click target", () => {
   it("reads the composed path rather than the retargeted target", () => {
     // A click starting inside a control's shadow root is retargeted to
     // the host, so event.target would not carry the class being checked.
-    const handler = /onStageClick\([\s\S]{0,1200}?\n  \}/.exec(cardSource)?.[0];
+    const handler = /onStageClick = \([\s\S]{0,1200}?\n  \};/.exec(cardSource)?.[0];
     expect(handler).not.toMatch(/event\.target/);
+  });
+});
+
+describe("export entry point", () => {
+  it("opens from the player bar, so a closed panel adds no height", () => {
+    // A row of its own under the timeline made every card taller, export
+    // in use or not.
+    const controls = /private renderControls\(\)[\s\S]*?\n  \}/.exec(cardSource)?.[0];
+    expect(controls).toMatch(/@click=\$\{this\.toggleExport\}/);
+    expect(cardSource).toMatch(
+      /show_export !== false && this\.exportOpen\s*\?\s*this\.renderExport\(\)/,
+    );
   });
 });

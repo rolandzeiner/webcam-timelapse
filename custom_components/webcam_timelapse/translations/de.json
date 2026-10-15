@@ -34,6 +34,23 @@
               "frames_path": "Leer lassen, um die Bilder im Konfigurationsordner von Home Assistant zu speichern, wo Backups sie überspringen.",
               "username": "Nur nötig, wenn die Kamera per HTTP-Basisauthentifizierung geschützt ist."
             }
+          },
+          "lighting": {
+            "name": "Licht für die Aufnahme",
+            "data": {
+              "capture_lights": "Einzuschaltende Lichter",
+              "light_settle": "Wartezeit vor der Aufnahme",
+              "lights_mode": "Wann verwenden",
+              "lights_window_start": "Zeitfenster von",
+              "lights_window_end": "Zeitfenster bis"
+            },
+            "data_description": {
+              "capture_lights": "Werden kurz vor jedem gespeicherten Bild eingeschaltet und direkt danach wieder ausgeschaltet. Lichter, die bereits an sind, bleiben unverändert.",
+              "light_settle": "Gibt der Kamera Zeit, sich an das Licht anzupassen. Erhöhe den Wert, wenn Bilder zu dunkel werden.",
+              "lights_mode": "Nachts richtet sich nach Sonnenuntergang und Sonnenaufgang am Standort deines Zuhauses und wandert daher mit den Jahreszeiten. Ein Zeitfenster verwendet die beiden Uhrzeiten darunter.",
+              "lights_window_start": "Nur bei „Nur in einem Zeitfenster“ verwendet. Ein Fenster über Mitternacht, etwa 20:00 bis 06:00, funktioniert.",
+              "lights_window_end": "Ab dieser Uhrzeit werden die Lichter nicht mehr verwendet."
+            }
           }
         }
       },
@@ -58,6 +75,23 @@
               "username": "Benutzer:in",
               "password": "Passwort"
             }
+          },
+          "lighting": {
+            "name": "Licht für die Aufnahme",
+            "data": {
+              "capture_lights": "Einzuschaltende Lichter",
+              "light_settle": "Wartezeit vor der Aufnahme",
+              "lights_mode": "Wann verwenden",
+              "lights_window_start": "Zeitfenster von",
+              "lights_window_end": "Zeitfenster bis"
+            },
+            "data_description": {
+              "capture_lights": "Werden kurz vor jedem gespeicherten Bild eingeschaltet und direkt danach wieder ausgeschaltet. Lichter, die bereits an sind, bleiben unverändert.",
+              "light_settle": "Gibt der Kamera Zeit, sich an das Licht anzupassen. Erhöhe den Wert, wenn Bilder zu dunkel werden.",
+              "lights_mode": "Nachts richtet sich nach Sonnenuntergang und Sonnenaufgang am Standort deines Zuhauses und wandert daher mit den Jahreszeiten. Ein Zeitfenster verwendet die beiden Uhrzeiten darunter.",
+              "lights_window_start": "Nur bei „Nur in einem Zeitfenster“ verwendet. Ein Fenster über Mitternacht, etwa 20:00 bis 06:00, funktioniert.",
+              "lights_window_end": "Ab dieser Uhrzeit werden die Lichter nicht mehr verwendet."
+            }
           }
         }
       },
@@ -77,7 +111,9 @@
       "invalid_scheme": "Es werden nur http:// und https:// unterstützt.",
       "invalid_interval": "Wähle eines der angebotenen Aufnahmeintervalle.",
       "not_an_image": "Diese URL hat eine Seite geliefert, kein Bild. Verwende den direkten Link zur Bilddatei.",
-      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet."
+      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet.",
+      "invalid_light": "Als Licht für die Aufnahme können nur Lichter und Schalter verwendet werden.",
+      "invalid_light_window": "Das Zeitfenster muss zu unterschiedlichen Uhrzeiten beginnen und enden."
     },
     "abort": {
       "already_configured": "Diese Bild-URL ist bereits eingerichtet.",
@@ -110,6 +146,23 @@
               "username": "Benutzer:in",
               "password": "Passwort"
             }
+          },
+          "lighting": {
+            "name": "Licht für die Aufnahme",
+            "data": {
+              "capture_lights": "Einzuschaltende Lichter",
+              "light_settle": "Wartezeit vor der Aufnahme",
+              "lights_mode": "Wann verwenden",
+              "lights_window_start": "Zeitfenster von",
+              "lights_window_end": "Zeitfenster bis"
+            },
+            "data_description": {
+              "capture_lights": "Werden kurz vor jedem gespeicherten Bild eingeschaltet und direkt danach wieder ausgeschaltet. Lichter, die bereits an sind, bleiben unverändert.",
+              "light_settle": "Gibt der Kamera Zeit, sich an das Licht anzupassen. Erhöhe den Wert, wenn Bilder zu dunkel werden.",
+              "lights_mode": "Nachts richtet sich nach Sonnenuntergang und Sonnenaufgang am Standort deines Zuhauses und wandert daher mit den Jahreszeiten. Ein Zeitfenster verwendet die beiden Uhrzeiten darunter.",
+              "lights_window_start": "Nur bei „Nur in einem Zeitfenster“ verwendet. Ein Fenster über Mitternacht, etwa 20:00 bis 06:00, funktioniert.",
+              "lights_window_end": "Ab dieser Uhrzeit werden die Lichter nicht mehr verwendet."
+            }
           }
         }
       }
@@ -121,10 +174,20 @@
       "invalid_scheme": "Es werden nur http:// und https:// unterstützt.",
       "invalid_interval": "Wähle eines der angebotenen Aufnahmeintervalle.",
       "not_an_image": "Diese URL hat eine Seite geliefert, kein Bild. Verwende den direkten Link zur Bilddatei.",
-      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet."
+      "timeout": "Die Kamera hat nicht rechtzeitig geantwortet.",
+      "invalid_light": "Als Licht für die Aufnahme können nur Lichter und Schalter verwendet werden.",
+      "invalid_light_window": "Das Zeitfenster muss zu unterschiedlichen Uhrzeiten beginnen und enden."
     }
   },
   "selector": {
+    "readings_position": {
+      "options": {
+        "left": "Links",
+        "right": "Rechts",
+        "top": "Oben",
+        "bottom": "Unten"
+      }
+    },
     "capture_interval": {
       "options": {
         "1": "Jede Minute",
@@ -147,6 +210,13 @@
         "1280": "1280 px",
         "1600": "1600 px",
         "1920": "1920 px"
+      }
+    },
+    "lights_mode": {
+      "options": {
+        "always": "Bei jeder Aufnahme",
+        "night": "Nur nachts (Sonnenuntergang bis Sonnenaufgang)",
+        "window": "Nur in einem Zeitfenster"
       }
     }
   },
@@ -213,6 +283,60 @@
           "description": "Welche eingerichtete Webcam fortgesetzt wird."
         }
       }
+    },
+    "export_video": {
+      "name": "Video exportieren",
+      "description": "Rendert einen Abschnitt der gespeicherten Bilder als MP4 in den Medienordner. Endet erst, wenn das Video geschrieben ist – das kann einige Minuten dauern.",
+      "fields": {
+        "entry_id": {
+          "name": "Kamera",
+          "description": "Aus welcher eingerichteten Webcam exportiert wird."
+        },
+        "start": {
+          "name": "Von",
+          "description": "Erster Zeitpunkt, der enthalten sein soll. Leer lassen, um beim ältesten gespeicherten Bild zu beginnen."
+        },
+        "end": {
+          "name": "Bis",
+          "description": "Letzter Zeitpunkt, der enthalten sein soll. Leer lassen, um beim neuesten gespeicherten Bild zu enden."
+        },
+        "fps": {
+          "name": "Bilder pro Sekunde",
+          "description": "Abspielgeschwindigkeit des Videos. Bei 24 läuft ein Tag mit Aufnahmen alle 5 Minuten in 12 Sekunden."
+        },
+        "max_width": {
+          "name": "Maximale Breite",
+          "description": "Verkleinert das Video auf diese Breite. 0 behält die Größe der gespeicherten Bilder."
+        },
+        "deflicker": {
+          "name": "Helligkeit glätten",
+          "description": "Gleicht wolkenbedingte Helligkeitssprünge aus, so wie die Karte beim Abspielen. 0 schaltet es aus."
+        },
+        "timestamp": {
+          "name": "Datum und Uhrzeit anzeigen",
+          "description": "Stempelt jedes Bild mit dem Zeitpunkt seiner Aufnahme."
+        },
+        "timestamp_size": {
+          "name": "Größe von Datum und Uhrzeit",
+          "description": "Breite von Datum und Uhrzeit in Prozent der Videobreite."
+        },
+        "overlay": {
+          "name": "Sensorwerte",
+          "description": "Werte, die ins Video gezeichnet werden, in derselben Form wie die Konfiguration der Karte: entities, entities_left, overlay_title, overlay_title_left, graph_hours, show_graph und show_sun."
+        },
+        "readings_size": {
+          "name": "Größe der Sensorwerte",
+          "description": "Breite des Werteblocks in Prozent der Videobreite. Bei zwei Blöcken gilt sie für den breiteren."
+        },
+        "readings_position": {
+          "name": "Position der Sensorwerte",
+          "description": "Wo der Werteblock der Karte (ihre entities) im Video sitzt. Links und rechts sind die unteren Ecken wie auf der Karte; oben und unten zentrieren ihn an diesem Rand. Leer lassen, um die Position der Karte zu übernehmen."
+        },
+        "readings_position_left": {
+          "name": "Position der linken Sensorwerte",
+          "description": "Dasselbe für den zweiten Block der Karte (entities_left)."
+        }
+      }
     }
   },
   "exceptions": {
@@ -248,6 +372,30 @@
     },
     "decode_error": {
       "message": "Die Antwort der Kamera ließ sich nicht als Bild lesen: {error}."
+    },
+    "export_running": {
+      "message": "Für diese Kamera läuft bereits ein Videoexport. Warte, bis er fertig ist, oder brich ihn ab."
+    },
+    "export_no_frames": {
+      "message": "In diesem Zeitraum gibt es keine gespeicherten Bilder."
+    },
+    "export_bad_range": {
+      "message": "Das Ende des Zeitraums liegt vor seinem Anfang."
+    },
+    "export_cancelled": {
+      "message": "Der Videoexport wurde abgebrochen."
+    },
+    "export_low_disk": {
+      "message": "Im Medienordner sind nur noch {free} MB frei. Ein Export braucht mindestens {needed} MB."
+    },
+    "export_ffmpeg_missing": {
+      "message": "Das Video konnte nicht kodiert werden, weil ffmpeg ({binary}) nicht gefunden wurde."
+    },
+    "export_ffmpeg_failed": {
+      "message": "ffmpeg konnte das Video nicht kodieren: {error}"
+    },
+    "export_failed": {
+      "message": "Der Videoexport ist fehlgeschlagen: {error}"
     }
   },
   "issues": {

@@ -46,6 +46,15 @@ export interface HomeAssistant {
   } & Record<string, unknown>;
   localize?: (key: string, ...args: unknown[]) => string;
   callWS?<T = unknown>(msg: { type: string; [key: string]: unknown }): Promise<T>;
+  /** The live WebSocket connection; only the subscribe call is used. */
+  connection?: {
+    subscribeMessage<T>(
+      callback: (message: T) => void,
+      msg: { type: string; [key: string]: unknown },
+    ): Promise<() => Promise<void> | void>;
+  };
+  /** Absolute URL for a path on this Home Assistant instance. */
+  hassUrl?: (path?: string) => string;
 }
 
 /** Marker every card config extends. */
@@ -59,279 +68,6 @@ export interface LovelaceCardConfig {
 export interface LovelaceCardEditor extends HTMLElement {
   hass?: HomeAssistant;
   setConfig(config: LovelaceCardConfig): void;
-}
-
-/** Tag-map entry for the built-in error card. */
-export type LovelaceCard = HTMLElement;
-
-/** `bubbles: true` + `composed: true` are required so the event crosses
- *  the editor's shadow boundary and reaches the dashboard's
- *  card-editor listener. */
-export function fireEvent<T>(
-  node: HTMLElement,
-  type: string,
-  detail: T,
-): void {
-  node.dispatchEvent(
-    new CustomEvent(type, { detail, bubbles: true, composed: true }),
-  );
-}
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "skill-demo-austria-card-editor": LovelaceCardEditor;
-    "hui-error-card": LovelaceCard;
-    "ha-form": HaFormElement;
-    "ha-selector": HaSelectorElement;
-  }
-}
-
-interface HaFormElement extends HTMLElement {
-  hass?: HomeAssistant;
-  data?: Record<string, unknown>;
-  schema?: ReadonlyArray<HaFormSchema>;
-  computeLabel?: (field: { name: string }) => string;
-  computeHelper?: (field: { name: string }) => string | undefined;
-}
-
-interface HaSelectorElement extends HTMLElement {
-  hass?: HomeAssistant;
-  selector?: HASelector;
-  value?: unknown;
-  label?: string;
-  required?: boolean;
-}
-
-// HASelector — exhaustive union of the ha-form selectors useful in card
-// configs as of HA 2026. The canonical (and longer) list lives in
-// `frontend/src/data/selector.ts`; this covers every variant the
-// Skill Demo card surfaces in its showcase editor.
-export interface DeviceSelectorFilter {
-  integration?: string;
-  manufacturer?: string;
-  model?: string;
-  model_id?: string;
-}
-
-// Entity picker filter. Keys inside one object are ANDed; a list of objects
-// is ORed. Matching is exact, case-sensitive string equality. `device` needs
-// HA 2026.8+ — older frontends ignore the key, so the picker simply narrows
-// less rather than erroring, which is safe under this repo's HA floor.
-export interface EntitySelectorFilter {
-  integration?: string;
-  domain?: string | string[];
-  device_class?: string | string[];
-  supported_features?: string[];
-  unit_of_measurement?: string | string[];
-  device?: DeviceSelectorFilter;
-}
-
-// Filters belong under `filter`. The flat `domain` / `integration` /
-// `device_class` keys are deprecated upstream (LegacyEntitySelector) and are
-// dropped without warning when a `filter` key is present, so never mix them.
-export interface EntitySelectorConfig {
-  filter?: EntitySelectorFilter | ReadonlyArray<EntitySelectorFilter>;
-  multiple?: boolean;
-  reorder?: boolean;
-  include_entities?: string[];
-  exclude_entities?: string[];
-}
-
-export type HASelector =
-  | { entity: EntitySelectorConfig }
-  | { area: { multiple?: boolean } }
-  | { floor: { multiple?: boolean } }
-  | { label: { multiple?: boolean } }
-  | { device: { integration?: string; multiple?: boolean } }
-  | { boolean: Record<string, never> }
-  | {
-      text: {
-        type?: "text" | "password" | "url" | "email" | "tel" | "search";
-        multiline?: boolean;
-        prefix?: string;
-        suffix?: string;
-      };
-    }
-  | {
-      number: {
-        min?: number;
-        max?: number;
-        step?: number;
-        mode?: "box" | "slider";
-        unit_of_measurement?: string;
-      };
-    }
-  | {
-      select: {
-        mode?: "dropdown" | "list";
-        multiple?: boolean;
-        custom_value?: boolean;
-        options: ReadonlyArray<{ value: string; label: string }>;
-      };
-    }
-  | { color_rgb: Record<string, never> }
-  | { color_temp: { min_mireds?: number; max_mireds?: number } }
-  | { ui_color: { default_color?: string; include_state?: boolean; include_none?: boolean } }
-  | { icon: { placeholder?: string; fallbackPath?: string } }
-  | { time: Record<string, never> }
-  | { date: Record<string, never> }
-  | { datetime: Record<string, never> }
-  | {
-      duration: {
-        enable_day?: boolean;
-        enable_millisecond?: boolean;
-      };
-    }
-  | { object: Record<string, never> }
-  | { template: Record<string, never> }
-  | { theme: { include_default?: boolean } }
-  | { language: { languages?: ReadonlyArray<string>; native_name?: boolean; no_sort?: boolean } }
-  | { country: { countries?: ReadonlyArray<string>; no_sort?: boolean } }
-  | {
-      ui_action: {
-        actions?: ReadonlyArray<
-          | "more-info"
-          | "toggle"
-          | "call-service"
-          | "perform-action"
-          | "navigate"
-          | "url"
-          | "none"
-        >;
-        default_action?: string;
-      };
-    }
-  | {
-      target: {
-        entity?: { domain?: string | string[]; integration?: string };
-        device?: { integration?: string };
-        area?: Record<string, never>;
-      };
-    }
-  | {
-      attribute: {
-        entity_id?: string;
-        hide_attributes?: ReadonlyArray<string>;
-      };
-    }
-  | {
-      state: {
-        entity_id?: string;
-        attribute?: string;
-      };
-    }
-  | {
-      qr_code: {
-        data?: string;
-        scale?: number;
-        error_correction_level?: "low" | "medium" | "quartile" | "high";
-      };
-    }
-  | { constant: { value: string | number | boolean; label?: string } };
-
-export interface HaFormBaseSchema {
-  name: string;
-  required?: boolean;
-}
-export interface HaFormSelectorSchema extends HaFormBaseSchema {
-  selector: HASelector;
-}
-export interface HaFormGridSchema {
-  type: "grid";
-  name: "";
-  schema: ReadonlyArray<HaFormSchema>;
-}
-export interface HaFormExpandableSchema {
-  type: "expandable";
-  name: string;
-  title?: string;
-  /**
-   * REQUIRED for flat config shapes. Without it, ha-form's value-changed
-   * reducer nests the inner fields under data[name] and the card
-   * silently misses them.
-   */
-  flatten?: boolean;
-  schema: ReadonlyArray<HaFormSchema>;
-}
-export type HaFormSchema =
-  | HaFormSelectorSchema
-  | HaFormGridSchema
-  | HaFormExpandableSchema;
-
-/** Card config.
- *
- * The first block is the *real* card config — the fields the card body
- * reads to render itself. The rest are showcase fields surfaced by the
- * editor to demonstrate every native ha-form selector available in HA
- * 2026. They are stored on the config object (so a `show_debug: true`
- * card body can dump them) but otherwise have no effect.
- *
- * All showcase fields are optional — leaving them blank produces a
- * valid card. Field names are namespaced (`txt_*`, `num_*`, `pick_*`,
- * `data_*`, `flag_*`) so they cannot collide with future first-class
- * config keys. */
-export interface SkillDemoAustriaCardConfig extends LovelaceCardConfig {
-  type: string;
-  name?: string;
-  /** Required — the `*_example` sensor from the integration. */
-  entity?: string;
-  /** Optional — the `*_online` binary sensor. Renders the status pip. */
-  status_entity?: string;
-  show_hero?: boolean;
-  /** When true, the card body renders a `<details>` block dumping the
-   *  full resolved config so users can verify their editor selections. */
-  show_debug?: boolean;
-
-  // ── Text inputs ────────────────────────────────────────────────────
-  txt_single?: string;
-  txt_multi?: string;
-  txt_password?: string;
-  txt_url?: string;
-  txt_email?: string;
-
-  // ── Numbers ───────────────────────────────────────────────────────
-  num_box?: number;
-  num_slider?: number;
-
-  // ── Toggle ────────────────────────────────────────────────────────
-  flag_boolean?: boolean;
-
-  // ── Choosers ──────────────────────────────────────────────────────
-  pick_dropdown?: string;
-  pick_list?: string;
-  pick_multi?: ReadonlyArray<string>;
-  pick_custom?: string;
-
-  // ── HA registry pickers ───────────────────────────────────────────
-  pick_entity_multi?: ReadonlyArray<string>;
-  pick_device?: string;
-  pick_area?: string;
-  pick_floor?: string;
-  pick_label?: string;
-
-  // ── Date / Time ───────────────────────────────────────────────────
-  pick_time?: string;
-  pick_date?: string;
-  pick_datetime?: string;
-  pick_duration?: { hours?: number; minutes?: number; seconds?: number };
-
-  // ── Visual ────────────────────────────────────────────────────────
-  pick_icon?: string;
-  pick_color_rgb?: ReadonlyArray<number>;
-  pick_ui_color?: string;
-  pick_theme?: string;
-
-  // ── Data ──────────────────────────────────────────────────────────
-  data_template?: string;
-  data_object?: Record<string, unknown>;
-  data_attribute?: string;
-  data_state?: string;
-
-  // ── HA-specific ───────────────────────────────────────────────────
-  pick_language?: string;
-  pick_country?: string;
-  pick_action?: Record<string, unknown>;
-  pick_target?: Record<string, unknown>;
 }
 
 /** One overlay row. Nothing about any particular sensor is assumed. */
@@ -362,7 +98,7 @@ export interface OverlayEntityConfig {
   show_icon?: boolean;
   /**
    * Read the measurement time from this state attribute instead of
-   * `last_changed`. Opt-in per entity — see overlay-history.ts.
+   * `last_updated`. Opt-in per entity — see overlay-history.ts.
    */
   time_attribute?: string;
 }
@@ -410,13 +146,11 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   overlay_title_left?: string;
   /** Smooth cloud-driven brightness jumps during playback. 0 = off. */
   deflicker?: number;
+  /**
+   * Offer the video export under the timeline.
+   *
+   * On by default. A wall tablet that only ever shows the camera can
+   * turn it off and get the row back.
+   */
+  show_export?: boolean;
 }
-
-/**
- * Playback multipliers.
- *
- * Goes well past 8x because the useful range depends on the capture
- * interval, which the user controls. At a ten-minute cadence a fortnight
- * is ~2000 frames and 8x is plenty; at one minute it is ~20,000, and 8x
- * would take twenty minutes to play through.
- */

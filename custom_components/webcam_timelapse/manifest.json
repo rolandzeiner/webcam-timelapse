@@ -1,7 +1,7 @@
 {
   "domain": "webcam_timelapse",
   "name": "Webcam Timelapse",
-  "after_dependencies": ["frontend", "http", "lovelace"],
+  "after_dependencies": ["ffmpeg", "frontend", "http", "lovelace", "recorder"],
   "codeowners": ["@rolandzeiner"],
   "config_flow": true,
   "dependencies": [],
@@ -11,5 +11,5 @@
   "issue_tracker": "https://github.com/rolandzeiner/webcam-timelapse/issues",
   "loggers": ["custom_components.webcam_timelapse"],
   "requirements": [],
-  "version": "0.6.1"
+  "version": "0.7.0"
 }

@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import io
+import stat
+import sys
 from collections.abc import Generator
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -16,6 +19,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotExtension
 from syrupy.assertion import SnapshotAssertion
 
+from custom_components.webcam_timelapse import frame_store
 from custom_components.webcam_timelapse.capture import (
     CacheValidators,
     FetchOutcome,
@@ -31,6 +35,8 @@ from custom_components.webcam_timelapse.const import (
     CONF_RETENTION_DAYS,
     DOMAIN,
 )
+from custom_components.webcam_timelapse.coordinator import WebcamTimelapseCoordinator
+from custom_components.webcam_timelapse.encode import encode_webp
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -255,3 +261,71 @@ def no_deprecated_ha_api(
             "Home Assistant reported deprecated API use:\n  " + "\n  ".join(hits),
             pytrace=False,
         )
+
+
+# --- video export scaffolding ----------------------------------------------
+
+#: A slot on the ten-minute capture grid the canonical entry uses.
+GRID_STEP = 600
+GRID_T0 = 1_785_000_000 - 1_785_000_000 % GRID_STEP
+FRAME_WIDTH, FRAME_HEIGHT = 64, 48
+#: One frame as the raw RGB24 an export pipes into ffmpeg.
+FRAME_BYTES = FRAME_WIDTH * FRAME_HEIGHT * 3
+
+
+def grid_slots(count: int) -> list[int]:
+    """The first ``count`` slots from GRID_T0."""
+    return [GRID_T0 + index * GRID_STEP for index in range(count)]
+
+
+def write_frames(
+    coordinator: WebcamTimelapseCoordinator,
+    frame_slots: list[int],
+    *,
+    size: tuple[int, int] = (FRAME_WIDTH, FRAME_HEIGHT),
+    luma: list[int] | None = None,
+) -> None:
+    """Put real, decodable frames into an entry's archive."""
+    for index, slot in enumerate(frame_slots):
+        encoded = encode_webp(make_jpeg(*size, seed=index), 0, 80)
+        frame_store.write_frame(coordinator.frames_dir, slot, encoded.data)
+        frame_store.append_luma(
+            coordinator.frames_dir, slot, luma[index] if luma else encoded.luma
+        )
+
+
+def install_ffmpeg(hass: HomeAssistant, tmp_path: Path, body: str) -> Path:
+    """Stand a Python script in for ffmpeg; returns its path.
+
+    Registered the way Home Assistant's own ffmpeg integration registers
+    the real binary, so the lookup the export does is the one under test.
+    """
+    script = tmp_path / "fake-ffmpeg"
+    script.write_text(f"#!{sys.executable}\nimport sys\n{body}\n", encoding="utf-8")
+    script.chmod(script.stat().st_mode | stat.S_IXUSR)
+    hass.data["ffmpeg"] = SimpleNamespace(binary=str(script))
+    return script
+
+
+# Reads everything it is given and records how much, where the real one
+# would have written a video.
+COUNTING_FFMPEG = """
+data = sys.stdin.buffer.read()
+with open(sys.argv[-1], "wb") as out:
+    out.write(b"bytes=%d" % len(data))
+"""
+
+
+@pytest.fixture
+def media_dir(hass: HomeAssistant, tmp_path: Path) -> Path:
+    """Point Home Assistant's media folder at a per-test directory."""
+    root = tmp_path / "media"
+    root.mkdir()
+    hass.config.media_dirs = {"local": str(root)}
+    return root
+
+
+@pytest.fixture
+def ffmpeg(hass: HomeAssistant, tmp_path: Path) -> Path:
+    """An ffmpeg stand-in that accepts whatever it is fed."""
+    return install_ffmpeg(hass, tmp_path, COUNTING_FFMPEG)

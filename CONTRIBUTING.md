@@ -43,9 +43,9 @@ pytest tests/                                     # 90% coverage floor, enforced
 mypy --strict --ignore-missing-imports custom_components/webcam_timelapse
 ruff check .
 ruff format --check .                             # `ruff check` ignores formatting
-npx tsc --noEmit                                  # card type-check, stricter than Rollup's
-npm test                                          # vitest: the pure card logic
-npm run build                                     # Rollup bundle
+npx vp check                                      # card format, lint, type-check; the build does not type-check
+npm test                                          # vp test: the pure card logic
+npm run build                                     # vp build: the card bundle
 ```
 
 Plus one check on the **oldest** Python this integration supports:
@@ -91,9 +91,10 @@ and the test environment has no manifest-resolution step to install it.
 
 ## Architecture notes worth knowing before you edit
 
-**`encode.py` and `frame_store.py` import nothing from `homeassistant`.** That
-is structural, not stylistic: everything in them does blocking work (a WebP
-encode, `os.scandir`, `unlink`), so every call must go through
+**`encode.py`, `frame_store.py`, `overlay.py` and `deflicker.py` import
+nothing from `homeassistant`.** That is structural, not stylistic: everything
+in them does blocking work (a WebP encode, `os.scandir`, `unlink`, drawing on
+a decoded frame), so every call must go through
 `hass.async_add_executor_job`. Keeping the modules HA-free makes an
 `await`-less call from async code visible on review rather than only as a
 blocking-call warning at runtime.
@@ -104,12 +105,81 @@ must sit exactly on the grid. Naming files after a response's `Last-Modified`
 looks equivalent and silently overwrites one file forever against any camera
 whose header freezes.
 
+**The video export draws the card's overlay a second time, in Python.**
+`overlay.py` ports the series maths of `src/overlay-history.ts` and
+`src/sparkline.ts`, and `deflicker.py` ports `src/deflicker.ts`, because the
+reading burned into a frame — and the brightness correction applied to it —
+has to match what the card shows for that frame. Change one side and change
+the other in the same commit; the Python tests carry the same cases as the
+TypeScript ones for that reason. The overlay's font, DejaVu Sans, is bundled
+in `fonts/` with its licence: Pillow's built-in face has no umlauts, `µ` or
+superscripts, and a Home Assistant container ships no system fonts. It is
+subset to Latin, Greek, Cyrillic and the common symbols, which keeps it at
+~220 KB, under the `check-added-large-files` limit. To regenerate it from the
+full DejaVu Sans:
+
+```bash
+pyftsubset DejaVuSans.ttf --output-file=custom_components/webcam_timelapse/fonts/DejaVuSans.ttf \
+  --unicodes="U+0020-007E,U+00A0-024F,U+0370-03FF,U+0400-04FF,U+2000-206F,U+2070-209F,U+20A0-20CF,U+2100-218F,U+2190-21FF,U+2200-22FF,U+25A0-25FF,U+FFFD" \
+  --layout-features='*' --name-IDs='*' --name-languages='*' --notdef-outline --glyph-names
+```
+
+**ffmpeg and the recorder are soft dependencies of the export.** Both are in
+`after_dependencies` and neither is imported at module level, so an install
+without them still loads and only the export reports the gap. The tests run
+the export against a few lines of Python standing in for ffmpeg, so they do
+not depend on which codecs a runner ships; one test drives the real binary
+and is skipped where it is not installed.
+
 **`unique_id` formulas are frozen.** Changing the entry-level or entity-level
 formula wipes every existing install.
 
 **The card bundle is generated.** `custom_components/webcam_timelapse/www/*.js`
-comes from `src/` via Rollup — never hand-edit it. Commit the rebuilt bundle
+comes from `src/` via `vp build` — never hand-edit it. Commit the rebuilt bundle
 alongside the source change; HACS users never run `npm`.
+
+`vite.config.ts` is the whole card toolchain, run through
+[Vite+](https://viteplus.dev/) (`vp`): `vp build` (Vite library mode on
+Rolldown), `vp test` (Vitest) and `vp check` (Oxfmt + Oxlint + type-check).
+The only card `devDependency` is `vite-plus`; Vitest, Rolldown and the
+type-checker ship inside it, and `typescript` is not installed. Five things in
+that file fail silently if you change them:
+
+- The banner must be a **legal** comment (`/*! ... */`) with
+  `comments: { legal: true }`, or the minifier strips it.
+- **`minify` lives on `rolldownOptions.output`, with `dropConsole: false`.**
+  Vite's library mode skips whitespace minification for ES output, so
+  `build.minify` alone ships a larger bundle. `dropConsole` is all-or-nothing,
+  and the calls it would remove sit in `catch` blocks.
+- **Dev vs prod comes from `--mode development`** (`npm run dev`). A plain
+  `vp build` is production: minified, no sourcemap.
+- **`fmt.embeddedLanguageFormatting` stays `"off"`.** Otherwise Oxfmt
+  reformats Lit `html`/`css` templates and changes the whitespace inside
+  rendered elements, which is a DOM change, not a style change.
+- **Decorators are not configured.** Rolldown reads `tsconfig.json` itself;
+  if that regresses, class fields overwrite Lit's accessors and reactivity
+  dies while the build stays green.
+
+The `vite` override in `package.json` must name the same version as
+`vite-plus`: it keeps npm from installing upstream Vite next to Vite+'s core.
+Dependabot bumps `vite-plus` but not the override, and `src/toolchain.test.ts`
+fails until both move together. The build does not type-check, so `vp check`
+is the only gate between a type error and a shipped bundle.
+
+Card tests live next to the code as `src/**/*.test.ts` and run in plain node
+(settings in `vite.config.ts`'s `test` block).
+
+`tsconfig.json`'s `lib` is the card's browser floor. It is `es2023`, so the
+card may call ES2023 built-ins such as `toSorted()`, which the bundle does not
+polyfill. Raising it raises the browser requirement in the README's Install
+section; change both together.
+
+Note the bundle is excluded from the `end-of-file-fixer` / `trailing-whitespace`
+pre-commit hooks: Rolldown emits no trailing newline, and a hook that "fixes"
+the file *after* the build leaves the committed bundle out of sync with a fresh
+one — which `validate.yml` asserts byte-for-byte. `vp check` also runs as a
+local pre-commit hook on card source; don't switch to Vite+'s own `vp staged`
+hooks, which take over `core.hooksPath` and silently disable ruff and mypy.
 
 **Version sync is byte-identical.** `manifest.json` `version` and
 `src/const.ts` `CARD_VERSION` must match; `const.py` derives its value from the

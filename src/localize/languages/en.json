@@ -61,17 +61,70 @@
       "overlay_title": "Shown above the readings. Leave empty for no heading.",
       "overlay_title_left": "Shown above the readings. Leave empty for no heading.",
       "show_icon": "Uses the entity's own icon from Home Assistant.",
-      "show_sun": "Shades the hours between sunset and sunrise on the graphs and the scrubber, using your Home Assistant location. Hidden when the bands get too fine to read."
+      "show_sun": "Shades the hours between sunset and sunrise on the graphs and the scrubber, using your Home Assistant location. Hidden when the bands get too fine to read.",
+      "show_export": "Adds an export button to the player bar. The video is rendered by Home Assistant and saved to the media folder."
     },
     "deflicker": "Smooth brightness",
     "show_icon": "Show icon",
     "overlay_title": "Heading",
-    "overlay_title_left": "Heading"
+    "overlay_title_left": "Heading",
+    "show_export": "Offer video export"
   },
   "actions": {
     "show_camera": "Show camera details",
     "show_entity": "Show details for {v}",
     "hide_readings": "Hide readings",
     "show_readings": "Show readings"
+  },
+  "export": {
+    "open": "Export video",
+    "close": "Close export",
+    "from": "From",
+    "to": "To",
+    "start_here": "Start at this frame",
+    "end_here": "End at this frame",
+    "preset_hours": "Last {v} h",
+    "preset_days": "Last {v} d",
+    "preset_all": "Everything",
+    "fps": "Frames per second",
+    "timestamp": "Date and time",
+    "readings": "Sensor readings",
+    "summary": "{frames} frames, {length} of video",
+    "summary_empty": "No frames in this range.",
+    "start": "Export",
+    "cancel": "Cancel",
+    "preparing": "Preparing…",
+    "running": "Encoding frame {done} of {total}",
+    "done": "Video ready",
+    "saved": "Saved as {v}",
+    "watch": "Watch",
+    "download": "Download",
+    "cancelled": "Export cancelled.",
+    "band": "Range selected for export",
+    "error": {
+      "export_running": "An export is already running for this camera.",
+      "export_no_frames": "There are no frames in that range.",
+      "export_bad_range": "The end of the range is before its start.",
+      "export_cancelled": "Export cancelled.",
+      "export_low_disk": "There is not enough free space in the media folder.",
+      "export_ffmpeg_missing": "ffmpeg was not found on this Home Assistant, so the video could not be encoded.",
+      "export_ffmpeg_failed": "ffmpeg could not encode the video. The Home Assistant log has the details.",
+      "export_failed": "The export failed. The Home Assistant log has the details.",
+      "entry_not_loaded": "This camera is not loaded right now. Try again once it has started.",
+      "unknown": "The export could not be started."
+    },
+    "size": "Size",
+    "size_value": "{v} % of the width",
+    "position": "Position",
+    "block_left": "Left block",
+    "block_right": "Right block",
+    "positions": {
+      "left": "Left",
+      "right": "Right",
+      "top": "Top",
+      "bottom": "Bottom"
+    },
+    "folder": "Videos are saved in {v}",
+    "browse": "Open in media browser"
   }
 }
