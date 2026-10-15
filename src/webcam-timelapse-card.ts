@@ -22,9 +22,18 @@ import {
 } from "./const";
 import { DEFAULT_DEFLICKER, deflickerGains, type LumaSeries, radiusForStrength } from "./deflicker";
 import {
+  ASPECT_ICONS,
   clampRange,
+  cropAxis,
+  cropWindow,
   DEFAULT_EXPORT_FPS,
+  estimateSize,
+  EXPORT_ASPECTS,
+  EXPORT_EVERY,
   EXPORT_FPS,
+  EXPORT_MIN_FREE_BYTES,
+  EXPORT_SIZE_DEFAULTS,
+  type ExportAspect,
   EXPORT_POSITIONS,
   EXPORT_PRESETS,
   type ExportPosition,
@@ -34,13 +43,17 @@ import {
   formatLength,
   formatSize,
   framesIn,
+  framesUsed,
   fullRange,
   lastHours,
   mediaBrowserPath,
+  outputSize,
   presetFits,
   progress,
   rangeBand,
+  ratioLabel,
   READINGS_SIZE,
+  SOFT_CROP_PIXELS,
   TIMESTAMP_SIZE,
   withEnd,
   withStart,
@@ -169,8 +182,27 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private exportFps: number = DEFAULT_EXPORT_FPS;
   @state() private exportStamp = true;
   @state() private exportReadings = true;
-  @state() private exportStampSize: number = TIMESTAMP_SIZE.default;
-  @state() private exportReadingsSize: number = READINGS_SIZE.default;
+  /** The shape the video is cropped to. */
+  @state() private exportAspect: ExportAspect = "native";
+  /** 0..100, where the crop sits along the axis it slides on. */
+  @state() private exportCrop = 50;
+  /** Use every n-th frame of the range. */
+  @state() private exportEvery = 1;
+  /** Overlay sizes, kept per format — see EXPORT_SIZE_DEFAULTS. */
+  @state() private exportSizes: Record<ExportAspect, { timestamp: number; readings: number }> = {
+    ...EXPORT_SIZE_DEFAULTS,
+  };
+  /**
+   * The frame's own pixel size, read off the picture on screen. The card
+   * is never told it, and it is what the crop, the video's size and the
+   * file-size estimate are worked out from. Null until a frame has shown.
+   */
+  @state() private frameSize: readonly [number, number] | null = null;
+  /** A drag in progress on a range handle or on the crop window. */
+  private exportDrag:
+    | { kind: "start" | "end"; track: DOMRect }
+    | { kind: "crop"; from: number; crop: number; travel: number; axis: "x" | "y" }
+    | undefined;
   /** Positions the viewer picked; a block not in here keeps its card side. */
   @state() private exportPositions: Partial<Record<ReadoutSide, ExportPosition>> = {};
   @state() private exportStatus: ExportStatus | null = null;
@@ -720,6 +752,7 @@ export class WebcamTimelapseCard extends LitElement {
 
       this.revealFrame(incoming, this.useLayerA ? this.layerA : this.layerB);
       this.useLayerA = !this.useLayerA;
+      this.noteFrameSize(incoming.naturalWidth, incoming.naturalHeight);
       this.loadedPosition = position;
       this.frameError = undefined;
       this.requestUpdate();
@@ -882,7 +915,16 @@ export class WebcamTimelapseCard extends LitElement {
    * knows nothing about.
    */
   private onScrub = (event: Event): void => {
-    const position = Number((event.target as HTMLInputElement).value);
+    this.scrubTo(Number((event.target as HTMLInputElement).value));
+  };
+
+  /**
+   * Move the playhead the way a drag does: the thumb follows at once,
+   * the picture at most every SCRUB_QUIET_MS and once more when it stops.
+   * Shared by the scrubber and the export range handles, which show the
+   * frame they are being dragged to.
+   */
+  private scrubTo(position: number): void {
     this.position = position;
     this.pendingPosition = position;
 
@@ -899,7 +941,7 @@ export class WebcamTimelapseCard extends LitElement {
       this.scrubSettle = undefined;
       this.loadPendingPosition();
     }, SCRUB_QUIET_MS);
-  };
+  }
 
   /**
    * Load whatever position the thumb is on now, skipping a repeat.
@@ -949,6 +991,95 @@ export class WebcamTimelapseCard extends LitElement {
   private get exportRunning(): boolean {
     return this.exportStatus?.state === "running";
   }
+
+  /** The overlay sizes of the format chosen. */
+  private get exportSize(): { timestamp: number; readings: number } {
+    return this.exportSizes[this.exportAspect];
+  }
+
+  private setExportSize(key: "timestamp" | "readings", value: number): void {
+    this.exportSizes = {
+      ...this.exportSizes,
+      [this.exportAspect]: { ...this.exportSize, [key]: value },
+    };
+  }
+
+  /** Remember the frame's size when it changes; most frames repeat it. */
+  private noteFrameSize(width: number, height: number): void {
+    if (width <= 0 || height <= 0) return;
+    if (this.frameSize?.[0] === width && this.frameSize[1] === height) return;
+    this.frameSize = [width, height];
+  }
+
+  /** Which way the crop slides, or null when the chosen format cuts nothing. */
+  private get exportCropAxis(): "x" | "y" | null {
+    return this.frameSize ? cropAxis(this.frameSize, this.exportAspect) : null;
+  }
+
+  private onHandleDown(event: PointerEvent, kind: "start" | "end"): void {
+    const track = (event.currentTarget as HTMLElement).parentElement;
+    if (!track || this.exportRunning) return;
+    event.preventDefault();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this.exportDrag = { kind, track: track.getBoundingClientRect() };
+    this.onHandleMove(event);
+  }
+
+  /**
+   * Drag a range end along the scrubber. The playhead goes with it, so the
+   * picture shows the frame the video would open or close on — the same
+   * reason the range is otherwise set by marking the playhead.
+   */
+  private onHandleMove = (event: PointerEvent): void => {
+    const drag = this.exportDrag;
+    const range = this.exportSelection;
+    if (!drag || drag.kind === "crop" || range === null || drag.track.width <= 0) return;
+    const last = Math.max(0, this.index.count - 1);
+    const share = Math.min(1, Math.max(0, (event.clientX - drag.track.left) / drag.track.width));
+    const position = Math.round(share * last);
+    this.exportRange =
+      drag.kind === "start"
+        ? withStart(range, position, this.index.count)
+        : withEnd(range, position, this.index.count);
+    this.scrubTo(position);
+  };
+
+  private onCropDown = (event: PointerEvent): void => {
+    const axis = this.exportCropAxis;
+    const frame = (event.currentTarget as HTMLElement).parentElement;
+    if (!axis || !frame || !this.frameSize) return;
+    event.preventDefault();
+    event.stopPropagation();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    const rect = frame.getBoundingClientRect();
+    const kept = cropWindow(this.frameSize, this.exportAspect, this.exportCrop);
+    // How far the window can move, in screen pixels: the frame's extent
+    // less the window's own along the axis it slides on.
+    const travel =
+      axis === "x" ? rect.width * (1 - kept.width / 100) : rect.height * (1 - kept.height / 100);
+    this.exportDrag = {
+      kind: "crop",
+      from: axis === "x" ? event.clientX : event.clientY,
+      crop: this.exportCrop,
+      travel,
+      axis,
+    };
+  };
+
+  private onCropMove = (event: PointerEvent): void => {
+    const drag = this.exportDrag;
+    if (!drag || drag.kind !== "crop" || drag.travel <= 0) return;
+    const moved = (drag.axis === "x" ? event.clientX : event.clientY) - drag.from;
+    this.exportCrop = Math.min(
+      100,
+      Math.max(0, Math.round(drag.crop + (moved / drag.travel) * 100)),
+    );
+  };
+
+  private endExportDrag = (): void => {
+    if (this.exportDrag && this.exportDrag.kind !== "crop") this.loadPendingPosition();
+    this.exportDrag = undefined;
+  };
 
   private toggleExport = (): void => {
     this.exportOpen = !this.exportOpen;
@@ -1088,10 +1219,13 @@ export class WebcamTimelapseCard extends LitElement {
       {
         fps: this.exportFps,
         timestamp: this.exportStamp,
-        timestampSize: this.exportStampSize,
+        timestampSize: this.exportSize.timestamp,
         readings: this.exportReadings,
-        readingsSize: this.exportReadingsSize,
+        readingsSize: this.exportSize.readings,
         positions: this.exportPositions,
+        aspect: this.exportAspect,
+        cropPosition: this.exportCrop,
+        every: this.exportEvery,
       },
       this.language,
       this.resolveColor,
@@ -1249,6 +1383,7 @@ export class WebcamTimelapseCard extends LitElement {
           <img class="layer a" alt="" decoding="async" fetchpriority="high" />
           <img class="layer b" alt="" decoding="async" fetchpriority="high" />
         </div>
+        ${this.renderCropMask()}
         ${
           this.frameError
             ? html`<div class="empty">
@@ -1579,6 +1714,7 @@ export class WebcamTimelapseCard extends LitElement {
       (node) =>
         node instanceof HTMLElement &&
         (node.classList.contains("controls") ||
+          node.classList.contains("crop-window") ||
           node.classList.contains("readout-row") ||
           node.classList.contains("readout-fold")),
     );
@@ -1726,6 +1862,7 @@ export class WebcamTimelapseCard extends LitElement {
           @input=${this.onScrub}
           @change=${this.onScrubCommit}
           />
+          ${this.renderExportHandles()}
         </div>
 
         ${
@@ -1792,7 +1929,7 @@ export class WebcamTimelapseCard extends LitElement {
       const slot = this.index.t0! + position * this.index.step;
       return formatStamp(slot, this.timeZone, this.language);
     };
-    const frames = framesIn(this.present, range);
+    const used = framesUsed(framesIn(this.present, range), this.exportEvery);
     const running = this.exportRunning;
     const hasReadings = overlayEntities(this.config).length > 0;
     const presets = EXPORT_PRESETS.filter((hours) => presetFits(this.index, hours));
@@ -1869,6 +2006,35 @@ export class WebcamTimelapseCard extends LitElement {
           )}
         </div>
 
+        <div class="export-row" role="group" aria-label=${this.t("export.every")}>
+          <span class="export-label">${this.t("export.every")}</span>
+          ${EXPORT_EVERY.map(
+            (every) =>
+              html`<button
+                class="export-chip"
+                aria-pressed=${this.exportEvery === every ? "true" : "false"}
+                ?disabled=${running}
+                @click=${() => {
+                  this.exportEvery = every;
+                }}
+              >
+                ${every === 1 ? this.t("export.every_all") : this.t("export.every_n", String(every))}
+              </button>`,
+          )}
+        </div>
+        ${
+          this.exportEvery > 1
+            ? html`<p class="export-hint">${this.t("export.every_hint")}</p>`
+            : nothing
+        }
+
+        ${this.renderExportFormat(running)}
+
+        ${
+          this.exportAspect === "9:16" || this.exportAspect === "1:1"
+            ? html`<p class="export-hint">${this.t("export.sizes_hint")}</p>`
+            : nothing
+        }
         <div class="export-row">
           <label class="export-check">
             <input
@@ -1883,9 +2049,14 @@ export class WebcamTimelapseCard extends LitElement {
           </label>
           ${
             this.exportStamp
-              ? this.renderExportSize(TIMESTAMP_SIZE, this.exportStampSize, running, (size) => {
-                  this.exportStampSize = size;
-                })
+              ? this.renderExportSize(
+                  TIMESTAMP_SIZE,
+                  this.exportSize.timestamp,
+                  running,
+                  (size) => {
+                    this.setExportSize("timestamp", size);
+                  },
+                )
               : nothing
           }
         </div>
@@ -1907,10 +2078,10 @@ export class WebcamTimelapseCard extends LitElement {
                   this.exportReadings
                     ? this.renderExportSize(
                         READINGS_SIZE,
-                        this.exportReadingsSize,
+                        this.exportSize.readings,
                         running,
                         (size) => {
-                          this.exportReadingsSize = size;
+                          this.setExportSize("readings", size);
                         },
                       )
                     : nothing
@@ -1920,15 +2091,7 @@ export class WebcamTimelapseCard extends LitElement {
             : nothing
         }
 
-        <div class="export-summary">
-          ${
-            frames === 0
-              ? this.t("export.summary_empty")
-              : this.t("export.summary")
-                  .replace("{frames}", String(frames))
-                  .replace("{length}", formatLength(frames / this.exportFps))
-          }
-        </div>
+        ${this.renderExportSummary(used)}
 
         ${
           running
@@ -1936,7 +2099,7 @@ export class WebcamTimelapseCard extends LitElement {
             : html`<div class="export-row">
               <button
                 class="export-go"
-                ?disabled=${frames === 0}
+                ?disabled=${used === 0}
                 @click=${this.startExport}
               >
                 <ha-icon icon="mdi:movie-open-outline"></ha-icon>
@@ -1948,7 +2111,7 @@ export class WebcamTimelapseCard extends LitElement {
         ${
           this.exportStatus?.folder
             ? html`<div class="export-folder">
-              ${this.t("export.folder", this.exportStatus.folder)}
+              <span>${this.t("export.folder", this.exportStatus.folder)}</span>
               ${
                 this.exportStatus.folder_media_id
                   ? html`<a
@@ -1964,6 +2127,196 @@ export class WebcamTimelapseCard extends LitElement {
         }
       </div>
     `;
+  }
+
+  /**
+   * The format tiles, and with a crop the slider that places it.
+   *
+   * The slider is the keyboard's way to move the crop; the window drawn
+   * over the picture is the pointer's, and shows what is kept.
+   */
+  private renderExportFormat(running: boolean): TemplateResult {
+    const size = this.frameSize;
+    const axis = this.exportCropAxis;
+    const video = size ? outputSize(size, this.exportAspect, this.exportCrop) : null;
+    const hint =
+      this.exportAspect === "native"
+        ? this.t("export.format_native")
+        : axis === null
+          ? this.t("export.format_same")
+          : this.t("export.format_crop");
+    const soft = axis !== null && video !== null && Math.min(...video) < SOFT_CROP_PIXELS;
+    const ends = axis === "y" ? ["top", "bottom"] : ["left", "right"];
+
+    return html`<div class="export-format">
+      <span class="export-label" id="export-format-label">${this.t("export.format")}</span>
+      <div class="export-tiles" role="group" aria-labelledby="export-format-label">
+        ${EXPORT_ASPECTS.map(
+          (aspect) =>
+            html`<button
+              class="export-tile"
+              aria-pressed=${this.exportAspect === aspect ? "true" : "false"}
+              ?disabled=${running}
+              @click=${() => {
+                this.exportAspect = aspect;
+                this.exportCrop = 50;
+              }}
+            >
+              <ha-icon icon=${ASPECT_ICONS[aspect]}></ha-icon>
+              <span>${this.t(`export.aspects.${aspect === "native" ? "native" : aspect.replace(":", "_")}`)}</span>
+              <span class="export-ratio">
+                ${aspect === "native" ? (size ? ratioLabel(size) : "") : aspect}
+              </span>
+            </button>`,
+        )}
+      </div>
+      <p class="export-hint">${hint}</p>
+      ${
+        axis !== null
+          ? html`<div class="export-crop">
+            <label class="export-label" for="export-crop">${this.t("export.crop")}</label>
+            <input
+              id="export-crop"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              .value=${String(this.exportCrop)}
+              aria-valuetext=${
+                this.exportCrop === 50
+                  ? this.t("export.crop_middle")
+                  : `${this.t(`export.positions.${this.exportCrop < 50 ? ends[0] : ends[1]}`)}, ${this.exportCrop} %`
+              }
+              ?disabled=${running}
+              @input=${(event: Event) => {
+                this.exportCrop = Number((event.target as HTMLInputElement).value);
+              }}
+            />
+            <button
+              class="export-chip"
+              ?disabled=${running || this.exportCrop === 50}
+              @click=${() => {
+                this.exportCrop = 50;
+              }}
+            >
+              ${this.t("export.crop_center")}
+            </button>
+            <span class="export-crop-ends" aria-hidden="true">
+              <span>${this.t(`export.positions.${ends[0]}`)}</span>
+              <span>${this.t(`export.positions.${ends[1]}`)}</span>
+            </span>
+          </div>`
+          : nothing
+      }
+      ${
+        soft && video
+          ? html`<p class="export-note" role="status">
+            <ha-icon icon="mdi:information-outline"></ha-icon>
+            <span>${this.t("export.soft_crop", `${video[0]} × ${video[1]}`)}</span>
+          </p>`
+          : nothing
+      }
+    </div>`;
+  }
+
+  /**
+   * Frames, length and an estimate of the file's size, with a warning when
+   * the volume the video goes to would be left short.
+   */
+  private renderExportSummary(frames: number): TemplateResult {
+    if (frames === 0) {
+      return html`<div class="export-summary">${this.t("export.summary_empty")}</div>`;
+    }
+    const size = this.frameSize;
+    const estimate = size
+      ? estimateSize(frames, outputSize(size, this.exportAspect, this.exportCrop))
+      : null;
+    const free = this.exportStatus?.free_bytes;
+    const short =
+      estimate !== null && typeof free === "number" && free - estimate.high < EXPORT_MIN_FREE_BYTES;
+
+    return html`<dl class="export-stats">
+        <div>
+          <dt>${this.t("export.frames")}</dt>
+          <dd>${frames.toLocaleString(this.language)}</dd>
+        </div>
+        <div>
+          <dt>${this.t("export.length")}</dt>
+          <dd>${formatLength(frames / this.exportFps)}</dd>
+        </div>
+        <div>
+          <dt>${this.t("export.file_size")}</dt>
+          <dd>${estimate ? this.t("export.about", formatSize(estimate.bytes)) : "–"}</dd>
+        </div>
+      </dl>
+      ${
+        estimate
+          ? html`<p class="export-hint">
+            ${this.t("export.size_estimate")
+              .replace("{low}", formatSize(estimate.low))
+              .replace("{high}", formatSize(estimate.high))}
+          </p>`
+          : nothing
+      }
+      ${
+        short && typeof free === "number"
+          ? html`<p class="export-warning" role="alert">
+            ${this.t("export.low_disk", formatSize(free))}
+          </p>`
+          : nothing
+      }`;
+  }
+
+  /**
+   * The crop, drawn over the picture while the panel is open: what the
+   * video keeps stays bright, the rest is dimmed, and the window can be
+   * dragged. Sized to the frame inside the stage rather than to the stage,
+   * because the picture is letterboxed into it.
+   */
+  private renderCropMask(): TemplateResult | typeof nothing {
+    const size = this.frameSize;
+    if (!this.exportOpen || !size || this.exportCropAxis === null) return nothing;
+    const kept = cropWindow(size, this.exportAspect, this.exportCrop);
+    return html`<div
+      class="crop-frame"
+      aria-hidden="true"
+      style="--wtl-frame-ratio:${(size[0] / size[1]).toFixed(4)}"
+    >
+      <div
+        class="crop-window ${this.exportCropAxis}"
+        style="left:${kept.left.toFixed(3)}%;top:${kept.top.toFixed(3)}%;width:${kept.width.toFixed(3)}%;height:${kept.height.toFixed(3)}%"
+        @pointerdown=${this.onCropDown}
+        @pointermove=${this.onCropMove}
+        @pointerup=${this.endExportDrag}
+        @pointercancel=${this.endExportDrag}
+        @click=${(event: Event) => event.stopPropagation()}
+      ></div>
+    </div>`;
+  }
+
+  /**
+   * Grips on both ends of the export band, for dragging the range.
+   *
+   * Pointer only, and hidden from assistive technology: the keyboard sets
+   * the same range by moving the playhead and marking it, which the
+   * buttons in the panel do. Above the scrubber's input in paint order,
+   * which is what lets them take the pointer from it.
+   */
+  private renderExportHandles(): TemplateResult | typeof nothing {
+    const range = this.exportOpen ? this.exportSelection : null;
+    if (range === null || this.exportRunning) return nothing;
+    const band = rangeBand(range, this.index.count);
+    const handle = (kind: "start" | "end", left: number): TemplateResult =>
+      html`<span
+        class="export-handle ${kind}"
+        aria-hidden="true"
+        style="left:${left.toFixed(3)}%"
+        @pointerdown=${(event: PointerEvent) => this.onHandleDown(event, kind)}
+        @pointermove=${this.onHandleMove}
+        @pointerup=${this.endExportDrag}
+        @pointercancel=${this.endExportDrag}
+      ></span>`;
+    return html`${handle("start", band.left)}${handle("end", band.left + band.width)}`;
   }
 
   /**

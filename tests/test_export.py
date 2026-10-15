@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import io
 import shutil
 from collections.abc import Generator
 from pathlib import Path
@@ -21,6 +22,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
+from PIL import Image
 
 from custom_components.webcam_timelapse import export, frame_store
 from custom_components.webcam_timelapse.const import (
@@ -258,6 +260,72 @@ async def test_max_width_scales_the_video_down(exporter: VideoExporter) -> None:
 
     assert (result["width"], result["height"]) == (32, 24)
     assert fed_bytes(result) == 6 * 32 * 24 * 3
+
+
+@pytest.mark.parametrize(
+    ("aspect", "position", "expected"),
+    [
+        ("native", 50, (WIDTH, HEIGHT)),
+        ("16:9", 50, (64, 36)),  # 64x48 is 4:3: the height is cut
+        ("9:16", 50, (26, 48)),  # and here the width
+        ("1:1", 0, (48, 48)),
+    ],
+)
+async def test_aspect_crops_the_video(
+    exporter: VideoExporter,
+    aspect: str,
+    position: int,
+    expected: tuple[int, int],
+) -> None:
+    result = await exporter.async_export(
+        ExportOptions(aspect=aspect, crop_position=position)
+    )
+
+    assert (result["width"], result["height"]) == expected
+    assert fed_bytes(result) == 6 * expected[0] * expected[1] * 3
+
+
+async def test_max_width_applies_to_the_cropped_picture(
+    exporter: VideoExporter,
+) -> None:
+    result = await exporter.async_export(ExportOptions(aspect="1:1", max_width=32))
+
+    assert (result["width"], result["height"]) == (32, 32)
+
+
+async def test_crop_position_picks_the_part_kept(
+    hass: HomeAssistant, mock_fetch: AsyncMock, media_dir: Path
+) -> None:
+    """0 keeps the left edge of the frame, 100 the right."""
+    entry = make_entry()
+    assert await setup_entry(hass, entry)
+    coordinator = entry.runtime_data
+    image = Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 255))
+    image.paste((255, 0, 0), (0, 0, WIDTH // 2, HEIGHT))
+    buffer = io.BytesIO()
+    image.save(buffer, "WEBP", lossless=True)
+    frame_store.write_frame(coordinator.frames_dir, T0, buffer.getvalue())
+
+    def render(position: float) -> bytes | None:
+        return export._render_frame(
+            coordinator.frames_dir, T0, (26, 48), 1.0, None, (9 / 16, position)
+        )
+
+    left = await hass.async_add_executor_job(render, 0.0)
+    right = await hass.async_add_executor_job(render, 1.0)
+    assert left is not None and right is not None
+    assert left[:3] == bytes((255, 0, 0))
+    assert right[:3] == bytes((0, 0, 255))
+
+
+async def test_every_uses_only_every_nth_frame(exporter: VideoExporter) -> None:
+    result = await exporter.async_export(ExportOptions(every=4))
+
+    # Six frames: the first and the fifth. The range still opens on its
+    # own first frame.
+    assert result["frames"] == 2
+    assert (result["start"], result["end"]) == (T0, T0 + 4 * STEP)
+    assert fed_bytes(result) == 2 * FRAME_BYTES
 
 
 async def test_frames_of_another_size_are_resized_to_match(
@@ -636,7 +704,10 @@ async def test_subscribers_see_progress_through_to_done(
         "folder": str(Path(result["path"]).parent),
         # The export created the folder, so the card can link to it.
         "folder_media_id": "media-source://media_source/local/webcam_timelapse/test_cam",
+        # Read again after the video was written, so it reflects the space left.
+        "free_bytes": seen[-1]["free_bytes"],
     }
+    assert isinstance(seen[-1]["free_bytes"], int)
 
     unsubscribe()
     unsubscribe()  # twice is harmless

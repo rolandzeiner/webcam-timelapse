@@ -59,7 +59,8 @@ light on for the second each frame is taken, and off again after.
 disk, so you can find the exact capture.
 
 **Keep the timelapse as a video.** Pick a stretch of the timeline and export
-it as an MP4, with the readings drawn on it if you want them.
+it as an MP4, with the readings drawn on it if you want them, in the camera's
+own shape or cropped to portrait or square for a phone.
 
 **Use it without the card.** Each camera also becomes a normal Home Assistant
 camera entity, so `camera.snapshot`, picture cards and the mobile app all
@@ -419,12 +420,34 @@ flattened.
 
 Press the film button (**Export video**) in the player bar. Scrub to the
 frame the video should open on and press **Start at this frame**, scrub to the
-one it should close on and press **End at this frame**. The chosen stretch is tinted on the bar. The
-shortcuts select the last day, three days or week, or everything.
+one it should close on and press **End at this frame**. The chosen stretch is tinted on the bar,
+with a grip at each end: drag one and the picture follows, so you see the frame
+the video will open or close on. The shortcuts select the last day, three days
+or week, or everything.
 
-The card shows how many frames that is and how long the video will run at the
-chosen frame rate. At 24 frames per second, a day captured every five minutes
-plays in 12 seconds.
+The card shows how many frames that is, how long the video will run at the
+chosen frame rate, and roughly how large the file will be. At 24 frames per
+second, a day captured every five minutes plays in 12 seconds. The size is an
+estimate: a picture with a lot of movement makes a larger file. If the media
+folder would run short of space, the card says so before you start.
+
+**Frames used** thins a long range: **1 in 5** keeps every fifth frame, so the
+timelapse runs five times as fast and the video is a fifth as long.
+
+**Format crops the video for a phone or a feed.** **As camera** keeps the
+frames' own shape; **Landscape** (16:9), **Portrait** (9:16) and **Square**
+(1:1) cut the picture down to fit. Only the camera picture is cropped: the date
+and the readings are laid out again inside the new shape. While the panel is
+open, the card dims what the crop leaves out. Drag the bright frame, or use
+**Crop position**, to choose which part to keep. Each format keeps its own
+overlay sizes, and the narrow ones start larger so the readings stay legible on
+a phone.
+
+**A crop has only the pixels the frames have.** Portrait from frames stored at
+1024 × 576 is 324 × 576, which looks soft on a phone, and the card tells you
+when a crop is that small. For sharper portrait videos, choose a larger width
+under **Resize to** in the camera's settings. That applies to frames captured
+from then on.
 
 **Home Assistant makes the video, not your browser.** You can close the
 dashboard or lock your phone while it encodes; open the panel again later and
@@ -534,8 +557,10 @@ actions:
 minutes, and returns where it is — so the next step of an automation can send
 it somewhere. `start` and `end` are optional and default to the whole archive.
 `overlay` takes the readings in the same form as the card's configuration;
-`readings_size`, `timestamp_size`, `readings_position` and
-`readings_position_left` work as in the card's export panel.
+`readings_size`, `timestamp_size`, `readings_position`,
+`readings_position_left`, `aspect` (`native`, `16:9`, `9:16` or `1:1`),
+`crop_position` (0 to 100, 50 is the middle) and `every` (use every nth frame)
+work as in the card's export panel.
 
 ```yaml
 # Every Sunday night, keep the week as a video

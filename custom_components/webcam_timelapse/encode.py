@@ -122,8 +122,49 @@ def frame_size(data: bytes) -> tuple[int, int]:
         raise ImageDecodeError(str(err)) from err
 
 
+def _even(value: int) -> int:
+    """Round down to an even number, never below two."""
+    return max(2, value - value % 2)
+
+
+def crop_box(
+    size: tuple[int, int], aspect: float | None, position: float = 0.5
+) -> tuple[int, int, int, int]:
+    """The part of a frame that a crop to ``aspect`` keeps.
+
+    Args:
+        size: The frame's width and height.
+        aspect: Width over height to cut to, or ``None`` for the whole
+            frame.
+        position: Where the kept part sits along the axis it can slide
+            on, 0.0 (left or top) to 1.0 (right or bottom).
+
+    Returns:
+        ``(left, top, right, bottom)`` as Pillow's ``crop`` takes it. When
+        cropping, both sides are even — H.264 in 4:2:0 cannot store an odd
+        one — so a frame of the planned size needs no resample afterwards.
+    """
+    width, height = size
+    if aspect is None:
+        return 0, 0, width, height
+    position = min(1.0, max(0.0, position))
+    if width / height > aspect:
+        # Wider than wanted: keep the full height, slide across.
+        kept_width = min(_even(round(height * aspect)), _even(width))
+        kept_height = _even(height)
+        left = round((width - kept_width) * position)
+        return left, 0, left + kept_width, kept_height
+    kept_width = _even(width)
+    kept_height = min(_even(round(width / aspect)), _even(height))
+    top = round((height - kept_height) * position)
+    return 0, top, kept_width, top + kept_height
+
+
 def decode_frame(
-    data: bytes, size: tuple[int, int] | None = None, gain: float = 1.0
+    data: bytes,
+    size: tuple[int, int] | None = None,
+    gain: float = 1.0,
+    crop: tuple[float, float] | None = None,
 ) -> Image.Image:
     """Decode a stored frame to RGB, for the video export.
 
@@ -135,6 +176,10 @@ def decode_frame(
         gain: Brightness multiplier, 1.0 for none. Applied as a straight
             scale of the sRGB values, which is what the card's
             ``filter: brightness()`` does to the same frame.
+        crop: ``(aspect, position)`` to cut the frame to before resizing,
+            as ``crop_box`` takes them; ``None`` keeps the whole frame.
+            Worked out per frame, so frames of another size are cut to the
+            same shape rather than to the same pixels.
 
     Raises:
         ImageDecodeError: The payload could not be decoded as an image.
@@ -145,6 +190,10 @@ def decode_frame(
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as err:
         raise ImageDecodeError(str(err)) from err
 
+    if crop is not None:
+        box = crop_box(rgb.size, *crop)
+        if box != (0, 0, *rgb.size):
+            rgb = rgb.crop(box)
     if size is not None and rgb.size != size:
         rgb = rgb.resize(size, Image.Resampling.LANCZOS)
     if gain != 1.0:

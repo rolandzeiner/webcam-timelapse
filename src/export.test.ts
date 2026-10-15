@@ -3,6 +3,14 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   clampRange,
   clampSize,
+  cropAxis,
+  cropBox,
+  cropWindow,
+  estimateSize,
+  EXPORT_SIZE_DEFAULTS,
+  framesUsed,
+  outputSize,
+  ratioLabel,
   type ExportStatus,
   exportRequest,
   formatLength,
@@ -212,6 +220,9 @@ describe("request", () => {
     readings: true,
     readingsSize: 30,
     positions: {},
+    aspect: "native" as const,
+    cropPosition: 50,
+    every: 1,
   };
 
   it("sends no overlay for a card with no readings", () => {
@@ -278,6 +289,19 @@ describe("request", () => {
       language: "de",
     });
     expect(request?.overlay).not.toBeNull();
+  });
+
+  it("asks for the crop and the frame step, inside the integration's bounds", () => {
+    const request = exportRequest(
+      config(),
+      index(10),
+      { start: 0, end: 9 },
+      { ...choices, aspect: "9:16", cropPosition: 120.4, every: 99 },
+      "en",
+      resolve,
+    );
+
+    expect(request).toMatchObject({ aspect: "9:16", crop_position: 100, every: 60 });
   });
 
   it("leaves the readings out when they are switched off", () => {
@@ -381,5 +405,75 @@ describe("mediaBrowserPath", () => {
     expect(decodeURIComponent(path.split("/")[3]!)).toBe(
       ",media-source://media_source/local/Kameras/Gärten Süd",
     );
+  });
+});
+
+describe("crop", () => {
+  it("matches the integration's crop_box, pixel for pixel", () => {
+    // The same cases as tests/test_encode.py::test_crop_box.
+    expect(cropBox([1920, 1080], "native", 50)).toEqual([0, 0, 1920, 1080]);
+    expect(cropBox([1920, 1080], "16:9", 50)).toEqual([0, 0, 1920, 1080]);
+    expect(cropBox([1920, 1080], "9:16", 0)).toEqual([0, 0, 608, 1080]);
+    expect(cropBox([1920, 1080], "9:16", 50)).toEqual([656, 0, 1264, 1080]);
+    expect(cropBox([1920, 1080], "9:16", 100)).toEqual([1312, 0, 1920, 1080]);
+    expect(cropBox([1024, 576], "1:1", 50)).toEqual([224, 0, 800, 576]);
+    expect(cropBox([1440, 1080], "16:9", 0)).toEqual([0, 0, 1440, 810]);
+    expect(cropBox([1440, 1080], "16:9", 100)).toEqual([0, 270, 1440, 1080]);
+    expect(cropBox([1023, 575], "1:1", 200)).toEqual([449, 0, 1023, 574]);
+  });
+
+  it("knows which way a crop slides, and when nothing is cut", () => {
+    expect(cropAxis([1024, 576], "9:16")).toBe("x");
+    expect(cropAxis([1440, 1080], "16:9")).toBe("y");
+    expect(cropAxis([1920, 1080], "16:9")).toBeNull();
+    expect(cropAxis([1920, 1080], "native")).toBeNull();
+  });
+
+  it("draws the window as shares of the frame", () => {
+    expect(cropWindow([1000, 500], "1:1", 100)).toEqual({
+      left: 50,
+      top: 0,
+      width: 50,
+      height: 100,
+    });
+  });
+
+  it("gives the video's size, even on both sides", () => {
+    expect(outputSize([1024, 576], "9:16", 50)).toEqual([324, 576]);
+    expect(outputSize([1023, 575], "native", 50)).toEqual([1022, 574]);
+  });
+
+  it("starts the narrow formats with larger overlays", () => {
+    expect(EXPORT_SIZE_DEFAULTS["9:16"].readings).toBeGreaterThan(
+      EXPORT_SIZE_DEFAULTS.native.readings,
+    );
+    expect(EXPORT_SIZE_DEFAULTS["9:16"].readings).toBeLessThanOrEqual(READINGS_SIZE.max);
+    expect(EXPORT_SIZE_DEFAULTS["9:16"].timestamp).toBeLessThanOrEqual(TIMESTAMP_SIZE.max);
+  });
+});
+
+describe("frames and file size", () => {
+  it("counts the frames left after thinning, keeping the first", () => {
+    expect(framesUsed(6, 1)).toBe(6);
+    expect(framesUsed(6, 4)).toBe(2);
+    expect(framesUsed(19775, 5)).toBe(3955);
+    expect(framesUsed(0, 5)).toBe(0);
+  });
+
+  it("scales the estimate with frames and pixels only", () => {
+    const one = estimateSize(1000, [1024, 576]);
+    expect(estimateSize(2000, [1024, 576]).bytes).toBeCloseTo(one.bytes * 2);
+    expect(estimateSize(1000, [512, 576]).bytes).toBeCloseTo(one.bytes / 2);
+    expect(one.low).toBeLessThan(one.bytes);
+    expect(one.high).toBeGreaterThan(one.bytes);
+  });
+});
+
+describe("ratioLabel", () => {
+  it("names the common shapes and falls back to a decimal", () => {
+    expect(ratioLabel([1024, 576])).toBe("16:9");
+    expect(ratioLabel([1024, 768])).toBe("4:3");
+    expect(ratioLabel([1023, 575])).toBe("16:9");
+    expect(ratioLabel([1850, 1000])).toBe("1.85:1");
   });
 });

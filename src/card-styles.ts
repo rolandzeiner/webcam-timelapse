@@ -59,6 +59,42 @@ export const cardStyles = css`
     aspect-ratio: var(--wtl-aspect);
     background: #000;
     overflow: hidden;
+    /* For the export crop, which sizes itself to the letterboxed frame
+       in cq units. Safe as size containment: the stage's height comes
+       from its width and aspect-ratio, never from what is inside it. */
+    container-type: size;
+  }
+
+  /* The frame as object-fit: contain draws it inside the stage, so the
+     crop window can be placed in percentages of the picture itself. */
+  .crop-frame {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: min(100cqw, calc(100cqh * var(--wtl-frame-ratio)));
+    height: min(100cqh, calc(100cqw / var(--wtl-frame-ratio)));
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* What the video keeps. The rest of the picture is dimmed by the
+     window's own shadow, clipped to the frame above — one element, so
+     the bright part and the dim part can never drift apart. */
+  .crop-window {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid var(--wtl-accent);
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55);
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  .crop-window.x {
+    cursor: ew-resize;
+  }
+
+  .crop-window.y {
+    cursor: ns-resize;
   }
 
   /* Wrapper whose only job is to be a stacking context.
@@ -549,6 +585,31 @@ export const cardStyles = css`
     pointer-events: none;
   }
 
+  /* Grips on the band's ends. After the scrubber's input in the DOM, so
+     they paint over it and take the pointer from it; the band between
+     them stays inert, so a press inside the range still scrubs. */
+  .export-handle {
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 24px;
+    transform: translate(-50%, -50%);
+    box-sizing: border-box;
+    border: 2px solid var(--wtl-surface);
+    border-radius: 4px;
+    background: var(--wtl-accent);
+    cursor: ew-resize;
+    touch-action: none;
+  }
+
+  /* A 24 x 40 target for a finger, around a grip drawn narrower so it
+     does not hide the frames it sits on. */
+  .export-handle::before {
+    content: "";
+    position: absolute;
+    inset: -8px -7px;
+  }
+
   .marks {
     position: absolute;
     inset: 0;
@@ -845,8 +906,12 @@ export const cardStyles = css`
   }
 
   /* The folder is for finding and tidying up old exports, so it is always
-     there — but quiet, and free to break anywhere in a long path. */
+     there — but quiet, and free to break anywhere in a long path. The
+     link gets a line of its own, so a narrow card never splits it. */
   .export-folder {
+    display: grid;
+    gap: 4px;
+    justify-items: start;
     color: var(--wtl-muted);
     overflow-wrap: anywhere;
   }
@@ -854,9 +919,142 @@ export const cardStyles = css`
   /* A text link, not a button: it leaves the card for another panel, and
      a second filled control here would compete with the export itself. */
   .export-browse {
-    margin-inline-start: 4px;
     color: var(--wtl-accent);
     white-space: nowrap;
+  }
+
+  .export-hint {
+    margin: -6px 0 0;
+    color: var(--wtl-muted);
+    line-height: 1.45;
+  }
+
+  .export-format {
+    display: grid;
+    gap: 8px;
+  }
+
+  .export-format .export-hint {
+    margin: 0;
+  }
+
+  .export-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+    gap: 8px;
+  }
+
+  /* Larger than the chips: the format decides the shape of everything
+     else, and the icon is the quickest way to read which one is which. */
+  .export-tile {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    min-height: 64px;
+    padding: 8px 4px;
+    border: 1px solid var(--wtl-divider);
+    border-radius: 10px;
+    background: none;
+    color: inherit;
+    --mdc-icon-size: 22px;
+  }
+
+  .export-tile:hover {
+    border-color: var(--wtl-muted);
+  }
+
+  .export-tile[aria-pressed="true"] {
+    border: 2px solid var(--wtl-accent);
+    padding: 7px 3px;
+    font-weight: var(--ha-font-weight-medium, 500);
+  }
+
+  .export-tile:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .export-ratio {
+    min-height: 1.2em;
+    color: var(--wtl-muted);
+    font-size: var(--ha-font-size-xs, 10px);
+    font-weight: normal;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .export-crop {
+    display: grid;
+    grid-template-columns: auto minmax(100px, 1fr) auto;
+    align-items: center;
+    gap: 4px 10px;
+  }
+
+  .export-crop input[type="range"] {
+    position: static;
+    inset: auto;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    background: none;
+    appearance: auto;
+    accent-color: var(--wtl-accent);
+  }
+
+  .export-crop-ends {
+    grid-column: 2;
+    display: flex;
+    justify-content: space-between;
+    color: var(--wtl-muted);
+    font-size: var(--ha-font-size-xs, 10px);
+  }
+
+  .export-note {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--wtl-accent);
+    border-radius: 8px;
+    line-height: 1.45;
+    --mdc-icon-size: 18px;
+  }
+
+  .export-note ha-icon {
+    flex: none;
+    color: var(--wtl-accent);
+  }
+
+  .export-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+
+  .export-stats div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .export-stats dt {
+    color: var(--wtl-muted);
+  }
+
+  .export-stats dd {
+    margin: 0;
+    font-size: var(--ha-font-size-m, 14px);
+    font-weight: var(--ha-font-weight-medium, 500);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .export-warning {
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--wtl-gap);
+    border-radius: 8px;
+    color: var(--wtl-gap);
+    line-height: 1.45;
   }
 
   .export-links {
@@ -1119,6 +1317,8 @@ export const cardStyles = css`
     .fill,
     .gap-run,
     .export-band,
+    .export-handle,
+    .crop-window,
     .export-progress span {
       forced-color-adjust: none;
     }

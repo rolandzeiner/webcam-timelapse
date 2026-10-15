@@ -89,7 +89,6 @@
     "fps": "Frames per second",
     "timestamp": "Date and time",
     "readings": "Sensor readings",
-    "summary": "{frames} frames, {length} of video",
     "summary_empty": "No frames in this range.",
     "start": "Export",
     "cancel": "Cancel",
@@ -125,6 +124,31 @@
       "bottom": "Bottom"
     },
     "folder": "Videos are saved in {v}",
-    "browse": "Open in media browser"
+    "browse": "Open in media browser",
+    "every": "Frames used",
+    "every_all": "All",
+    "every_n": "1 in {v}",
+    "every_hint": "The timelapse runs faster, the video gets shorter and the file smaller.",
+    "format": "Format",
+    "aspects": {
+      "native": "As camera",
+      "16_9": "Landscape",
+      "9_16": "Portrait",
+      "1_1": "Square"
+    },
+    "format_native": "The video keeps the camera's shape.",
+    "format_same": "Matches the camera's shape, so nothing is cropped.",
+    "format_crop": "Only the camera picture is cropped. The date and readings are laid out again in the new shape. Drag the frame in the picture to move the crop.",
+    "crop": "Crop position",
+    "crop_center": "Center",
+    "crop_middle": "Middle",
+    "soft_crop": "This crop is only {v} pixels and looks soft on a phone. For a sharper video, pick a larger width under “Resize to” in the camera's settings.",
+    "sizes_hint": "This format keeps its own sizes, so the readings stay legible on a phone.",
+    "frames": "Frames",
+    "length": "Length",
+    "file_size": "File size",
+    "about": "about {v}",
+    "size_estimate": "Estimated: between {low} and {high}. A lot of movement in the picture makes the file larger.",
+    "low_disk": "Only {v} is free in the media folder. Choose a shorter range or fewer frames."
   }
 }

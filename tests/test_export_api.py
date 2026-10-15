@@ -350,6 +350,8 @@ async def test_ws_reports_where_videos_go_before_there_are_any(
     assert status["folder"] == str(media_dir / "webcam_timelapse" / "test_cam")
     # Nothing to browse yet: a link would open the media browser on an error.
     assert status["folder_media_id"] is None
+    # Read from the folder above, which is where the first video will go.
+    assert status["free_bytes"] > 0
 
 
 async def test_ws_links_the_folder_once_it_exists(
@@ -391,6 +393,9 @@ async def test_service_passes_sizes_and_positions_through(
                 "readings_size": 25,
                 "timestamp_size": 10,
                 "readings_position": "bottom",
+                "aspect": "9:16",
+                "crop_position": 20,
+                "every": 5,
             },
             blocking=True,
         )
@@ -399,6 +404,20 @@ async def test_service_passes_sizes_and_positions_through(
     assert (options.readings_size, options.timestamp_size) == (25, 10)
     assert options.readings_position == "bottom"
     assert options.readings_position_left is None
+    assert (options.aspect, options.crop_position, options.every) == ("9:16", 20, 5)
+    assert options.crop == (9 / 16, 0.2)
+
+
+async def test_service_rejects_an_unknown_aspect(
+    hass: HomeAssistant, entry_with_frames: Any
+) -> None:
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_EXPORT_VIDEO,
+            {"entry_id": entry_with_frames.entry_id, "aspect": "21:9"},
+            blocking=True,
+        )
 
 
 async def test_ws_unsubscribing_stops_the_events(

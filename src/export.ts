@@ -53,6 +53,8 @@ export interface ExportStatus {
   folder?: string;
   /** The same folder as a media-source id, once it exists; null before. */
   folder_media_id?: string | null;
+  /** Bytes free where the next video would go, or null if unreadable. */
+  free_bytes?: number | null;
 }
 
 /** Inclusive grid positions. `start <= end` always. */
@@ -79,6 +81,180 @@ export const EXPORT_POSITIONS: readonly ExportPosition[] = ["left", "right", "to
  */
 export const READINGS_SIZE = { min: 10, max: 80, step: 5, default: 30 } as const;
 export const TIMESTAMP_SIZE = { min: 5, max: 50, step: 5, default: 15 } as const;
+
+/**
+ * Shapes a video can be cropped to. "native" keeps the frames' own; the
+ * others cut the picture, and the overlay is laid out on what is left.
+ */
+export type ExportAspect = "native" | "16:9" | "9:16" | "1:1";
+export const EXPORT_ASPECTS: readonly ExportAspect[] = ["native", "16:9", "9:16", "1:1"];
+
+const ASPECT_RATIOS: Record<Exclude<ExportAspect, "native">, number> = {
+  "16:9": 16 / 9,
+  "9:16": 9 / 16,
+  "1:1": 1,
+};
+
+/** The mdi icon on each format's tile. */
+export const ASPECT_ICONS: Record<ExportAspect, string> = {
+  native: "mdi:camera-outline",
+  "16:9": "mdi:crop-landscape",
+  "9:16": "mdi:crop-portrait",
+  "1:1": "mdi:crop-square",
+};
+
+/**
+ * Overlay sizes each format starts with.
+ *
+ * Per format because "% of the width" means something else in each: 30 %
+ * of a portrait video held on a phone is a block a few millimetres wide,
+ * so the narrow formats start larger. Each one keeps its own sizes once
+ * changed, so switching formats to compare does not undo the tuning.
+ */
+export const EXPORT_SIZE_DEFAULTS: Record<ExportAspect, { timestamp: number; readings: number }> = {
+  native: { timestamp: TIMESTAMP_SIZE.default, readings: READINGS_SIZE.default },
+  "16:9": { timestamp: TIMESTAMP_SIZE.default, readings: READINGS_SIZE.default },
+  "1:1": { timestamp: 20, readings: 40 },
+  "9:16": { timestamp: 30, readings: 55 },
+};
+
+/** Use every n-th frame. The integration accepts up to 60. */
+export const EXPORT_EVERY = [1, 2, 5, 10] as const;
+
+/**
+ * Below this many pixels on its short side a cropped video looks soft on
+ * a phone, where it fills the screen. 720 is the short side of 720p.
+ */
+export const SOFT_CROP_PIXELS = 720;
+
+/** The window a crop keeps, in pixels: `[left, top, right, bottom]`. */
+export type CropBox = readonly [number, number, number, number];
+
+const even = (value: number): number => Math.max(2, value - (value % 2));
+
+/**
+ * The part of a `size` frame that cropping to `aspect` keeps, with the
+ * window `position` (0..100) along the axis it slides on.
+ *
+ * A line-for-line port of `crop_box` in the integration's encode.py, so
+ * the pixel size the panel promises is the size the video comes out at.
+ */
+export function cropBox(
+  size: readonly [number, number],
+  aspect: ExportAspect,
+  position: number,
+): CropBox {
+  const [width, height] = size;
+  if (aspect === "native") return [0, 0, width, height];
+  const ratio = ASPECT_RATIOS[aspect];
+  const share = Math.min(1, Math.max(0, position / 100));
+  if (width / height > ratio) {
+    const keptWidth = Math.min(even(pyRound(height * ratio)), even(width));
+    const left = pyRound((width - keptWidth) * share);
+    return [left, 0, left + keptWidth, even(height)];
+  }
+  const keptHeight = Math.min(even(pyRound(width / ratio)), even(height));
+  const top = pyRound((height - keptHeight) * share);
+  return [0, top, even(width), top + keptHeight];
+}
+
+/** Python's round(): halves go to the even neighbour. */
+function pyRound(value: number): number {
+  const floor = Math.floor(value);
+  const diff = value - floor;
+  if (diff > 0.5) return floor + 1;
+  if (diff < 0.5) return floor;
+  return floor % 2 === 0 ? floor : floor + 1;
+}
+
+/** The axis a crop slides along, or null when nothing is cut. */
+export function cropAxis(size: readonly [number, number], aspect: ExportAspect): "x" | "y" | null {
+  const [left, top, right, bottom] = cropBox(size, aspect, 50);
+  if (right - left < even(size[0])) return "x";
+  if (bottom - top < even(size[1])) return "y";
+  return null;
+}
+
+/** A crop window as percentages of the frame, for drawing it over one. */
+export function cropWindow(
+  size: readonly [number, number],
+  aspect: ExportAspect,
+  position: number,
+): { left: number; top: number; width: number; height: number } {
+  const [left, top, right, bottom] = cropBox(size, aspect, position);
+  const [width, height] = size;
+  return {
+    left: (left / width) * 100,
+    top: (top / height) * 100,
+    width: ((right - left) / width) * 100,
+    height: ((bottom - top) / height) * 100,
+  };
+}
+
+/** The video's size for frames of `size`, as the integration will make it. */
+export function outputSize(
+  size: readonly [number, number],
+  aspect: ExportAspect,
+  position: number,
+): [number, number] {
+  const [left, top, right, bottom] = cropBox(size, aspect, position);
+  return [even(right - left), even(bottom - top)];
+}
+
+/** How many of `frames` are used when only every `every`-th one is. */
+export function framesUsed(frames: number, every: number): number {
+  return frames <= 0 ? 0 : Math.ceil(frames / Math.max(1, every));
+}
+
+/**
+ * Bits x264 spends per pixel per frame on a timelapse at the export's
+ * settings (veryfast, CRF 23) — a rule of thumb for outdoor footage, not
+ * a measurement. CRF holds quality rather than bitrate, so a busy picture
+ * (clouds, traffic, trees in wind) costs more than a still one.
+ */
+const BITS_PER_PIXEL = 0.1;
+/** How far either side of the estimate the real file commonly lands. */
+const ESTIMATE_SPREAD = { low: 0.7, high: 1.3 } as const;
+
+/**
+ * Roughly how large the video will be, and the spread around it.
+ *
+ * Proportional to frames times pixels and nothing else. The frame rate
+ * changes the length, not the size: the same frames at twice the rate
+ * play in half the time and take about as many bytes.
+ */
+export function estimateSize(
+  frames: number,
+  size: readonly [number, number],
+): { bytes: number; low: number; high: number } {
+  const bytes = (frames * size[0] * size[1] * BITS_PER_PIXEL) / 8;
+  return { bytes, low: bytes * ESTIMATE_SPREAD.low, high: bytes * ESTIMATE_SPREAD.high };
+}
+
+/**
+ * The integration refuses to start an export with less than this free —
+ * EXPORT_MIN_FREE_BYTES in its const.py — so a video that would leave
+ * less behind is one to warn about before it is started.
+ */
+export const EXPORT_MIN_FREE_BYTES = 500 * 1024 * 1024;
+
+const NAMED_RATIOS: readonly (readonly [string, number])[] = [
+  ["16:9", 16 / 9],
+  ["4:3", 4 / 3],
+  ["3:2", 3 / 2],
+  ["5:4", 5 / 4],
+  ["1:1", 1],
+  ["21:9", 21 / 9],
+  ["9:16", 9 / 16],
+  ["3:4", 3 / 4],
+];
+
+/** A frame's shape the way a person names it: "16:9", or "1.85:1" if no name fits. */
+export function ratioLabel(size: readonly [number, number]): string {
+  const ratio = size[0] / size[1];
+  const named = NAMED_RATIOS.find(([, value]) => Math.abs(ratio / value - 1) < 0.01);
+  return named ? named[0] : `${ratio.toFixed(2)}:1`;
+}
 
 /** Quick ranges, in hours back from the newest frame. */
 export const EXPORT_PRESETS = [24, 72, 168] as const;
@@ -243,6 +419,12 @@ export interface ExportChoices {
   readingsSize: number;
   /** Where each of the card's blocks goes; absent keeps the card's side. */
   positions: Partial<Record<"left" | "right", ExportPosition>>;
+  /** The shape the video is cropped to. */
+  aspect: ExportAspect;
+  /** 0..100, where the crop sits along the axis it slides on. */
+  cropPosition: number;
+  /** Use every n-th frame of the range. */
+  every: number;
 }
 
 /** A size inside its bounds, as a whole percentage. */
@@ -313,6 +495,9 @@ export function exportRequest(
     readings_size: clampSize(choices.readingsSize, READINGS_SIZE),
     readings_position: choices.positions.right ?? null,
     readings_position_left: choices.positions.left ?? null,
+    aspect: choices.aspect,
+    crop_position: Math.min(100, Math.max(0, Math.round(choices.cropPosition))),
+    every: Math.min(60, Math.max(1, Math.round(choices.every))),
     language,
   };
 }

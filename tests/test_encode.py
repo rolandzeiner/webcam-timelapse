@@ -12,7 +12,12 @@ import io
 import pytest
 from PIL import Image
 
-from custom_components.webcam_timelapse.encode import ImageDecodeError, encode_webp
+from custom_components.webcam_timelapse.encode import (
+    ImageDecodeError,
+    crop_box,
+    decode_frame,
+    encode_webp,
+)
 
 
 def jpeg(width: int, height: int) -> bytes:
@@ -126,3 +131,46 @@ def test_reports_mean_luminance() -> None:
         < encode_webp(flat(120), 1024, 78).luma
         < encode_webp(flat(220), 1024, 78).luma
     )
+
+
+# --- crop -----------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("size", "aspect", "position", "expected"),
+    [
+        ((1920, 1080), None, 0.5, (0, 0, 1920, 1080)),
+        ((1920, 1080), 16 / 9, 0.5, (0, 0, 1920, 1080)),
+        ((1920, 1080), 9 / 16, 0.0, (0, 0, 608, 1080)),
+        ((1920, 1080), 9 / 16, 0.5, (656, 0, 1264, 1080)),
+        ((1920, 1080), 9 / 16, 1.0, (1312, 0, 1920, 1080)),
+        ((1024, 576), 1.0, 0.5, (224, 0, 800, 576)),
+        # 4:3 to 16:9 cuts the height and slides vertically.
+        ((1440, 1080), 16 / 9, 0.0, (0, 0, 1440, 810)),
+        ((1440, 1080), 16 / 9, 1.0, (0, 270, 1440, 1080)),
+        # Odd sides come out even, and a position out of range is clamped.
+        ((1023, 575), 1.0, 2.0, (449, 0, 1023, 574)),
+    ],
+)
+def test_crop_box(
+    size: tuple[int, int],
+    aspect: float | None,
+    position: float,
+    expected: tuple[int, int, int, int],
+) -> None:
+    box = crop_box(size, aspect, position)
+
+    assert box == expected
+    if aspect is not None:
+        assert (box[2] - box[0]) % 2 == 0
+        assert (box[3] - box[1]) % 2 == 0
+
+
+def test_decode_frame_crops_before_resizing() -> None:
+    data = encode_webp(jpeg(160, 90), 0, 90).data
+
+    image = decode_frame(data, None, 1.0, (1.0, 0.5))
+    assert image.size == (90, 90)
+
+    scaled = decode_frame(data, (45, 45), 1.0, (1.0, 0.5))
+    assert scaled.size == (45, 45)

@@ -89,7 +89,6 @@
     "fps": "Bilder pro Sekunde",
     "timestamp": "Datum und Uhrzeit",
     "readings": "Sensorwerte",
-    "summary": "{frames} Bilder, {length} Video",
     "summary_empty": "Keine Bilder in diesem Zeitraum.",
     "start": "Exportieren",
     "cancel": "Abbrechen",
@@ -125,6 +124,31 @@
       "bottom": "Unten"
     },
     "folder": "Videos werden gespeichert in {v}",
-    "browse": "Im Medienbrowser öffnen"
+    "browse": "Im Medienbrowser öffnen",
+    "every": "Verwendete Bilder",
+    "every_all": "Alle",
+    "every_n": "Jedes {v}.",
+    "every_hint": "Der Zeitraffer läuft schneller, das Video wird kürzer und die Datei kleiner.",
+    "format": "Format",
+    "aspects": {
+      "native": "Wie Kamera",
+      "16_9": "Querformat",
+      "9_16": "Hochformat",
+      "1_1": "Quadrat"
+    },
+    "format_native": "Das Video behält das Format der Kamera.",
+    "format_same": "Entspricht dem Format der Kamera, es wird nichts zugeschnitten.",
+    "format_crop": "Nur das Kamerabild wird zugeschnitten. Datum und Sensorwerte ordnen sich im neuen Format neu an. Zieh den Rahmen im Bild, um den Ausschnitt zu verschieben.",
+    "crop": "Bildausschnitt",
+    "crop_center": "Zentrieren",
+    "crop_middle": "Mitte",
+    "soft_crop": "Dieser Ausschnitt hat nur {v} Pixel und wirkt am Handy unscharf. Für schärfere Videos wähle in den Einstellungen der Kamera unter „Verkleinern auf“ eine größere Breite.",
+    "sizes_hint": "Dieses Format merkt sich eigene Größen, damit die Werte auch am Handy lesbar bleiben.",
+    "frames": "Bilder",
+    "length": "Länge",
+    "file_size": "Dateigröße",
+    "about": "etwa {v}",
+    "size_estimate": "Geschätzt: zwischen {low} und {high}. Viel Bewegung im Bild macht die Datei größer.",
+    "low_disk": "Im Medienordner sind nur {v} frei. Wähle einen kürzeren Zeitraum oder weniger Bilder."
   }
 }

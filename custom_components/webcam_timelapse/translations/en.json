@@ -218,6 +218,14 @@
         "night": "Only at night (sunset to sunrise)",
         "window": "Only within a time window"
       }
+    },
+    "export_aspect": {
+      "options": {
+        "native": "Native",
+        "16:9": "Landscape 16:9",
+        "9:16": "Portrait 9:16",
+        "1:1": "Square 1:1"
+      }
     }
   },
   "entity": {
@@ -335,6 +343,18 @@
         "readings_position_left": {
           "name": "Left readings position",
           "description": "The same for the card's second block (entities_left)."
+        },
+        "aspect": {
+          "name": "Format",
+          "description": "Crop the video to this shape. Only the camera picture is cropped; the date and the readings are laid out again on what is left. Native keeps the frames' own shape."
+        },
+        "crop_position": {
+          "name": "Crop position",
+          "description": "Where the crop sits, from 0 (left or top edge) to 100 (right or bottom edge). 50 is the middle."
+        },
+        "every": {
+          "name": "Use every nth frame",
+          "description": "1 uses every frame. 5 uses every fifth: the timelapse runs five times as fast and the video is a fifth as long."
         }
       }
     }
