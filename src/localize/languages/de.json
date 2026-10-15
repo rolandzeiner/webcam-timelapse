@@ -97,6 +97,7 @@
     "running": "Bild {done} von {total} wird kodiert",
     "done": "Video fertig",
     "saved": "Gespeichert als {v}",
+    "watch": "Ansehen",
     "download": "Herunterladen",
     "cancelled": "Export abgebrochen.",
     "band": "Für den Export gewählter Zeitraum",
@@ -123,6 +124,7 @@
       "top": "Oben",
       "bottom": "Unten"
     },
-    "folder": "Videos werden gespeichert in {v}"
+    "folder": "Videos werden gespeichert in {v}",
+    "browse": "Im Medienbrowser öffnen"
   }
 }

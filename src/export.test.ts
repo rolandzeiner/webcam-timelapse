@@ -7,6 +7,7 @@ import {
   exportRequest,
   formatLength,
   formatSize,
+  mediaBrowserPath,
   framesIn,
   fullRange,
   lastHours,
@@ -362,5 +363,23 @@ describe("request", () => {
     expect(
       exportRequest(config(), EMPTY_INDEX, { start: 0, end: 0 }, choices, "en", resolve),
     ).toBeNull();
+  });
+});
+
+describe("mediaBrowserPath", () => {
+  it("opens the media browser on the folder, as the panel encodes it", () => {
+    // One segment, `<type>,<id>` encoded whole; a local folder's type is
+    // the empty string, so the segment starts with an encoded comma.
+    expect(mediaBrowserPath("media-source://media_source/local/webcam_timelapse/wieselburg")).toBe(
+      "/media-browser/browser/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Fwebcam_timelapse%2Fwieselburg",
+    );
+  });
+
+  it("keeps a folder name with spaces and umlauts in one segment", () => {
+    const path = mediaBrowserPath("media-source://media_source/local/Kameras/Gärten Süd");
+    expect(path.split("/")).toHaveLength(4);
+    expect(decodeURIComponent(path.split("/")[3]!)).toBe(
+      ",media-source://media_source/local/Kameras/Gärten Süd",
+    );
   });
 });

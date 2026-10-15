@@ -428,13 +428,13 @@ plays in 12 seconds.
 
 **Home Assistant makes the video, not your browser.** You can close the
 dashboard or lock your phone while it encodes; open the panel again later and
-the finished video is there to download.
+the finished video is there to watch or download.
 
 **Videos are saved in your media folder**, in one folder per camera named
 after it — `/media/webcam_timelapse/<camera>/` on Home Assistant OS. The panel
-shows the folder, and the full path of each video once it is written. In Home
-Assistant they are under **Media → My media → webcam_timelapse**, which is
-also the easiest place to delete old ones.
+shows the folder, and the full path of each video once it is written. After
+the first export, **Open in media browser** takes you to the folder in
+**Media → My media**, which is also the easiest place to delete old ones.
 
 **Sensor readings** draws the card's overlay blocks on every frame — the same
 readings, labels, colours and graphs, each showing the value from the moment

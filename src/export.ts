@@ -51,6 +51,8 @@ export interface ExportStatus {
    * the first one exists.
    */
   folder?: string;
+  /** The same folder as a media-source id, once it exists; null before. */
+  folder_media_id?: string | null;
 }
 
 /** Inclusive grid positions. `start <= end` always. */
@@ -180,6 +182,18 @@ export function formatLength(seconds: number): string {
   const minutes = Math.floor(whole / 60);
   if (minutes < 60) return `${minutes}:${pad(whole % 60)} min`;
   return `${Math.floor(minutes / 60)}:${pad(minutes % 60)}:${pad(whole % 60)} h`;
+}
+
+/**
+ * The media browser opened on a media-source folder.
+ *
+ * Built the way the panel builds its own URLs: one path segment per level,
+ * each `<content type>,<content id>` URI-encoded. A local folder's content
+ * type is the empty string, and the panel only needs the deepest level to
+ * open on it. `browser` plays in this browser rather than on a speaker.
+ */
+export function mediaBrowserPath(mediaContentId: string): string {
+  return `/media-browser/browser/${encodeURIComponent(`,${mediaContentId}`)}`;
 }
 
 /** A file size in the unit a person would say it in. */

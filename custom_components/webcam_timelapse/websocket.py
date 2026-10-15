@@ -264,8 +264,8 @@ def websocket_export_start(
         vol.Exclusive("entity_id", "target"): str,
     }
 )
-@callback
-def websocket_export_subscribe(
+@async_response
+async def websocket_export_subscribe(
     hass: HomeAssistant,
     connection: ActiveConnection,
     msg: dict[str, Any],
@@ -274,13 +274,15 @@ def websocket_export_subscribe(
 
     The current status is sent straight away, so a card that opens while
     an export is running — or after one has finished — shows the right
-    thing without having started it.
+    thing without having started it. Async only to check the folder on
+    disk first, which decides whether the card links to it.
     """
     entry = _resolve_entry(hass, connection, msg)
     if entry is None:
         return
 
     exporter = async_get_exporter(hass, entry)
+    await exporter.async_check_folder()
 
     @callback
     def _forward(status: dict[str, Any]) -> None:

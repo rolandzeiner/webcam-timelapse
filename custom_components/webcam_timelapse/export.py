@@ -791,6 +791,11 @@ class VideoExporter:
         self._task: asyncio.Task[dict[str, Any]] | None = None
         self._listeners: list[Callable[[dict[str, Any]], None]] = []
         self._last_notified = 0.0
+        #: Whether ``folder`` exists, as last checked. The card only links
+        #: to the folder in the media browser when it does: before the
+        #: first export there is nothing there, and the browser would open
+        #: on an error instead of an empty folder.
+        self._folder_exists = False
 
     @property
     def status(self) -> ExportStatus:
@@ -826,10 +831,27 @@ class VideoExporter:
         """
         return media_root(self._hass)[1] / EXPORT_SUBDIR / slugify(self._entry.title)
 
+    @property
+    def folder_media_id(self) -> str:
+        """The folder as a media-source id, for the media browser."""
+        media_key, root = media_root(self._hass)
+        relative = self.folder.relative_to(root).as_posix()
+        return f"media-source://media_source/{media_key}/{relative}"
+
+    async def async_check_folder(self) -> None:
+        """Look up whether the folder exists yet. Runs in the executor."""
+        self._folder_exists = await self._hass.async_add_executor_job(
+            self.folder.is_dir
+        )
+
     @callback
     def status_payload(self) -> dict[str, Any]:
         """The status as sent to the card, with the folder alongside it."""
-        return {**self._status.as_dict(), "folder": str(self.folder)}
+        return {
+            **self._status.as_dict(),
+            "folder": str(self.folder),
+            "folder_media_id": self.folder_media_id if self._folder_exists else None,
+        }
 
     @callback
     def _notify(self) -> None:
@@ -944,6 +966,8 @@ class VideoExporter:
         plan = await hass.async_add_executor_job(
             _plan, frames_dir, coordinator.step, options, output_dir, name
         )
+        # _plan creates the folder before it picks the file name.
+        self._folder_exists = True
         self._status.total = len(plan.slots)
         self._notify()
 

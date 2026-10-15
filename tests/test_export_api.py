@@ -348,6 +348,26 @@ async def test_ws_reports_where_videos_go_before_there_are_any(
 
     assert status["state"] == "idle"
     assert status["folder"] == str(media_dir / "webcam_timelapse" / "test_cam")
+    # Nothing to browse yet: a link would open the media browser on an error.
+    assert status["folder_media_id"] is None
+
+
+async def test_ws_links_the_folder_once_it_exists(
+    hass: HomeAssistant, hass_ws_client, entry_with_frames: Any, media_dir: Path
+) -> None:
+    """The card turns this into a media-browser link to the videos."""
+    (media_dir / "webcam_timelapse" / "test_cam").mkdir(parents=True)
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {"type": WS_TYPE_EXPORT_SUBSCRIBE, "entry_id": entry_with_frames.entry_id}
+    )
+    assert (await client.receive_json())["success"]
+    status = (await client.receive_json())["event"]
+
+    assert status["folder_media_id"] == (
+        "media-source://media_source/local/webcam_timelapse/test_cam"
+    )
 
 
 async def test_service_passes_sizes_and_positions_through(

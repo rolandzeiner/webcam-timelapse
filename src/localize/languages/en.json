@@ -97,6 +97,7 @@
     "running": "Encoding frame {done} of {total}",
     "done": "Video ready",
     "saved": "Saved as {v}",
+    "watch": "Watch",
     "download": "Download",
     "cancelled": "Export cancelled.",
     "band": "Range selected for export",
@@ -123,6 +124,7 @@
       "top": "Top",
       "bottom": "Bottom"
     },
-    "folder": "Videos are saved in {v}"
+    "folder": "Videos are saved in {v}",
+    "browse": "Open in media browser"
   }
 }

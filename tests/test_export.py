@@ -634,6 +634,8 @@ async def test_subscribers_see_progress_through_to_done(
         "message": None,
         "result": result,
         "folder": str(Path(result["path"]).parent),
+        # The export created the folder, so the card can link to it.
+        "folder_media_id": "media-source://media_source/local/webcam_timelapse/test_cam",
     }
 
     unsubscribe()

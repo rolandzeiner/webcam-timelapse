@@ -36,6 +36,7 @@ import {
   framesIn,
   fullRange,
   lastHours,
+  mediaBrowserPath,
   presetFits,
   progress,
   rangeBand,
@@ -1032,6 +1033,25 @@ export class WebcamTimelapseCard extends LitElement {
     }
   }
 
+  /**
+   * Follow a link to another Home Assistant panel without reloading.
+   *
+   * A plain href would load the whole frontend again. This is what HA's
+   * own `navigate()` does: push the path and tell the app it moved. A
+   * click with a modifier key, or any button but the first, is left to
+   * the browser, so opening the link in a new tab still works.
+   */
+  private navigateInApp = (event: MouseEvent): void => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    const href = (event.currentTarget as HTMLAnchorElement).getAttribute("href");
+    if (!href) return;
+    event.preventDefault();
+    history.pushState(null, "", href);
+    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+  };
+
   /** A stable string key for a refused WebSocket command. */
   private exportErrorKey(error: unknown): string {
     const code =
@@ -1929,6 +1949,16 @@ export class WebcamTimelapseCard extends LitElement {
           this.exportStatus?.folder
             ? html`<div class="export-folder">
               ${this.t("export.folder", this.exportStatus.folder)}
+              ${
+                this.exportStatus.folder_media_id
+                  ? html`<a
+                      class="export-browse"
+                      href=${mediaBrowserPath(this.exportStatus.folder_media_id)}
+                      @click=${this.navigateInApp}
+                      >${this.t("export.browse")}</a
+                    >`
+                  : nothing
+              }
             </div>`
             : nothing
         }
@@ -2051,16 +2081,22 @@ export class WebcamTimelapseCard extends LitElement {
         <span class="detail">${this.t("export.saved", result.path)}</span>
         ${
           this.exportUrl
-            ? html`<a
-              class="export-download"
-              href=${this.exportUrl}
-              download=${result.file_name}
-              target="_blank"
-              rel="noopener"
-            >
-              <ha-icon icon="mdi:download"></ha-icon>
-              ${this.t("export.download")}
-            </a>`
+            ? html`<span class="export-links">
+              <a class="export-watch" href=${this.exportUrl} target="_blank" rel="noopener">
+                <ha-icon icon="mdi:play-circle-outline"></ha-icon>
+                ${this.t("export.watch")}
+              </a>
+              <a
+                class="export-download"
+                href=${this.exportUrl}
+                download=${result.file_name}
+                target="_blank"
+                rel="noopener"
+              >
+                <ha-icon icon="mdi:download"></ha-icon>
+                ${this.t("export.download")}
+              </a>
+            </span>`
             : nothing
         }
       </div>`;

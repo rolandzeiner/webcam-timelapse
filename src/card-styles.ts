@@ -715,13 +715,16 @@ export const cardStyles = css`
   }
 
   .export button,
-  .export-download {
+  .export-download,
+  .export-watch {
     font: inherit;
     cursor: pointer;
   }
 
   .export button:focus-visible,
   .export-download:focus-visible,
+  .export-watch:focus-visible,
+  .export-browse:focus-visible,
   .export-check input:focus-visible {
     outline: 2px solid var(--wtl-accent);
     outline-offset: 2px;
@@ -846,6 +849,35 @@ export const cardStyles = css`
   .export-folder {
     color: var(--wtl-muted);
     overflow-wrap: anywhere;
+  }
+
+  /* A text link, not a button: it leaves the card for another panel, and
+     a second filled control here would compete with the export itself. */
+  .export-browse {
+    margin-inline-start: 4px;
+    color: var(--wtl-accent);
+    white-space: nowrap;
+  }
+
+  .export-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Download stays the filled one; watching is the lighter errand. */
+  .export-watch {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 18px;
+    border: 1px solid var(--wtl-accent);
+    border-radius: 999px;
+    color: var(--wtl-accent);
+    font-weight: var(--ha-font-weight-medium, 500);
+    text-decoration: none;
+    --mdc-icon-size: 18px;
   }
 
   .export-go,
