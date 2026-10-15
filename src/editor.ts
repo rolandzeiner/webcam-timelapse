@@ -1,19 +1,34 @@
 /**
  * Visual editor.
  *
- * Surface 2 of the three the house style allows: `<ha-form>` inside
- * `getConfigElement()`. The scalar fields are all schema-able, so they go
- * through ha-form and inherit theme, i18n, dark mode and a11y for free.
+ * Laid out in three tiers, the house layout for an editor past about ten
+ * options: the camera and the title bare at the top, then one collapsed
+ * group per part of the card in the card's own order, each saying in its
+ * header what it is set to. What the groups hold is data, in
+ * editor-fields.ts; this file only draws it.
  *
- * The `entities` list is the documented exception — a dynamic Record that
- * ha-form cannot express — so it gets one bespoke section *below* the
- * form rather than replacing it.
+ * Every field goes through ha-form, so it inherits theme, i18n, dark mode
+ * and a11y. The readings lists are the bespoke part — a list of rows, each
+ * its own small form — and the colour swatch is the one native input,
+ * because Home Assistant ships no colour selector that takes a CSS colour.
  */
 
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
 import { cardStyles } from "./card-styles";
+import { type NormalisedConfig, normaliseConfig, normaliseRow, tidyConfig } from "./config";
+import {
+  BLOCK_KEYS,
+  type EditorField,
+  GROUP_FIELDS,
+  type GroupId,
+  GROUPS,
+  groupSummary,
+  type PlainGroup,
+  rowSchema,
+  TOP_FIELDS,
+} from "./editor-fields";
 import { localize } from "./localize/localize";
 import type { ReadoutSide } from "./overlay-groups";
 import type {
@@ -23,53 +38,9 @@ import type {
   WebcamTimelapseCardConfig,
 } from "./types";
 
-/** Must stay in step with `SPEEDS` in `webcam-timelapse-card.ts`. */
-const SPEEDS = [1, 2, 4, 8, 16, 32, 64];
+type Data = Record<string, unknown>;
 
-/**
- * Text and number inputs go through ha-form selectors, never ha-textfield.
- *
- * `ha-textfield` is not registered in the card-editor context — it renders
- * as an unknown element with no content, which silently swallowed the
- * name, unit and decimals fields on every entity row and, later, the
- * overlay heading. Nothing errors; the inputs are simply absent. `ha-form`
- * loads its own selectors, so anything routed through it is safe.
- */
-const OVERLAY_TITLE_SCHEMA = [{ name: "overlay_title", selector: { text: {} } }] as const;
-
-const OVERLAY_TITLE_LEFT_SCHEMA = [{ name: "overlay_title_left", selector: { text: {} } }] as const;
-
-const ROW_SCHEMA = [
-  {
-    type: "grid",
-    schema: [
-      { name: "name", selector: { text: {} } },
-      { name: "unit", selector: { text: {} } },
-      { name: "decimals", selector: { number: { min: 0, max: 4, mode: "box" } } },
-      // Per-row override of the card's graph window. Left empty on almost
-      // every row; it exists for the gauge whose cadence is nothing like
-      // the others on the same card.
-      {
-        name: "graph_hours",
-        selector: {
-          number: { min: 1, max: 8760, mode: "box", unit_of_measurement: "h" },
-        },
-      },
-      // The toggles are schema fields for the same reason the inputs are.
-      // They used to be hand-placed switches wrapped in ha-formfield for
-      // the label, and Home Assistant 2026.11 removes ha-formfield: the
-      // switches would have kept working with nothing written next to
-      // them. A boolean selector is drawn by whichever frontend is
-      // running, so it carries its label on every version.
-      { name: "show_icon", selector: { boolean: {} } },
-      { name: "graph", selector: { boolean: {} } },
-    ],
-  },
-] as const;
-
-interface HaFormEvent extends CustomEvent {
-  detail: { value: WebcamTimelapseCardConfig };
-}
+const isReadings = (id: GroupId): id is ReadoutSide => id === "right" || id === "left";
 
 @customElement("webcam-timelapse-card-editor")
 export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCardEditor {
@@ -77,94 +48,67 @@ export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCar
 
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private config?: WebcamTimelapseCardConfig;
+  /** Open panels: group ids, and `right:2` for a readings row. */
+  @state() private open = new Set<string>();
+  /**
+   * Whether ha-expansion-panel is registered. Home Assistant loads it
+   * lazily — ha-form pulls it in for an `expandable` schema — so a card
+   * editor cannot count on it. Until it is there, the groups are drawn as
+   * ha-form expandables, which loads it; then they switch to panels that
+   * can carry a summary line.
+   */
+  @state() private panels = customElements.get("ha-expansion-panel") !== undefined;
+  /** The theme's accent, which an unset row colour is drawn in. Read once. */
+  private accent = "#03a9f4";
 
   public setConfig(config: WebcamTimelapseCardConfig): void {
     this.config = config;
+  }
+
+  protected override firstUpdated(): void {
+    const accent = getComputedStyle(this).getPropertyValue("--primary-color").trim();
+    // The colour input takes #rrggbb and nothing else.
+    if (/^#[0-9a-f]{6}$/i.test(accent)) this.accent = accent;
+  }
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    if (!this.panels) {
+      void customElements.whenDefined("ha-expansion-panel").then(() => {
+        this.panels = true;
+      });
+    }
   }
 
   private get uiLanguage(): string {
     return this.hass?.locale?.language ?? this.hass?.language ?? "en";
   }
 
-  private t(key: string): string {
-    return localize(key, this.uiLanguage);
-  }
-
-  private get schema(): unknown[] {
-    return [
-      {
-        name: "camera_entity",
-        required: true,
-        // Pinned to this integration: pointing the card at any other
-        // camera would give it a live image but no archive to scrub.
-        selector: {
-          entity: {
-            filter: { domain: "camera", integration: "webcam_timelapse" },
-          },
-        },
-      },
-      { name: "title", selector: { text: {} } },
-      {
-        type: "grid",
-        schema: [
-          { name: "show_dayticks", selector: { boolean: {} } },
-          { name: "show_graph", selector: { boolean: {} } },
-          { name: "show_sun", selector: { boolean: {} } },
-          { name: "show_export", selector: { boolean: {} } },
-        ],
-      },
-      {
-        type: "expandable",
-        name: "playback",
-        icon: "mdi:play-speed",
-        // MANDATORY. Without it the values nest under `playback` and
-        // `config.autoplay` reads undefined — the toggle flips but the
-        // card never reacts, which is a genuinely confusing hour to lose.
-        flatten: true,
-        schema: [
-          { name: "autoplay", selector: { boolean: {} } },
-          {
-            name: "speed",
-            selector: {
-              select: {
-                mode: "dropdown",
-                options: SPEEDS.map((s) => ({
-                  value: s,
-                  label: `${s}x`,
-                })),
-              },
-            },
-          },
-          {
-            name: "deflicker",
-            selector: {
-              number: { min: 0, max: 100, step: 5, mode: "slider" },
-            },
-          },
-          {
-            name: "graph_hours",
-            selector: {
-              number: { min: 1, max: 336, mode: "slider", unit_of_measurement: "h" },
-            },
-          },
-        ],
-      },
-    ];
-  }
-
-  private computeLabel = (schema: { name: string }): string => this.t(`editor.${schema.name}`);
-
-  private computeHelper = (schema: { name: string }): string | undefined => {
-    const helper = this.t(`editor.helper.${schema.name}`);
-    // localize() echoes the key back when there is no translation; an
-    // undefined helper renders nothing, a key-shaped string looks broken.
-    return helper.startsWith("editor.") ? undefined : helper;
+  private t = (key: string, value?: string): string => {
+    const text = localize(key, this.uiLanguage);
+    return value === undefined ? text : text.replace("{v}", value);
   };
 
-  private onFormChange = (event: HaFormEvent): void => {
-    event.stopPropagation();
-    this.emit({ ...this.config, ...event.detail.value });
+  /** HA's own label for a generic field first, then this card's. */
+  private computeLabel = (schema: { name: string }): string => {
+    const generic = this.hass?.localize?.(`ui.panel.lovelace.editor.card.generic.${schema.name}`);
+    if (generic) return generic;
+    const own = this.t(`editor.${schema.name}`);
+    return own.startsWith("editor.") ? schema.name : own;
   };
+
+  private helperFrom =
+    (prefix: string) =>
+    (schema: { name: string }): string | undefined => {
+      const key = `${prefix}.${schema.name}`;
+      const helper = this.t(key);
+      // localize() echoes the key back when there is no translation; an
+      // undefined helper draws nothing, a key-shaped string looks broken.
+      return helper === key ? undefined : helper;
+    };
+
+  private computeHelper = this.helperFrom("editor.helper");
+  private computeRowHelper = this.helperFrom("editor.row_helper");
 
   private emit(config: WebcamTimelapseCardConfig): void {
     this.dispatchEvent(
@@ -176,186 +120,355 @@ export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCar
     );
   }
 
-  // --- entities list ------------------------------------------------
-
-  /**
-   * The config key each block's entities live under.
-   *
-   * The right-hand block keeps `entities` rather than moving to a
-   * symmetrical `entities_right`, because that key is in every config
-   * written so far and renaming it would migrate them all for cosmetics.
-   */
-  private static readonly ENTITY_KEY = {
-    right: "entities",
-    left: "entities_left",
-  } as const satisfies Record<ReadoutSide, keyof WebcamTimelapseCardConfig>;
-
-  private rows(side: ReadoutSide): OverlayEntityConfig[] {
-    return this.config?.[WebcamTimelapseCardEditor.ENTITY_KEY[side]] ?? [];
+  /** Merge `changes` in and save the tidy result. Never mutates `config`. */
+  private applyChanges(changes: Data): void {
+    const next = tidyConfig({ ...this.config!, ...changes });
+    this.config = next;
+    this.emit(next);
   }
 
-  /** Never mutate `this.config` in place — Lovelace holds that object. */
-  private updateRows(side: ReadoutSide, rows: OverlayEntityConfig[]): void {
-    this.emit({
-      ...this.config!,
-      [WebcamTimelapseCardEditor.ENTITY_KEY[side]]: rows,
+  // --- plain fields ---------------------------------------------------
+
+  /**
+   * One ha-form over some of the config's keys.
+   *
+   * Several forms share one config, so each reports only the keys the user
+   * touched, diffed against what it was given. Replacing the config with
+   * a form's whole value would drop every key another form owns.
+   */
+  private renderForm(fields: readonly EditorField[]): TemplateResult | typeof nothing {
+    const shown = normaliseConfig(this.config!);
+    const visible = fields.filter((field) => !field.visible || field.visible(shown));
+    if (visible.length === 0) return nothing;
+    const data: Data = Object.fromEntries(
+      visible.map((field) => [field.name, (shown as Data)[field.name]]),
+    );
+    const schema = visible.map(({ name, selector, required }) => ({ name, selector, required }));
+    return html`<ha-form
+      .hass=${this.hass}
+      .data=${data}
+      .schema=${schema}
+      .computeLabel=${this.computeLabel}
+      .computeHelper=${this.computeHelper}
+      @value-changed=${(event: CustomEvent<{ value: Data }>) => {
+        event.stopPropagation();
+        const next = event.detail.value;
+        const changes = Object.fromEntries(
+          visible.filter((f) => next[f.name] !== data[f.name]).map((f) => [f.name, next[f.name]]),
+        );
+        if (Object.keys(changes).length > 0) this.applyChanges(changes);
+      }}
+    ></ha-form>`;
+  }
+
+  // --- groups ---------------------------------------------------------
+
+  private setOpen(key: string, expanded: boolean): void {
+    const open = new Set(this.open);
+    if (expanded) open.add(key);
+    else open.delete(key);
+    this.open = open;
+  }
+
+  /**
+   * A collapsible group. Its body is rendered only while open: behind a
+   * closed panel the forms would still be built and updated on every
+   * keystroke elsewhere in the editor.
+   */
+  private renderPanel(
+    key: string,
+    header: string,
+    secondary: string,
+    leading: TemplateResult,
+    body: () => TemplateResult,
+  ): TemplateResult {
+    // Rows are panels too, and before ha-expansion-panel exists they are
+    // drawn open and flat rather than as an element that renders nothing.
+    if (!this.panels) {
+      return html`<div class="ed-flat">
+        <div class="ed-flat-head">${leading}<span>${header}</span></div>
+        ${body()}
+      </div>`;
+    }
+    const expanded = this.open.has(key);
+    return html`<ha-expansion-panel
+      outlined
+      .header=${header}
+      .secondary=${secondary}
+      .expanded=${expanded}
+      @expanded-will-change=${(event: CustomEvent<{ expanded: boolean }>) => {
+        // Rows are panels inside a group's panel, and the event bubbles:
+        // without this a row opening would open or close its group too.
+        event.stopPropagation();
+        if (event.target === event.currentTarget) this.setOpen(key, event.detail.expanded);
+      }}
+    >
+      ${leading}
+      ${expanded ? body() : nothing}
+    </ha-expansion-panel>`;
+  }
+
+  private renderGroup(group: { id: GroupId; icon: string }): TemplateResult {
+    const icon = html`<ha-icon slot="leading-icon" icon=${group.icon}></ha-icon>`;
+    return this.renderPanel(
+      group.id,
+      this.t(`editor.groups.${group.id}`),
+      groupSummary(group.id, this.config!, this.t),
+      icon,
+      () =>
+        isReadings(group.id)
+          ? this.renderReadings(group.id)
+          : html`<div class="ed-body">${this.renderForm(GROUP_FIELDS[group.id])}</div>`,
+    );
+  }
+
+  /** Before ha-expansion-panel exists: the same groups, through ha-form. */
+  private renderFallback(): TemplateResult {
+    const plain = GROUPS.filter(
+      (group): group is { id: PlainGroup; icon: string } => !isReadings(group.id),
+    );
+    const shown = normaliseConfig(this.config!);
+    return html`
+      ${(["right", "left"] as const).map(
+        (side) => html`<div class="ed-fallback">
+          <h4>${this.t(`editor.groups.${side}`)}</h4>
+          ${this.renderReadings(side)}
+        </div>`,
+      )}
+      <ha-form
+        .hass=${this.hass}
+        .data=${shown}
+        .schema=${plain.map((group) => ({
+          type: "expandable",
+          name: group.id,
+          icon: group.icon,
+          // Without it the values nest under the group's name and the card,
+          // which reads a flat config, never sees them.
+          flatten: true,
+          schema: GROUP_FIELDS[group.id]
+            .filter((field) => !field.visible || field.visible(shown))
+            .map(({ name, selector }) => ({ name, selector })),
+        }))}
+        .computeLabel=${(schema: { name: string }) =>
+          GROUPS.some((group) => group.id === schema.name)
+            ? this.t(`editor.groups.${schema.name}`)
+            : this.computeLabel(schema)}
+        .computeHelper=${this.computeHelper}
+        @value-changed=${(event: CustomEvent<{ value: Data }>) => {
+          event.stopPropagation();
+          this.applyChanges(event.detail.value);
+        }}
+      ></ha-form>
+    `;
+  }
+
+  // --- readings -------------------------------------------------------
+
+  private rows(side: ReadoutSide): OverlayEntityConfig[] {
+    return this.config?.[BLOCK_KEYS[side].rows] ?? [];
+  }
+
+  /**
+   * Save a block's rows, carrying each row's open state along with it so a
+   * row that moves or loses a neighbour stays open or closed as it was.
+   */
+  private saveRows(side: ReadoutSide, rows: OverlayEntityConfig[], moved: (number | null)[]): void {
+    const open = new Set([...this.open].filter((key) => !key.startsWith(`${side}:`)));
+    moved.forEach((from, to) => {
+      if (from === null ? false : this.open.has(`${side}:${from}`)) open.add(`${side}:${to}`);
     });
+    this.open = open;
+    this.applyChanges({ [BLOCK_KEYS[side].rows]: rows });
   }
 
   private addRow(side: ReadoutSide): void {
-    this.updateRows(side, [...this.rows(side), { entity: "" }]);
+    const rows = this.rows(side);
+    this.saveRows(side, [...rows, { entity: "" }], [...rows.map((_, i) => i), null]);
+    // A new row opens, so its entity picker is the next thing on screen.
+    this.setOpen(`${side}:${rows.length}`, true);
   }
 
   private removeRow(side: ReadoutSide, index: number): void {
-    this.updateRows(
+    const rows = this.rows(side);
+    const kept = rows.map((_, i) => i).filter((i) => i !== index);
+    this.saveRows(
       side,
-      this.rows(side).filter((_, i) => i !== index),
+      kept.map((i) => rows[i]!),
+      kept,
     );
   }
 
   private moveRow(side: ReadoutSide, index: number, delta: -1 | 1): void {
-    const rows = [...this.rows(side)];
+    const order = this.rows(side).map((_, i) => i);
     const target = index + delta;
-    if (target < 0 || target >= rows.length) return;
-    [rows[index], rows[target]] = [rows[target]!, rows[index]!];
-    this.updateRows(side, rows);
+    if (target < 0 || target >= order.length) return;
+    [order[index], order[target]] = [order[target]!, order[index]!];
+    this.saveRows(
+      side,
+      order.map((i) => this.rows(side)[i]!),
+      order,
+    );
   }
 
-  private patchRow(side: ReadoutSide, index: number, patch: Partial<OverlayEntityConfig>): void {
+  /** `patch` may set a key to undefined, which tidyConfig then drops. */
+  private patchRow(side: ReadoutSide, index: number, patch: Data): void {
     const rows = this.rows(side).map((row, i) => (i === index ? { ...row, ...patch } : row));
-    this.updateRows(side, rows);
+    this.applyChanges({ [BLOCK_KEYS[side].rows]: rows });
   }
 
-  private renderRow(side: ReadoutSide, row: OverlayEntityConfig, index: number): TemplateResult {
-    const label = row.name || row.entity || this.t("editor.entity");
-    return html`
-      <div class="ent-row" role="group" aria-label=${label}>
-        <ha-entity-picker
-          .hass=${this.hass}
-          .value=${row.entity}
-          allow-custom-entity
-          @value-changed=${(e: CustomEvent<{ value: string }>) => {
-            e.stopPropagation();
-            this.patchRow(side, index, { entity: e.detail.value });
-          }}
-        ></ha-entity-picker>
-
-        <ha-form
-          .hass=${this.hass}
-          .data=${row}
-          .schema=${ROW_SCHEMA}
-          .computeLabel=${this.computeLabel}
-          @value-changed=${(e: CustomEvent<{ value: OverlayEntityConfig }>) => {
-            e.stopPropagation();
-            this.patchRow(side, index, e.detail.value);
-          }}
-        ></ha-form>
-
-        <div class="ent-controls">
-          <!-- The one sanctioned native control: HA ships no colour
-               selector. Both @input and @change are wired — @input gives
-               a live preview while dragging, @change is what fires on
-               some platforms when the picker closes. -->
-          <label class="swatch">
-            <span>${this.t("editor.color")}</span>
-            <input
-              type="color"
-              .value=${row.color ?? "#3d7ea6"}
-              @input=${(e: Event) =>
-                this.patchRow(side, index, {
-                  color: (e.target as HTMLInputElement).value,
-                })}
-              @change=${(e: Event) =>
-                this.patchRow(side, index, {
-                  color: (e.target as HTMLInputElement).value,
-                })}
-            />
-          </label>
-        </div>
-
-        <div class="ent-actions">
-          <ha-icon-button
-            .label=${this.t("editor.move_up")}
-            .disabled=${index === 0}
-            @click=${() => this.moveRow(side, index, -1)}
-          >
-            <ha-icon icon="mdi:arrow-up"></ha-icon>
-          </ha-icon-button>
-          <ha-icon-button
-            .label=${this.t("editor.move_down")}
-            .disabled=${index === this.rows(side).length - 1}
-            @click=${() => this.moveRow(side, index, 1)}
-          >
-            <ha-icon icon="mdi:arrow-down"></ha-icon>
-          </ha-icon-button>
-          <ha-icon-button
-            .label=${this.t("editor.remove")}
-            @click=${() => this.removeRow(side, index)}
-          >
-            <ha-icon icon="mdi:delete-outline"></ha-icon>
-          </ha-icon-button>
-        </div>
+  private renderReadings(side: ReadoutSide): TemplateResult {
+    const rows = this.rows(side);
+    return html`<div class="ed-body">
+      <p class="ed-hint">${this.t(`editor.overlay_${side}_hint`)}</p>
+      ${this.renderForm([{ name: BLOCK_KEYS[side].title, selector: { text: {} } }])}
+      ${
+        rows.length > 0
+          ? html`<div class="ed-rows">
+            ${rows.map((row, index) => this.renderRow(side, row, index, rows.length))}
+          </div>`
+          : nothing
+      }
+      <div>
+        <ha-button @click=${() => this.addRow(side)}>
+          <ha-icon icon="mdi:plus" slot="icon" aria-hidden="true"></ha-icon>
+          ${this.t("editor.add_entity")}
+        </ha-button>
       </div>
-    `;
+    </div>`;
+  }
+
+  private rowTitle(row: OverlayEntityConfig): string {
+    const friendly = row.entity
+      ? this.hass?.states[row.entity]?.attributes.friendly_name
+      : undefined;
+    return row.name || friendly || row.entity || this.t("editor.new_entity");
+  }
+
+  /** The row's collapsed line: the entity behind it, its unit, whether it graphs. */
+  private rowSummary(row: OverlayEntityConfig, title: string): string {
+    const unit =
+      row.unit ??
+      (row.entity ? this.hass?.states[row.entity]?.attributes.unit_of_measurement : undefined);
+    return [
+      row.entity && row.entity !== title ? row.entity : null,
+      unit || null,
+      row.graph ? this.t("editor.graph") : null,
+    ]
+      .filter((part): part is string => part !== null)
+      .join(" · ");
+  }
+
+  private renderRow(
+    side: ReadoutSide,
+    row: OverlayEntityConfig,
+    index: number,
+    count: number,
+  ): TemplateResult {
+    const config: NormalisedConfig = normaliseConfig(this.config!);
+    const title = this.rowTitle(row);
+    // The reading's own colour, so the list can be matched to the overlay
+    // at a glance. Unset, it is the accent the card draws it in.
+    const dot = html`<span
+      slot="leading-icon"
+      class="ed-dot"
+      style="background:${row.color ?? "var(--primary-color)"}"
+      aria-hidden="true"
+    ></span>`;
+
+    return this.renderPanel(`${side}:${index}`, title, this.rowSummary(row, title), dot, () => {
+      // Unset, a row's graph window is the card's, so that is what it shows.
+      const data: Data = { ...normaliseRow(row, config.graph_hours) };
+      return html`<div class="ed-body">
+          <ha-form
+            .hass=${this.hass}
+            .data=${data}
+            .schema=${rowSchema(row, config)}
+            .computeLabel=${this.computeLabel}
+            .computeHelper=${this.computeRowHelper}
+            @value-changed=${(event: CustomEvent<{ value: Data }>) => {
+              event.stopPropagation();
+              const next = event.detail.value;
+              const changes = Object.fromEntries(
+                Object.keys(next)
+                  .filter((key) => next[key] !== data[key])
+                  .map((key) => [key, next[key]]),
+              );
+              if (Object.keys(changes).length > 0) this.patchRow(side, index, changes);
+            }}
+          ></ha-form>
+
+          ${this.renderColor(side, row, index)}
+
+          <div class="ed-actions">
+            <ha-icon-button
+              .label=${this.t("editor.move_up")}
+              .disabled=${index === 0}
+              @click=${() => this.moveRow(side, index, -1)}
+            >
+              <ha-icon icon="mdi:arrow-up" aria-hidden="true"></ha-icon>
+            </ha-icon-button>
+            <ha-icon-button
+              .label=${this.t("editor.move_down")}
+              .disabled=${index === count - 1}
+              @click=${() => this.moveRow(side, index, 1)}
+            >
+              <ha-icon icon="mdi:arrow-down" aria-hidden="true"></ha-icon>
+            </ha-icon-button>
+            <ha-icon-button
+              class="ed-remove"
+              .label=${this.t("editor.remove")}
+              @click=${() => this.removeRow(side, index)}
+            >
+              <ha-icon icon="mdi:delete-outline" aria-hidden="true"></ha-icon>
+            </ha-icon-button>
+          </div>
+        </div>`;
+    });
+  }
+
+  /**
+   * The colour swatch. Both @input and @change are wired: @input recolours
+   * the preview while the picker is being dragged, @change is what some
+   * platforms fire when it closes. The reset only appears once a colour
+   * has been set, and clearing it saves no key at all.
+   */
+  private renderColor(side: ReadoutSide, row: OverlayEntityConfig, index: number): TemplateResult {
+    const set = (event: Event): void =>
+      this.patchRow(side, index, { color: (event.target as HTMLInputElement).value });
+    const swatch = row.color && /^#[0-9a-f]{6}$/i.test(row.color) ? row.color : this.accent;
+    return html`<div class="ed-color">
+      <label class="swatch">
+        <input
+          type="color"
+          aria-label=${`${this.t("editor.color")}: ${this.rowTitle(row)}`}
+          .value=${swatch}
+          @input=${set}
+          @change=${set}
+        />
+        <span class="ed-color-text">
+          <span>${this.t("editor.color")}</span>
+          <span class="ed-hint">${row.color ? row.color : this.t("editor.color_default")}</span>
+        </span>
+      </label>
+      ${
+        row.color
+          ? html`<ha-button @click=${() => this.patchRow(side, index, { color: undefined })}>
+            ${this.t("editor.color_reset")}
+          </ha-button>`
+          : nothing
+      }
+    </div>`;
   }
 
   protected override render(): TemplateResult {
     if (!this.hass || !this.config) return html`${nothing}`;
 
-    return html`
-      <ha-form
-        .hass=${this.hass}
-        .data=${this.config}
-        .schema=${this.schema}
-        .computeLabel=${this.computeLabel}
-        .computeHelper=${this.computeHelper}
-        @value-changed=${this.onFormChange}
-      ></ha-form>
-
-      ${this.renderSection("right", OVERLAY_TITLE_SCHEMA)}
-      ${this.renderSection("left", OVERLAY_TITLE_LEFT_SCHEMA)}
-    `;
-  }
-
-  /**
-   * One block's heading and entity list.
-   *
-   * Both sections are always shown. An empty left section is what tells
-   * someone the second block exists at all — discovering it would
-   * otherwise mean reading the YAML docs, and the card renders exactly
-   * as before until a row is added to it.
-   */
-  private renderSection(side: ReadoutSide, titleSchema: unknown): TemplateResult {
-    // Built outside the template on purpose. A nested backtick inside an
-    // html`` body is valid JavaScript but it mis-segments the CI guard
-    // that scans these templates for stray backticks, which would blunt
-    // that check for everything below this point in the file.
-    const heading = this.t("editor.overlay_" + side);
-    const hint = this.t("editor.overlay_" + side + "_hint");
-
-    return html`
-      <div class="ent-section">
-        <h4>${heading}</h4>
-        <p class="ent-hint">${hint}</p>
-
-        <div class="ent-title">
-          <ha-form
-            .hass=${this.hass}
-            .data=${this.config}
-            .schema=${titleSchema}
-            .computeLabel=${this.computeLabel}
-            .computeHelper=${this.computeHelper}
-            @value-changed=${this.onFormChange}
-          ></ha-form>
-        </div>
-
-        ${this.rows(side).map((row, index) => this.renderRow(side, row, index))}
-        <ha-button @click=${() => this.addRow(side)}>
-          <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
-          ${this.t("editor.add_entity")}
-        </ha-button>
+    return html`<div class="ed">
+      ${this.renderForm(TOP_FIELDS)}
+      <div class="ed-groups">
+        ${this.panels ? GROUPS.map((group) => this.renderGroup(group)) : this.renderFallback()}
       </div>
-    `;
+    </div>`;
   }
 }
 

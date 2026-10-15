@@ -8,6 +8,7 @@ import { LitElement, html, nothing, type PropertyValues, type TemplateResult } f
 import { customElement, property, query, state } from "lit/decorators.js";
 
 import { cardStyles } from "./card-styles";
+import { DEFAULTS, type NormalisedConfig, normaliseConfig, rowGraphHours, SPEEDS } from "./config";
 import { Coalescer } from "./coalesce";
 import {
   CARD_TAG,
@@ -111,9 +112,7 @@ import { formatExtent, formatSpan, prefersReducedMotion, safeImageUri } from "./
  * is ~2000 frames and 8x is plenty; at one minute it is ~20,000, and 8x
  * would take twenty minutes to play through.
  */
-const SPEEDS = [1, 2, 4, 8, 16, 32, 64] as const;
-/** Speed a card starts at when config says nothing usable. */
-const DEFAULT_SPEED = 32;
+const DEFAULT_SPEED = DEFAULTS.speed;
 /** Ignore image loads while the thumb has moved within this window. */
 const SCRUB_QUIET_MS = 80;
 /**
@@ -147,7 +146,7 @@ export class WebcamTimelapseCard extends LitElement {
 
   @property({ attribute: false }) hass?: HomeAssistant;
 
-  @state() private config?: WebcamTimelapseCardConfig;
+  @state() private config?: NormalisedConfig;
   @state() private index: FrameIndex = EMPTY_INDEX;
   @state() private position = 0;
   @state() private playing = false;
@@ -268,15 +267,7 @@ export class WebcamTimelapseCard extends LitElement {
     if (!config?.camera_entity) {
       throw new Error(localize("error.no_camera", this.hass?.locale?.language));
     }
-    this.config = {
-      autoplay: false,
-      speed: DEFAULT_SPEED,
-      show_dayticks: true,
-      show_graph: true,
-      show_sun: false,
-      graph_hours: 24,
-      deflicker: 50,
-      show_export: true,
+    this.config = normaliseConfig({
       ...config,
       // Drop malformed rows rather than crashing render on a hand-edited
       // YAML typo: one bad entry should cost that row, not the card.
@@ -284,10 +275,8 @@ export class WebcamTimelapseCard extends LitElement {
       // this exists to prevent.
       entities: (config.entities ?? []).filter((row) => row?.entity),
       entities_left: (config.entities_left ?? []).filter((row) => row?.entity),
-    };
-    this.speed = SPEEDS.includes(this.config.speed as never)
-      ? (this.config.speed as number)
-      : DEFAULT_SPEED;
+    });
+    this.speed = SPEEDS.includes(this.config.speed as never) ? this.config.speed : DEFAULT_SPEED;
     // Size the ring for the speed the card actually starts at. Left at the
     // 1x default it held four slots while the window asked for sixteen, so
     // three quarters of every prefetch was dropped the moment it was
@@ -429,7 +418,7 @@ export class WebcamTimelapseCard extends LitElement {
    * would put a sort inside the frame budget.
    */
   private async refreshLuma(): Promise<void> {
-    const strength = this.config?.deflicker ?? 0;
+    const strength = this.config?.deflicker ?? DEFAULTS.deflicker;
     const radius = radiusForStrength(strength);
     if (!this.hass?.callWS || radius === 0 || !this.config) {
       this.gains = new Float32Array(0);
@@ -466,7 +455,7 @@ export class WebcamTimelapseCard extends LitElement {
     // a window wider than the archive would otherwise get a graph that
     // truncates at the fetch boundary instead of filling.
     const graphHours = Math.max(
-      this.config?.graph_hours ?? 24,
+      this.config?.graph_hours ?? DEFAULTS.graph_hours,
       ...entities.map((row) => row.graph_hours ?? 0),
     );
 
@@ -604,7 +593,7 @@ export class WebcamTimelapseCard extends LitElement {
 
     if (
       !shouldAutoplay({
-        configured: this.config?.autoplay === true,
+        configured: this.config?.autoplay ?? DEFAULTS.autoplay,
         reducedMotion: prefersReducedMotion(),
         alreadyPlaying: this.playing,
       })
@@ -1337,7 +1326,7 @@ export class WebcamTimelapseCard extends LitElement {
         ${this.renderStage(slot)}
         ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}
         ${
-          hasFrames(this.index) && this.config.show_export !== false && this.exportOpen
+          hasFrames(this.index) && this.config.show_export && this.exportOpen
             ? this.renderExport()
             : nothing
         }
@@ -1494,8 +1483,8 @@ export class WebcamTimelapseCard extends LitElement {
       // sensor added last week lost its chart across the whole earlier
       // half of the archive, and a stale one lost it entirely. Whether
       // there is anything to draw is sparkline's call, not this one's.
-      const graphHours = row.graph_hours ?? this.config?.graph_hours ?? 24;
-      const drawGraph = row.graph === true && this.config?.show_graph !== false;
+      const graphHours = this.config ? rowGraphHours(row, this.config) : DEFAULTS.graph_hours;
+      const drawGraph = row.graph === true && this.config?.show_graph === true;
       const windowed = drawGraph ? windowAround(points, at, graphHours) : [];
       const nights =
         drawGraph && this.config?.show_sun === true ? this.nightsAround(at, graphHours) : [];
@@ -1767,7 +1756,7 @@ export class WebcamTimelapseCard extends LitElement {
           <ha-icon icon="mdi:update"></ha-icon>
         </ha-icon-button>
         ${
-          this.config?.show_export !== false
+          this.config?.show_export === true
             ? html`<ha-icon-button
                 .label=${this.t(this.exportOpen ? "export.close" : "export.open")}
                 @click=${this.toggleExport}
@@ -1796,7 +1785,7 @@ export class WebcamTimelapseCard extends LitElement {
   private renderTimeline(slot: number | null): TemplateResult {
     const last = Math.max(1, this.index.count - 1);
     const fill = (this.position / last) * 100;
-    const ticks = this.config?.show_dayticks !== false;
+    const ticks = this.config?.show_dayticks === true;
     const { days, times } = ticks
       ? this.rulerFor()
       : { days: [] as DayTick[], times: [] as TimeTick[] };

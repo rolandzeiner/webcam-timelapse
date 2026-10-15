@@ -13,6 +13,7 @@
  * to be snapped back onto the grid.
  */
 
+import { normaliseConfig } from "./config";
 import { type FrameIndex, slotAt } from "./frames";
 import { overlayEntities } from "./overlay-groups";
 import type { OverlayEntityConfig, WebcamTimelapseCardConfig } from "./types";
@@ -450,6 +451,7 @@ export function overlayRequest(
   resolveColor: (value: string) => string,
 ): Record<string, unknown> | null {
   if (overlayEntities(config).length === 0) return null;
+  const settings = normaliseConfig(config);
 
   const rows = (list: OverlayEntityConfig[] | undefined): OverlayEntityConfig[] =>
     (list ?? []).map((row) =>
@@ -461,9 +463,9 @@ export function overlayRequest(
     entities_left: rows(config.entities_left),
     overlay_title: config.overlay_title ?? "",
     overlay_title_left: config.overlay_title_left ?? "",
-    graph_hours: config.graph_hours ?? 24,
-    show_graph: config.show_graph !== false,
-    show_sun: config.show_sun === true,
+    graph_hours: settings.graph_hours,
+    show_graph: settings.show_graph,
+    show_sun: settings.show_sun,
     // What a row without its own colour is drawn in on the card.
     accent_color: toHex(resolveColor("var(--wtl-accent)")),
   };
@@ -488,7 +490,7 @@ export function exportRequest(
     fps: choices.fps,
     // The card's own "Smooth brightness" setting, so the video flickers
     // exactly as much as the playback it was started from.
-    deflicker: Math.min(100, Math.max(0, Math.round(config.deflicker ?? 0))),
+    deflicker: Math.min(100, Math.max(0, Math.round(normaliseConfig(config).deflicker))),
     timestamp: choices.timestamp,
     timestamp_size: clampSize(choices.timestampSize, TIMESTAMP_SIZE),
     overlay: choices.readings ? overlayRequest(config, resolveColor) : null,

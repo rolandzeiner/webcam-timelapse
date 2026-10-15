@@ -30,6 +30,7 @@ import {
   withEnd,
   withStart,
 } from "./export";
+import { DEFAULTS } from "./config";
 import { EMPTY_INDEX, type FrameIndex, presenceBitmap } from "./frames";
 import type { WebcamTimelapseCardConfig } from "./types";
 
@@ -330,7 +331,8 @@ describe("request", () => {
         resolve,
       )?.deflicker;
 
-    expect(at(undefined)).toBe(0);
+    // Unset means the card's default, which is what the playback uses too.
+    expect(at(undefined)).toBe(DEFAULTS.deflicker);
     expect(at(250)).toBe(100);
     expect(at(-5)).toBe(0);
     expect(at(42.6)).toBe(43);

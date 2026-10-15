@@ -1142,73 +1142,131 @@ export const cardStyles = css`
 
   /* --- editor ------------------------------------------------------ */
 
-  .ent-section {
-    padding: 8px 0 4px;
-  }
-
-  .ent-section h4 {
-    margin: 8px 0 2px;
-    font-weight: var(--ha-font-weight-medium, 500);
-  }
-
-  .ent-hint {
-    margin: 0 0 12px;
-    color: var(--wtl-muted);
-    font-size: var(--ha-font-size-s, 12px);
-  }
-
-  /* The heading applies to the whole readings block, not to any one row,
-     so it sits above them at full width. ha-form is block-level already;
-     the wrapper carries only the spacing. */
-  .ent-title {
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  .ent-row {
+  /* The editor is laid out by HA's own pieces — ha-form and
+     ha-expansion-panel — and these rules only space them. Nothing here
+     sets a colour HA's theme does not already own. */
+  .ed {
     display: grid;
-    grid-template-columns: 1fr auto;
+    gap: 16px;
+  }
+
+  .ed-groups {
+    display: grid;
     gap: 8px;
-    padding: 12px 0;
-    border-top: 1px solid var(--wtl-divider);
   }
 
-  /* The row is a two-column grid and ha-form is a direct child, so
-     without this it lands in the narrow auto column beside the entity
-     picker instead of under it. */
-  .ent-row ha-form {
-    grid-column: 1 / -1;
+  .ed-body {
+    display: grid;
+    gap: 12px;
+    padding: 4px 0 8px;
   }
 
-  .ent-controls {
-    grid-column: 1 / -1;
+  .ed-hint {
+    margin: 0;
+    color: var(--secondary-text-color);
+    font-size: var(--ha-font-size-s, 12px);
+    line-height: 1.45;
+  }
+
+  .ed-rows {
+    display: grid;
+    gap: 8px;
+  }
+
+  /* A reading's colour, as the leading icon of its row. Same box as an
+     mdi icon so the headers of rows and groups line up. */
+  .ed-dot {
+    display: block;
+    width: 14px;
+    height: 14px;
+    margin: 5px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--divider-color);
+  }
+
+  .ed-color {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
-  }
-
-  .ent-actions {
-    display: flex;
-    align-items: start;
   }
 
   .swatch {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-size: var(--ha-font-size-s, 12px);
-    color: var(--wtl-muted);
+    gap: 12px;
+    cursor: pointer;
   }
 
   .swatch input[type="color"] {
     width: 44px;
-    height: 32px;
+    height: 44px;
     padding: 0;
-    border: 1px solid var(--wtl-divider);
-    border-radius: 6px;
+    border: 1px solid var(--divider-color);
+    border-radius: 50%;
     background: none;
     cursor: pointer;
+  }
+
+  .swatch input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 4px;
+  }
+
+  .swatch input[type="color"]::-webkit-color-swatch {
+    border: 0;
+    border-radius: 50%;
+  }
+
+  .swatch input[type="color"]::-moz-color-swatch {
+    border: 0;
+    border-radius: 50%;
+  }
+
+  .swatch input[type="color"]:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+
+  .ed-color-text {
+    display: grid;
+    gap: 2px;
+  }
+
+  .ed-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--divider-color);
+  }
+
+  /* Remove sits apart from the two moves, so it is not pressed by a
+     thumb on its way to the arrow beside it. */
+  .ed-remove {
+    margin-inline-start: auto;
+    order: -1;
+  }
+
+  .ed-flat,
+  .ed-fallback {
+    display: grid;
+    gap: 8px;
+  }
+
+  .ed-flat {
+    padding: 12px;
+    border: 1px solid var(--divider-color);
+    border-radius: var(--ha-border-radius-md, 8px);
+  }
+
+  .ed-flat-head,
+  .ed-fallback h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-weight: var(--ha-font-weight-medium, 500);
   }
 
   /* --- version banner ---------------------------------------------- */

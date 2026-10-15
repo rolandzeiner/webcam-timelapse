@@ -355,7 +355,7 @@ describe("the card's graph gate", () => {
     // The gate may only consult the two things that are about wanting a
     // chart. Anything about whether a reading resolved does not belong.
     expect(cardSource).toMatch(
-      /const drawGraph =\s*row\.graph === true && this\.config\?\.show_graph !== false;/,
+      /const drawGraph =\s*row\.graph === true && this\.config\?\.show_graph === true;/,
     );
   });
 });
