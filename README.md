@@ -68,6 +68,9 @@ work.
 
 Needs Home Assistant **2025.5.0** or newer.
 
+The card needs a browser from 2023 or newer: Chrome or Edge 110, Safari 16,
+or Firefox 115. On an older wall tablet, update its browser or WebView first.
+
 ## Set up a camera
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=webcam_timelapse)
