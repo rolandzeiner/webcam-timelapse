@@ -292,7 +292,12 @@ var Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
 
   /* Sized down hard from the 48px default — this sits inside an overlay
      that is only a few rows tall, and the pill's 40px would dominate the
-     block it belongs to. 28px still clears the 24px WCAG 2.5.8 minimum.
+     block it belongs to. 24px is the WCAG 2.5.8 minimum, and the floor.
+
+     Every icon-button size here is set twice. Home Assistant's
+     ha-icon-button moved onto ha-button, which reads
+     --ha-icon-button-size; older frontends read --mdc-icon-button-size.
+     Setting only the old one left every button at the new 48px default.
 
      Quiet until wanted: it matches .readout-name's weight so it reads as
      part of the block's furniture rather than competing with the values,
@@ -300,8 +305,21 @@ var Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
   .readout-fold {
     flex: none;
     color: rgba(255, 255, 255, 0.75);
-    --mdc-icon-button-size: 28px;
-    --mdc-icon-size: 17px;
+    --ha-icon-button-size: 24px;
+    --mdc-icon-button-size: 24px;
+    --ha-icon-button-padding-inline: 0;
+    --mdc-icon-size: 16px;
+  }
+
+  /* Overhangs the heading row instead of setting its height. The 24px
+     target is what WCAG asks for, not what the row needs: left to size
+     the row it made the heading twice as tall as a reading. The negative
+     margin stays inside the block's own padding, so nothing it overlaps
+     is another control. A folded block is the button alone and keeps
+     its full size. */
+  .readout-head .readout-fold {
+    margin-block: -4px;
+    margin-inline-end: -6px;
   }
 
   /* :focus-within, not :focus-visible. ha-icon-button puts outline:none
@@ -446,6 +464,7 @@ var Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
     color: #fff;
     /* Smaller than the 48px default so the pill stays slim, still well
        over the 24px WCAG 2.5.8 minimum target. */
+    --ha-icon-button-size: 40px;
     --mdc-icon-button-size: 40px;
     --mdc-icon-size: 20px;
   }
@@ -454,6 +473,7 @@ var Me=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
      extra weight. Size is the whole signal — no accent colour, which
      would compete with the LIVE badge for the eye. */
   .controls .play {
+    --ha-icon-button-size: 46px;
     --mdc-icon-button-size: 46px;
     --mdc-icon-size: 26px;
   }

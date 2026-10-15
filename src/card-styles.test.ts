@@ -442,6 +442,23 @@ describe("folding a readings block away", () => {
     expect(size).toBeLessThan(40);
   });
 
+  it("sizes icon buttons for both generations of ha-icon-button", () => {
+    // Current HA reads --ha-icon-button-size, older frontends the mdc one.
+    // With only the old variable every button rendered at 48px, the eye
+    // included, which doubled the height of the readings' heading row.
+    for (const selector of [".readout-fold", ".controls", ".controls .play"]) {
+      const body = declarationsFor(selector);
+      const modern = body.match(/--ha-icon-button-size:\s*(\d+)px/)?.[1];
+      const legacy = body.match(/--mdc-icon-button-size:\s*(\d+)px/)?.[1];
+      expect(modern, selector).toBeDefined();
+      expect(modern, selector).toBe(legacy);
+    }
+  });
+
+  it("lets the eye overhang the heading instead of setting its height", () => {
+    expect(declarationsFor(".readout-head .readout-fold")).toMatch(/margin-block:\s*-4px/);
+  });
+
   it("sheds the block's padding once folded", () => {
     // A folded block that kept its padding would leave a dark square on
     // the picture — the thing folding it away was meant to clear.
