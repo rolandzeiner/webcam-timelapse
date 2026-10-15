@@ -43,9 +43,9 @@ pytest tests/                                     # 90% coverage floor, enforced
 mypy --strict --ignore-missing-imports custom_components/webcam_timelapse
 ruff check .
 ruff format --check .                             # `ruff check` ignores formatting
-npx tsc --noEmit                                  # card type-check; rolldown does not type-check
-npm test                                          # vitest: the pure card logic
-npm run build                                     # Rolldown bundle
+npx vp check                                      # card format, lint, type-check; the build does not type-check
+npm test                                          # vp test: the pure card logic
+npm run build                                     # vp build: the card bundle
 ```
 
 Plus one check on the **oldest** Python this integration supports:
@@ -108,26 +108,46 @@ whose header freezes.
 formula wipes every existing install.
 
 **The card bundle is generated.** `custom_components/webcam_timelapse/www/*.js`
-comes from `src/` via Rolldown — never hand-edit it. Commit the rebuilt bundle
+comes from `src/` via `vp build` — never hand-edit it. Commit the rebuilt bundle
 alongside the source change; HACS users never run `npm`.
 
-Rolldown does transpilation, minification, module resolution and JSON natively,
-so the card's whole `devDependencies` is `rolldown` + `typescript` + `vitest`;
-the `@rollup/plugin-*` stack and `@swc/core` were deleted in the 2026-09
-migration, not replaced. Three things in `rolldown.config.mjs` fail silently if
-you change them: the banner must be a **legal** comment (`/*! ... */`) with
-`comments: { legal: true }` or the minifier strips it; **`dropConsole` stays
-`false`** (rolldown's option is a boolean, not terser's per-method array, and
-the calls it would remove sit in `catch` blocks); and **decorators are not
-configured** — rolldown reads `tsconfig.json` itself, and if that regresses,
-class fields overwrite Lit's accessors and reactivity dies while the build
-stays green. Rolldown does not type-check, so `npx tsc --noEmit` is the only
-gate between a type error and a shipped bundle.
+`vite.config.ts` is the whole card toolchain, run through
+[Vite+](https://viteplus.dev/) (`vp`): `vp build` (Vite library mode on
+Rolldown), `vp test` (Vitest) and `vp check` (Oxfmt + Oxlint + type-check).
+The only card `devDependency` is `vite-plus`; Vitest, Rolldown and the
+type-checker ship inside it, and `typescript` is not installed. Five things in
+that file fail silently if you change them:
+
+- The banner must be a **legal** comment (`/*! ... */`) with
+  `comments: { legal: true }`, or the minifier strips it.
+- **`minify` lives on `rolldownOptions.output`, with `dropConsole: false`.**
+  Vite's library mode skips whitespace minification for ES output, so
+  `build.minify` alone ships a larger bundle. `dropConsole` is all-or-nothing,
+  and the calls it would remove sit in `catch` blocks.
+- **Dev vs prod comes from `--mode development`** (`npm run dev`). A plain
+  `vp build` is production: minified, no sourcemap.
+- **`fmt.embeddedLanguageFormatting` stays `"off"`.** Otherwise Oxfmt
+  reformats Lit `html`/`css` templates and changes the whitespace inside
+  rendered elements, which is a DOM change, not a style change.
+- **Decorators are not configured.** Rolldown reads `tsconfig.json` itself;
+  if that regresses, class fields overwrite Lit's accessors and reactivity
+  dies while the build stays green.
+
+The `vite` override in `package.json` must name the same version as
+`vite-plus`: it keeps npm from installing upstream Vite next to Vite+'s core.
+Dependabot bumps `vite-plus` but not the override, and `src/toolchain.test.ts`
+fails until both move together. The build does not type-check, so `vp check`
+is the only gate between a type error and a shipped bundle.
+
+Card tests live next to the code as `src/**/*.test.ts` and run in plain node
+(settings in `vite.config.ts`'s `test` block).
 
 Note the bundle is excluded from the `end-of-file-fixer` / `trailing-whitespace`
-pre-commit hooks: rolldown emits no trailing newline where Rollup did, and a
-hook that "fixes" the file *after* the build leaves the committed bundle out of
-sync with a fresh one — which `validate.yml` asserts byte-for-byte.
+pre-commit hooks: Rolldown emits no trailing newline, and a hook that "fixes"
+the file *after* the build leaves the committed bundle out of sync with a fresh
+one — which `validate.yml` asserts byte-for-byte. `vp check` also runs as a
+local pre-commit hook on card source; don't switch to Vite+'s own `vp staged`
+hooks, which take over `core.hooksPath` and silently disable ruff and mypy.
 
 **Version sync is byte-identical.** `manifest.json` `version` and
 `src/const.ts` `CARD_VERSION` must match; `const.py` derives its value from the

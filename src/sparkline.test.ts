@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import cardSource from "./webcam-timelapse-card.ts?raw";
 import { type HistoryPoint, resolveAt, windowAround } from "./overlay-history";
@@ -41,7 +41,6 @@ function pathsOf(result: unknown): string[] {
   }
   return found;
 }
-
 
 /**
  * The static text of a template and everything nested inside it.
@@ -87,12 +86,7 @@ function levelsOf(path: string): number[] {
   return [...path.matchAll(/V (-?[\d.]+)/g)].map((m) => Number(m[1]));
 }
 
-function draw(
-  points: HistoryPoint[],
-  at: number,
-  hours: number,
-  quantum?: number,
-) {
+function draw(points: HistoryPoint[], at: number, hours: number, quantum?: number) {
   return sparkline({
     points,
     at,

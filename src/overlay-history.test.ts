@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   type HistoryPoint,
@@ -91,9 +91,7 @@ describe("stalenessThreshold", () => {
       at: T0 + i * 6 * HOUR,
       value: i,
     }));
-    expect(stalenessThreshold(sixHourly)).toBeGreaterThan(
-      stalenessThreshold(minutely),
-    );
+    expect(stalenessThreshold(sixHourly)).toBeGreaterThan(stalenessThreshold(minutely));
   });
 
   it("applies a floor so a sparse series does not flag everything", () => {
@@ -263,9 +261,7 @@ describe("safeImageUri", () => {
     expect(safeImageUri("/api/camera_proxy/camera.x?token=1")).toBe(
       "/api/camera_proxy/camera.x?token=1",
     );
-    expect(safeImageUri("https://example.invalid/a.jpg")).toBe(
-      "https://example.invalid/a.jpg",
-    );
+    expect(safeImageUri("https://example.invalid/a.jpg")).toBe("https://example.invalid/a.jpg");
   });
 
   it("refuses script and data URLs", () => {

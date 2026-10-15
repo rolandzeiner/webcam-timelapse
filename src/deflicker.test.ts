@@ -1,11 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
-import {
-  DEFAULT_DEFLICKER,
-  deflickerGains,
-  type LumaSeries,
-  radiusForStrength,
-} from "./deflicker";
+import { DEFAULT_DEFLICKER, deflickerGains, type LumaSeries, radiusForStrength } from "./deflicker";
 
 /** Apply the gains and report the corrected luminance series. */
 function corrected(luma: LumaSeries, radius = 6): number[] {
@@ -27,9 +22,7 @@ describe("deflickerGains", () => {
     // A steady scene with cloud shadow flapping the brightness around.
     // A near-square alternation, which is what a cloud edge actually
     // produces and what a median-based target fails to correct at all.
-    const luma = Array.from({ length: 60 }, (_, i) =>
-      i % 2 === 0 ? 120 : 165,
-    );
+    const luma = Array.from({ length: 60 }, (_, i) => (i % 2 === 0 ? 120 : 165));
     const before = jitter(luma);
     const after = jitter(corrected(luma));
 

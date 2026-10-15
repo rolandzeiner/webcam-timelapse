@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   dayTicks,
@@ -144,9 +144,7 @@ describe("tick structure", () => {
       expect(tick.left).toBeGreaterThan(0);
       expect(tick.left).toBeLessThan(100);
     }
-    expect(ticks.map((t) => t.left)).toEqual(
-      [...ticks.map((t) => t.left)].sort((a, b) => a - b),
-    );
+    expect(ticks.map((t) => t.left)).toEqual([...ticks.map((t) => t.left)].sort((a, b) => a - b));
   });
 
   it("always keeps the label on a month boundary", () => {
@@ -266,14 +264,10 @@ describe("timeTicks", () => {
     // 2.5 h it would not be, and asserting it there would be testing the
     // greedy thinner rather than the day boundary.
     const index = spanning("2026-08-01T00:00:00Z", 2);
-    const labelled = timeTicks(index, VIENNA, "de-AT", 700).filter(
-      (tick) => tick.label !== "",
-    );
+    const labelled = timeTicks(index, VIENNA, "de-AT", 700).filter((tick) => tick.label !== "");
     expect(labelled.map((tick) => tick.label)).toContain("00:00");
 
-    const gaps = labelled
-      .slice(1)
-      .map((tick, i) => tick.left - (labelled[i]?.left ?? 0));
+    const gaps = labelled.slice(1).map((tick, i) => tick.left - (labelled[i]?.left ?? 0));
     expect(Math.max(...gaps)).toBeLessThan(Math.min(...gaps) * 1.1);
   });
 
@@ -326,9 +320,7 @@ describe("timeTicks", () => {
     expect(labelled.length).toBeLessThan(ticks.length);
     // Anchored to midnight, not to the first tick, so the labelled times
     // repeat day to day instead of drifting.
-    expect(new Set(labelled.map((tick) => tick.label)).size).toBeLessThan(
-      labelled.length,
-    );
+    expect(new Set(labelled.map((tick) => tick.label)).size).toBeLessThan(labelled.length);
   });
 
   it("still answers 'what time is this' on a long window", () => {
@@ -339,9 +331,7 @@ describe("timeTicks", () => {
     // ruler exists to show.
     for (const px of [260, 400, 600, 900]) {
       const index = spanning("2026-08-01T00:00:00Z", 14);
-      const labelled = timeTicks(index, VIENNA, "de-AT", px).filter(
-        (tick) => tick.label !== "",
-      );
+      const labelled = timeTicks(index, VIENNA, "de-AT", px).filter((tick) => tick.label !== "");
       expect(labelled.length).toBeGreaterThan(0);
     }
   });
@@ -350,9 +340,7 @@ describe("timeTicks", () => {
     for (const days of [1, 3, 14]) {
       for (const px of [260, 400, 600, 900]) {
         const index = spanning("2026-08-01T00:00:00Z", days);
-        const labelled = timeTicks(index, VIENNA, "de-AT", px).filter(
-          (tick) => tick.label !== "",
-        );
+        const labelled = timeTicks(index, VIENNA, "de-AT", px).filter((tick) => tick.label !== "");
         for (let i = 1; i < labelled.length; i++) {
           const gapPx = ((labelled[i]!.left - labelled[i - 1]!.left) / 100) * px;
           expect(gapPx).toBeGreaterThanOrEqual(45);
