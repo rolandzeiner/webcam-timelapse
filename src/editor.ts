@@ -160,10 +160,10 @@ export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCar
     return helper.startsWith("editor.") ? undefined : helper;
   };
 
-  private onFormChange(event: HaFormEvent): void {
+  private onFormChange = (event: HaFormEvent): void => {
     event.stopPropagation();
     this.emit({ ...this.config, ...event.detail.value });
-  }
+  };
 
   private emit(config: WebcamTimelapseCardConfig): void {
     this.dispatchEvent(

@@ -510,7 +510,7 @@ export class WebcamTimelapseCard extends LitElement {
     return true;
   }
 
-  private togglePlay(): void {
+  private togglePlay = (): void => {
     // Pressing play while parked on the newest frame should replay the
     // archive, not do nothing. Sitting at the live edge is the default
     // resting position, so "play" there almost always means "show me what
@@ -522,9 +522,9 @@ export class WebcamTimelapseCard extends LitElement {
     }
     this.playing = !this.playing;
     this.reconcilePlayback();
-  }
+  };
 
-  private cycleSpeed(): void {
+  private cycleSpeed = (): void => {
     const next = SPEEDS[(SPEEDS.indexOf(this.speed as never) + 1) % SPEEDS.length];
     this.speed = next ?? 1;
     // A new ring drops the references holding the old prefetches alive, so
@@ -532,7 +532,7 @@ export class WebcamTimelapseCard extends LitElement {
     // new stride rather than skipping frames nothing is keeping warm.
     this.ring = new PrefetchRing(prefetchDepth(this.speed));
     this.prefetchedThrough = -1;
-  }
+  };
 
   private goTo(position: number): void {
     this.position = Math.min(Math.max(position, 0), Math.max(0, this.index.count - 1));
@@ -805,7 +805,7 @@ export class WebcamTimelapseCard extends LitElement {
    * left the correctness of the picture resting on an event the throttle
    * knows nothing about.
    */
-  private onScrub(event: Event): void {
+  private onScrub = (event: Event): void => {
     const position = Number((event.target as HTMLInputElement).value);
     this.position = position;
     this.pendingPosition = position;
@@ -823,7 +823,7 @@ export class WebcamTimelapseCard extends LitElement {
       this.scrubSettle = undefined;
       this.loadPendingPosition();
     }, SCRUB_QUIET_MS);
-  }
+  };
 
   /**
    * Load whatever position the thumb is on now, skipping a repeat.
@@ -841,20 +841,20 @@ export class WebcamTimelapseCard extends LitElement {
     this.goTo(position);
   }
 
-  private onScrubCommit(event: Event): void {
+  private onScrubCommit = (event: Event): void => {
     // Belt and braces: `change` also fires for a keyboard step or a click
     // on the track, where there may never be a second `input` to settle.
     if (this.scrubSettle) window.clearTimeout(this.scrubSettle);
     this.scrubSettle = undefined;
     this.pendingPosition = Number((event.target as HTMLInputElement).value);
     this.loadPendingPosition();
-  }
+  };
 
-  private jumpToNow(): void {
+  private jumpToNow = (): void => {
     this.playing = false;
     this.stopPlayback();
     this.goTo(this.index.count - 1);
-  }
+  };
 
   private stepBy(delta: 1 | -1): void {
     const next = nextPresent(this.present, this.position + delta, delta);
@@ -1276,7 +1276,7 @@ export class WebcamTimelapseCard extends LitElement {
    * started inside a control's shadow root, where `target` is retargeted
    * to the host and the class check would miss.
    */
-  private onStageClick(event: MouseEvent): void {
+  private onStageClick = (event: MouseEvent): void => {
     const path = event.composedPath();
     // Only the segment below the stage. composedPath runs all the way up
     // through Home Assistant's own DOM to window, so searching the whole
@@ -1294,7 +1294,7 @@ export class WebcamTimelapseCard extends LitElement {
     );
     if (aimedElsewhere) return;
     if (this.config) this.fireMoreInfo(this.config.camera_entity);
-  }
+  };
 
   private renderControls(): TemplateResult {
     return html`

@@ -32,12 +32,7 @@ function resolveTranslation(path: string, dictionary: Record<string, unknown>): 
  * responsibility, so this module has no DOM or hass dependency and is
  * trivially testable.
  */
-export function localize(
-  string: string,
-  lang: string | undefined = undefined,
-  search = "",
-  replace = "",
-): string {
+export function localize(string: string, lang?: string, search = "", replace = ""): string {
   // Normalise: HA uses BCP-47 ('en-GB', 'de-AT'); our dictionaries are
   // keyed by ISO-639-1 lowercase ('en', 'de'). Strip the region.
   const code = (lang ?? "en").toLowerCase().split(/[-_]/)[0] ?? "en";

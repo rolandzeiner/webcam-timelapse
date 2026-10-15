@@ -94,7 +94,7 @@ export async function fetchOverlayHistory(
   if (!callWS || entityIds.length === 0) return new Map();
 
   const timeAttributes = options.timeAttributes ?? {};
-  const key = `${entityIds.slice().sort().join(",")}|${options.days}`;
+  const key = `${entityIds.toSorted().join(",")}|${options.days}`;
 
   // Coalesce concurrent fetches: `hass` updates arrive back-to-back and
   // would otherwise fire duplicate requests for the same window.
@@ -139,7 +139,7 @@ export async function fetchOverlayHistory(
           // They appear on every HA restart, and letting them through
           // would blank the overlay at exactly those moments.
           .filter((p) => Number.isFinite(p.value) && p.at > 0)
-          .sort((a, b) => a.at - b.at);
+          .toSorted((a, b) => a.at - b.at);
         out.set(entityId, points);
         cache.set(entityId, points);
       }

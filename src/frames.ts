@@ -121,7 +121,7 @@ export class PrefetchRing {
   private cursor = 0;
 
   constructor(private readonly size: number) {
-    this.slots = new Array<HTMLImageElement | null>(size).fill(null);
+    this.slots = Array.from({ length: size }, () => null);
   }
 
   prefetch(url: string): void {
