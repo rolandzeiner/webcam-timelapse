@@ -34,6 +34,23 @@
               "frames_path": "Leave empty to store frames inside Home Assistant's config folder, where backups skip them.",
               "username": "Only needed if the camera is behind HTTP basic authentication."
             }
+          },
+          "lighting": {
+            "name": "Lights for capture",
+            "data": {
+              "capture_lights": "Lights to switch on",
+              "light_settle": "Wait before capturing",
+              "lights_mode": "When to use them",
+              "lights_window_start": "Time window from",
+              "lights_window_end": "Time window to"
+            },
+            "data_description": {
+              "capture_lights": "Switched on just before each frame is saved and off again straight after. Lights that are already on are left alone.",
+              "light_settle": "Gives the camera time to adjust to the light. Raise it if frames come out dark.",
+              "lights_mode": "At night follows sunset and sunrise at your home's location, so it moves with the seasons. A time window uses the two clock times below.",
+              "lights_window_start": "Only used with “Only within a time window”. A window across midnight, such as 20:00 to 06:00, works.",
+              "lights_window_end": "From this time on the lights are no longer used."
+            }
           }
         }
       },
@@ -58,6 +75,23 @@
               "username": "Username",
               "password": "Password"
             }
+          },
+          "lighting": {
+            "name": "Lights for capture",
+            "data": {
+              "capture_lights": "Lights to switch on",
+              "light_settle": "Wait before capturing",
+              "lights_mode": "When to use them",
+              "lights_window_start": "Time window from",
+              "lights_window_end": "Time window to"
+            },
+            "data_description": {
+              "capture_lights": "Switched on just before each frame is saved and off again straight after. Lights that are already on are left alone.",
+              "light_settle": "Gives the camera time to adjust to the light. Raise it if frames come out dark.",
+              "lights_mode": "At night follows sunset and sunrise at your home's location, so it moves with the seasons. A time window uses the two clock times below.",
+              "lights_window_start": "Only used with “Only within a time window”. A window across midnight, such as 20:00 to 06:00, works.",
+              "lights_window_end": "From this time on the lights are no longer used."
+            }
           }
         }
       },
@@ -77,7 +111,9 @@
       "invalid_scheme": "Only http:// and https:// addresses are supported.",
       "invalid_interval": "Choose one of the listed capture intervals.",
       "not_an_image": "That URL returned a page, not an image. Use the direct link to the image file.",
-      "timeout": "The camera did not respond in time."
+      "timeout": "The camera did not respond in time.",
+      "invalid_light": "Only lights and switches can be used as capture lights.",
+      "invalid_light_window": "The time window has to start and end at different times."
     },
     "abort": {
       "already_configured": "This image URL is already set up.",
@@ -110,6 +146,23 @@
               "username": "Username",
               "password": "Password"
             }
+          },
+          "lighting": {
+            "name": "Lights for capture",
+            "data": {
+              "capture_lights": "Lights to switch on",
+              "light_settle": "Wait before capturing",
+              "lights_mode": "When to use them",
+              "lights_window_start": "Time window from",
+              "lights_window_end": "Time window to"
+            },
+            "data_description": {
+              "capture_lights": "Switched on just before each frame is saved and off again straight after. Lights that are already on are left alone.",
+              "light_settle": "Gives the camera time to adjust to the light. Raise it if frames come out dark.",
+              "lights_mode": "At night follows sunset and sunrise at your home's location, so it moves with the seasons. A time window uses the two clock times below.",
+              "lights_window_start": "Only used with “Only within a time window”. A window across midnight, such as 20:00 to 06:00, works.",
+              "lights_window_end": "From this time on the lights are no longer used."
+            }
           }
         }
       }
@@ -121,7 +174,9 @@
       "invalid_scheme": "Only http:// and https:// addresses are supported.",
       "invalid_interval": "Choose one of the listed capture intervals.",
       "not_an_image": "That URL returned a page, not an image. Use the direct link to the image file.",
-      "timeout": "The camera did not respond in time."
+      "timeout": "The camera did not respond in time.",
+      "invalid_light": "Only lights and switches can be used as capture lights.",
+      "invalid_light_window": "The time window has to start and end at different times."
     }
   },
   "selector": {
@@ -147,6 +202,13 @@
         "1280": "1280 px",
         "1600": "1600 px",
         "1920": "1920 px"
+      }
+    },
+    "lights_mode": {
+      "options": {
+        "always": "At every capture",
+        "night": "Only at night (sunset to sunrise)",
+        "window": "Only within a time window"
       }
     }
   },
