@@ -89,7 +89,7 @@ export interface OverlayEntityConfig {
   show_icon?: boolean;
   /**
    * Read the measurement time from this state attribute instead of
-   * `last_changed`. Opt-in per entity — see overlay-history.ts.
+   * `last_updated`. Opt-in per entity — see overlay-history.ts.
    */
   time_attribute?: string;
 }
@@ -138,12 +138,3 @@ export interface WebcamTimelapseCardConfig extends LovelaceCardConfig {
   /** Smooth cloud-driven brightness jumps during playback. 0 = off. */
   deflicker?: number;
 }
-
-/**
- * Playback multipliers.
- *
- * Goes well past 8x because the useful range depends on the capture
- * interval, which the user controls. At a ten-minute cadence a fortnight
- * is ~2000 frames and 8x is plenty; at one minute it is ~20,000, and 8x
- * would take twenty minutes to play through.
- */

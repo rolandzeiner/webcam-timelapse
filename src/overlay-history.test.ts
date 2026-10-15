@@ -307,7 +307,7 @@ describe("fetchOverlayHistory", () => {
     expect(out.get("sensor.lu_iso")).toEqual([{ at: T0, value: 2 }]);
   });
 
-  it("drops states that carry no measurement and sorts by time", async () => {
+  it("drops states without a measurement or a timestamp, and sorts by time", async () => {
     const { hass } = fakeHass(async () => ({
       "sensor.gaps": [
         { lu: (T0 + HOUR) / 1000, s: "5" },
@@ -315,7 +315,7 @@ describe("fetchOverlayHistory", () => {
         { lu: T0 / 1000, s: "Unknown" },
         { lu: T0 / 1000, s: "" },
         { lu: (T0 - HOUR) / 1000, s: "4" },
-        { s: "6" },
+        { s: "6" }, // no timestamp
       ],
     }));
 

@@ -56,6 +56,14 @@ import { type NightBand, nightBands } from "./sun";
 import type { HomeAssistant, LovelaceCardEditor, WebcamTimelapseCardConfig } from "./types";
 import { formatExtent, formatSpan, prefersReducedMotion, safeImageUri } from "./utils";
 
+/**
+ * Playback multipliers.
+ *
+ * Goes well past 8x because the useful range depends on the capture
+ * interval, which the user controls. At a ten-minute cadence a fortnight
+ * is ~2000 frames and 8x is plenty; at one minute it is ~20,000, and 8x
+ * would take twenty minutes to play through.
+ */
 const SPEEDS = [1, 2, 4, 8, 16, 32, 64] as const;
 /** Speed a card starts at when config says nothing usable. */
 const DEFAULT_SPEED = 32;
