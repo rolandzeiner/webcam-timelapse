@@ -62,7 +62,7 @@
       "overlay_title_left": "Wird über den Messwerten angezeigt. Leer lassen für keine Überschrift.",
       "show_icon": "Verwendet das Symbol der Entität aus Home Assistant.",
       "show_sun": "Hinterlegt die Stunden zwischen Sonnenuntergang und Sonnenaufgang in den Diagrammen und in der Zeitleiste, basierend auf deinem Home-Assistant-Standort. Wird ausgeblendet, sobald die Streifen zu fein werden.",
-      "show_export": "Zeigt unter der Zeitleiste eine Export-Schaltfläche. Das Video wird von Home Assistant gerendert und im Medienordner gespeichert."
+      "show_export": "Fügt der Wiedergabeleiste eine Export-Schaltfläche hinzu. Das Video wird von Home Assistant gerendert und im Medienordner gespeichert."
     },
     "deflicker": "Helligkeit glätten",
     "show_icon": "Symbol anzeigen",

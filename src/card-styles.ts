@@ -707,26 +707,6 @@ export const cardStyles = css`
     outline-offset: 2px;
   }
 
-  /* Quiet until wanted, like the fold control on the readings. */
-  .export-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 28px;
-    padding: 4px 8px;
-    margin-left: -8px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--wtl-muted);
-    --mdc-icon-size: 16px;
-  }
-
-  .export-toggle:hover,
-  .export-toggle[aria-expanded="true"] {
-    color: var(--wtl-text);
-  }
-
   .export-panel {
     display: grid;
     gap: 12px;

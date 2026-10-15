@@ -682,3 +682,15 @@ describe("picture click target", () => {
     expect(handler).not.toMatch(/event\.target/);
   });
 });
+
+describe("export entry point", () => {
+  it("opens from the player bar, so a closed panel adds no height", () => {
+    // A row of its own under the timeline made every card taller, export
+    // in use or not.
+    const controls = /private renderControls\(\)[\s\S]*?\n  \}/.exec(cardSource)?.[0];
+    expect(controls).toMatch(/@click=\$\{this\.toggleExport\}/);
+    expect(cardSource).toMatch(
+      /show_export !== false && this\.exportOpen\s*\?\s*this\.renderExport\(\)/,
+    );
+  });
+});

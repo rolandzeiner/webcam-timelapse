@@ -199,7 +199,7 @@ show_graph: true
 show_sun: false          # shade night behind the graphs and the scrubber
 graph_hours: 24
 deflicker: 50            # 0 turns it off
-show_export: true        # the Export video button under the timeline
+show_export: true        # the Export video button in the player bar
 entities: []
 ```
 
@@ -417,9 +417,9 @@ flattened.
 
 ## Exporting a video
 
-Press **Export video** under the timeline. Scrub to the frame the video should
-open on and press **Start at this frame**, scrub to the one it should close on
-and press **End at this frame**. The chosen stretch is tinted on the bar. The
+Press the film button (**Export video**) in the player bar. Scrub to the
+frame the video should open on and press **Start at this frame**, scrub to the
+one it should close on and press **End at this frame**. The chosen stretch is tinted on the bar. The
 shortcuts select the last day, three days or week, or everything.
 
 The card shows how many frames that is and how long the video will run at the

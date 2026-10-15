@@ -1168,7 +1168,9 @@ export class WebcamTimelapseCard extends LitElement {
         ${this.renderStage(slot)}
         ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}
         ${
-          hasFrames(this.index) && this.config.show_export !== false ? this.renderExport() : nothing
+          hasFrames(this.index) && this.config.show_export !== false && this.exportOpen
+            ? this.renderExport()
+            : nothing
         }
       </ha-card>
     `;
@@ -1593,6 +1595,16 @@ export class WebcamTimelapseCard extends LitElement {
         <ha-icon-button .label=${this.t("controls.now")} @click=${this.jumpToNow}>
           <ha-icon icon="mdi:update"></ha-icon>
         </ha-icon-button>
+        ${
+          this.config?.show_export !== false
+            ? html`<ha-icon-button
+                .label=${this.t(this.exportOpen ? "export.close" : "export.open")}
+                @click=${this.toggleExport}
+              >
+                <ha-icon .icon=${this.exportOpen ? "mdi:close" : "mdi:movie-open-outline"}></ha-icon>
+              </ha-icon-button>`
+            : nothing
+        }
       </div>
     `;
   }
@@ -1742,20 +1754,14 @@ export class WebcamTimelapseCard extends LitElement {
    * timestamp would have the user reading the clock in the corner and
    * copying it into a field.
    */
+  /**
+   * The export panel, under the timeline while it is open.
+   *
+   * Opened from the player bar rather than from a row of its own, so a
+   * closed panel adds no height to the card.
+   */
   private renderExport(): TemplateResult {
-    return html`
-      <div class="export">
-        <button
-          class="export-toggle"
-          aria-expanded=${this.exportOpen ? "true" : "false"}
-          @click=${this.toggleExport}
-        >
-          <ha-icon icon="mdi:movie-open-outline"></ha-icon>
-          ${this.t(this.exportOpen ? "export.close" : "export.open")}
-        </button>
-        ${this.exportOpen ? this.renderExportPanel() : nothing}
-      </div>
-    `;
+    return html`<div class="export">${this.renderExportPanel()}</div>`;
   }
 
   private renderExportPanel(): TemplateResult | typeof nothing {
