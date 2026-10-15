@@ -35,13 +35,9 @@ const SPEEDS = [1, 2, 4, 8, 16, 32, 64];
  * overlay heading. Nothing errors; the inputs are simply absent. `ha-form`
  * loads its own selectors, so anything routed through it is safe.
  */
-const OVERLAY_TITLE_SCHEMA = [
-  { name: "overlay_title", selector: { text: {} } },
-] as const;
+const OVERLAY_TITLE_SCHEMA = [{ name: "overlay_title", selector: { text: {} } }] as const;
 
-const OVERLAY_TITLE_LEFT_SCHEMA = [
-  { name: "overlay_title_left", selector: { text: {} } },
-] as const;
+const OVERLAY_TITLE_LEFT_SCHEMA = [{ name: "overlay_title_left", selector: { text: {} } }] as const;
 
 const ROW_SCHEMA = [
   {
@@ -76,10 +72,7 @@ interface HaFormEvent extends CustomEvent {
 }
 
 @customElement("webcam-timelapse-card-editor")
-export class WebcamTimelapseCardEditor
-  extends LitElement
-  implements LovelaceCardEditor
-{
+export class WebcamTimelapseCardEditor extends LitElement implements LovelaceCardEditor {
   static override styles = cardStyles;
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -158,8 +151,7 @@ export class WebcamTimelapseCardEditor
     ];
   }
 
-  private computeLabel = (schema: { name: string }): string =>
-    this.t(`editor.${schema.name}`);
+  private computeLabel = (schema: { name: string }): string => this.t(`editor.${schema.name}`);
 
   private computeHelper = (schema: { name: string }): string | undefined => {
     const helper = this.t(`editor.helper.${schema.name}`);
@@ -228,22 +220,12 @@ export class WebcamTimelapseCardEditor
     this.updateRows(side, rows);
   }
 
-  private patchRow(
-    side: ReadoutSide,
-    index: number,
-    patch: Partial<OverlayEntityConfig>,
-  ): void {
-    const rows = this.rows(side).map((row, i) =>
-      i === index ? { ...row, ...patch } : row,
-    );
+  private patchRow(side: ReadoutSide, index: number, patch: Partial<OverlayEntityConfig>): void {
+    const rows = this.rows(side).map((row, i) => (i === index ? { ...row, ...patch } : row));
     this.updateRows(side, rows);
   }
 
-  private renderRow(
-    side: ReadoutSide,
-    row: OverlayEntityConfig,
-    index: number,
-  ): TemplateResult {
+  private renderRow(side: ReadoutSide, row: OverlayEntityConfig, index: number): TemplateResult {
     const label = row.name || row.entity || this.t("editor.entity");
     return html`
       <div class="ent-row" role="group" aria-label=${label}>
@@ -342,10 +324,7 @@ export class WebcamTimelapseCardEditor
    * otherwise mean reading the YAML docs, and the card renders exactly
    * as before until a row is added to it.
    */
-  private renderSection(
-    side: ReadoutSide,
-    titleSchema: unknown,
-  ): TemplateResult {
+  private renderSection(side: ReadoutSide, titleSchema: unknown): TemplateResult {
     // Built outside the template on purpose. A nested backtick inside an
     // html`` body is valid JavaScript but it mis-segments the CI guard
     // that scans these templates for stray backticks, which would blunt

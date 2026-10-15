@@ -79,8 +79,7 @@ function solarDay(index: number, latitude: number, longitude: number): SolarDay 
     0.0053 * Math.sin(anomaly * RAD) -
     0.0069 * Math.sin(2 * eclipticLongitude * RAD);
 
-  const sinDeclination =
-    Math.sin(eclipticLongitude * RAD) * Math.sin(OBLIQUITY * RAD);
+  const sinDeclination = Math.sin(eclipticLongitude * RAD) * Math.sin(OBLIQUITY * RAD);
   const cosDeclination = Math.cos(Math.asin(sinDeclination));
 
   const hourAngle =
@@ -110,9 +109,7 @@ function julianToMs(julian: number): number {
 
 /** The solar-day index containing `ms` at this longitude. */
 function dayIndexOf(ms: number, longitude: number): number {
-  return Math.round(
-    ms / DAY_MS + JULIAN_EPOCH - JULIAN_2000 - 0.0009 + longitude / 360,
-  );
+  return Math.round(ms / DAY_MS + JULIAN_EPOCH - JULIAN_2000 - 0.0009 + longitude / 360);
 }
 
 /**

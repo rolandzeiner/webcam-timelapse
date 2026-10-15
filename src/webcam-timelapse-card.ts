@@ -9,19 +9,8 @@ import { customElement, property, query, state } from "lit/decorators.js";
 
 import { cardStyles } from "./card-styles";
 import { Coalescer } from "./coalesce";
-import {
-  CARD_TAG,
-  CARD_VERSION,
-  WS_CARD_VERSION,
-  WS_INDEX,
-  WS_LUMA,
-} from "./const";
-import {
-  DEFAULT_DEFLICKER,
-  deflickerGains,
-  type LumaSeries,
-  radiusForStrength,
-} from "./deflicker";
+import { CARD_TAG, CARD_VERSION, WS_CARD_VERSION, WS_INDEX, WS_LUMA } from "./const";
+import { DEFAULT_DEFLICKER, deflickerGains, type LumaSeries, radiusForStrength } from "./deflicker";
 import { localize } from "./localize/localize";
 import {
   overlayEntities,
@@ -61,23 +50,11 @@ import {
   seriesStats,
   windowAround,
 } from "./overlay-history";
-import {
-  checkCardVersionWS,
-  renderVersionBanner,
-} from "./shared-render";
+import { checkCardVersionWS, renderVersionBanner } from "./shared-render";
 import { extentOf, sparkline } from "./sparkline";
 import { type NightBand, nightBands } from "./sun";
-import type {
-  HomeAssistant,
-  LovelaceCardEditor,
-  WebcamTimelapseCardConfig,
-} from "./types";
-import {
-  formatExtent,
-  formatSpan,
-  prefersReducedMotion,
-  safeImageUri,
-} from "./utils";
+import type { HomeAssistant, LovelaceCardEditor, WebcamTimelapseCardConfig } from "./types";
+import { formatExtent, formatSpan, prefersReducedMotion, safeImageUri } from "./utils";
 
 const SPEEDS = [1, 2, 4, 8, 16, 32, 64] as const;
 /** Speed a card starts at when config says nothing usable. */
@@ -218,16 +195,12 @@ export class WebcamTimelapseCard extends LitElement {
     // The editor is eagerly imported at the top of this module. Without
     // that import this returns an unupgraded element and HA silently
     // falls back to YAML mode with no error anywhere.
-    return document.createElement(
-      "webcam-timelapse-card-editor",
-    ) as LovelaceCardEditor;
+    return document.createElement("webcam-timelapse-card-editor");
   }
 
   static getStubConfig(hass: HomeAssistant): Partial<WebcamTimelapseCardConfig> {
     const camera = Object.keys(hass.states).find(
-      (id) =>
-        id.startsWith("camera.") &&
-        hass.entities?.[id]?.platform === "webcam_timelapse",
+      (id) => id.startsWith("camera.") && hass.entities?.[id]?.platform === "webcam_timelapse",
     );
     return { camera_entity: camera ?? "" };
   }
@@ -275,11 +248,9 @@ export class WebcamTimelapseCard extends LitElement {
     }
     if (changed.has("hass") && this.hass && !this.versionChecked) {
       this.versionChecked = true;
-      void checkCardVersionWS(this.hass, WS_CARD_VERSION, CARD_VERSION).then(
-        (version) => {
-          this.versionMismatch = version;
-        },
-      );
+      void checkCardVersionWS(this.hass, WS_CARD_VERSION, CARD_VERSION).then((version) => {
+        this.versionMismatch = version;
+      });
     }
   }
 
@@ -336,8 +307,7 @@ export class WebcamTimelapseCard extends LitElement {
       // Distinguish "archive is empty" from "could not ask". Reporting a
       // failed lookup as "no frames yet" sends the user hunting for a
       // capture problem that does not exist.
-      this.indexError =
-        error instanceof Error ? error.message : "Could not load the timeline.";
+      this.indexError = error instanceof Error ? error.message : "Could not load the timeline.";
     }
 
     this.scheduleIndexRefresh();
@@ -398,8 +368,7 @@ export class WebcamTimelapseCard extends LitElement {
       {
         // Cover the whole archive so scrubbing to the oldest frame still
         // resolves a reading; +1 day of slack for the retention boundary.
-        days:
-          (this.index.retention_days || 14) + 1 + Math.ceil(graphHours / 48),
+        days: (this.index.retention_days || 14) + 1 + Math.ceil(graphHours / 48),
         timeAttributes,
       },
     );
@@ -457,11 +426,7 @@ export class WebcamTimelapseCard extends LitElement {
       if (advance) {
         // Stride, not one: above the decode ceiling the only way to play
         // faster is to skip frames rather than paint them sooner.
-        const next = nextPlaybackPosition(
-          this.present,
-          this.position,
-          this.cadence.stride,
-        );
+        const next = nextPlaybackPosition(this.present, this.position, this.cadence.stride);
         if (next === null) {
           // Settle on the newest frame rather than looping silently past it.
           this.playing = false;
@@ -570,10 +535,7 @@ export class WebcamTimelapseCard extends LitElement {
   }
 
   private goTo(position: number): void {
-    this.position = Math.min(
-      Math.max(position, 0),
-      Math.max(0, this.index.count - 1),
-    );
+    this.position = Math.min(Math.max(position, 0), Math.max(0, this.index.count - 1));
     void this.swapInFrame();
     this.prefetchAhead();
   }
@@ -753,10 +715,7 @@ export class WebcamTimelapseCard extends LitElement {
    * it is hidden beneath an opaque layer, and it becomes the next
    * incoming layer, which resets it. Nothing to clean up.
    */
-  private revealFrame(
-    incoming: HTMLImageElement,
-    outgoing: HTMLImageElement | undefined,
-  ): void {
+  private revealFrame(incoming: HTMLImageElement, outgoing: HTMLImageElement | undefined): void {
     const duration = this.fadeDuration;
 
     if (outgoing) {
@@ -797,8 +756,9 @@ export class WebcamTimelapseCard extends LitElement {
   private frameSources(position: number): string[] {
     const sources: string[] = [];
     const live = safeImageUri(
-      this.hass?.states[this.config!.camera_entity]?.attributes
-        .entity_picture as string | undefined,
+      this.hass?.states[this.config!.camera_entity]?.attributes.entity_picture as
+        | string
+        | undefined,
     );
     if (position >= this.index.count - 1 && live) sources.push(live);
     const archived = urlAt(this.index, position);
@@ -904,10 +864,7 @@ export class WebcamTimelapseCard extends LitElement {
   // --- render ------------------------------------------------------
 
   private get timeZone(): string {
-    return (
-      this.hass?.config?.time_zone ??
-      Intl.DateTimeFormat().resolvedOptions().timeZone
-    );
+    return this.hass?.config?.time_zone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   }
 
   private get language(): string {
@@ -938,17 +895,13 @@ export class WebcamTimelapseCard extends LitElement {
   protected override render(): TemplateResult {
     if (!this.config || !this.hass) return html`<ha-card></ha-card>`;
 
-    const slot = this.index.t0 === null
-      ? null
-      : this.index.t0 + this.position * this.index.step;
+    const slot = this.index.t0 === null ? null : this.index.t0 + this.position * this.index.step;
 
     return html`
       <ha-card .header=${this.config.title ?? nothing}>
         ${renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
         ${this.renderStage(slot)}
-        ${hasFrames(this.index)
-          ? this.renderTimeline(slot)
-          : nothing}
+        ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}
       </ha-card>
     `;
   }
@@ -958,15 +911,17 @@ export class WebcamTimelapseCard extends LitElement {
       return html`
         <div class="stage">
           <div class="empty">
-            ${this.indexError
-              ? html`
+            ${
+              this.indexError
+                ? html`
                   <div>${this.t("empty.index_failed")}</div>
                   <div class="detail">${this.indexError}</div>
                 `
-              : html`
+                : html`
                   <div>${this.t("empty.no_frames")}</div>
                   <div>${this.t("empty.first_soon")}</div>
-                `}
+                `
+            }
           </div>
         </div>
       `;
@@ -1004,25 +959,31 @@ export class WebcamTimelapseCard extends LitElement {
           <img class="layer a" alt="" decoding="async" fetchpriority="high" />
           <img class="layer b" alt="" decoding="async" fetchpriority="high" />
         </div>
-        ${this.frameError
-          ? html`<div class="empty">
+        ${
+          this.frameError
+            ? html`<div class="empty">
               <div>${this.t("empty.frame_failed")}</div>
               <div class="detail">${this.frameError}</div>
             </div>`
-          : nothing}
-        ${slot !== null
-          ? html`<div class="stamp">
+            : nothing
+        }
+        ${
+          slot !== null
+            ? html`<div class="stamp">
               <time datetime=${new Date(slot * 1000).toISOString()}>
                 ${formatStamp(slot, this.timeZone, this.language)}
               </time>
             </div>`
-          : nothing}
+            : nothing
+        }
         ${slot !== null ? this.renderReadouts(slot) : nothing}
-        ${this.onGap
-          ? html`<div class="badge gap">${this.t("badge.gap")}</div>`
-          : this.atLive
-            ? html`<div class="badge live">${this.t("badge.live")}</div>`
-            : nothing}
+        ${
+          this.onGap
+            ? html`<div class="badge gap">${this.t("badge.gap")}</div>`
+            : this.atLive
+              ? html`<div class="badge live">${this.t("badge.live")}</div>`
+              : nothing
+        }
         ${this.renderControls()}
       </div>
     `;
@@ -1076,17 +1037,8 @@ export class WebcamTimelapseCard extends LitElement {
       const stats = seriesStats(points);
       const reading = resolveAt(points, at, stats.staleAfter);
       const name =
-        row.name ??
-        (this.hass?.states[row.entity]?.attributes.friendly_name as
-          | string
-          | undefined) ??
-        row.entity;
-      const unit =
-        row.unit ??
-        (this.hass?.states[row.entity]?.attributes.unit_of_measurement as
-          | string
-          | undefined) ??
-        "";
+        row.name ?? this.hass?.states[row.entity]?.attributes.friendly_name ?? row.entity;
+      const unit = row.unit ?? this.hass?.states[row.entity]?.attributes.unit_of_measurement ?? "";
       const color = row.color ?? "var(--wtl-accent)";
 
       const value =
@@ -1106,9 +1058,7 @@ export class WebcamTimelapseCard extends LitElement {
       const drawGraph = row.graph === true && this.config?.show_graph !== false;
       const windowed = drawGraph ? windowAround(points, at, graphHours) : [];
       const nights =
-        drawGraph && this.config?.show_sun === true
-          ? this.nightsAround(at, graphHours)
-          : [];
+        drawGraph && this.config?.show_sun === true ? this.nightsAround(at, graphHours) : [];
       const graph = drawGraph
         ? sparkline({
             points: windowed,
@@ -1130,13 +1080,16 @@ export class WebcamTimelapseCard extends LitElement {
       // it is the only thing the autoscale destroys that the numeric
       // readout beside it does not already carry.
       const extent = graph === null ? 0 : extentOf(windowed);
-      const scale = graph === null
-        ? nothing
-        : html`<div class="spark-scale">
+      const scale =
+        graph === null
+          ? nothing
+          : html`<div class="spark-scale">
             <span
-              >${extent === 0
-                ? this.t("spark.flat")
-                : this.t("spark.range", `${formatExtent(extent)}${unit ? ` ${unit}` : ""}`)}</span
+              >${
+                extent === 0
+                  ? this.t("spark.flat")
+                  : this.t("spark.range", `${formatExtent(extent)}${unit ? ` ${unit}` : ""}`)
+              }</span
             >
             <span>${formatSpan(graphHours)}</span>
           </div>`;
@@ -1163,25 +1116,20 @@ export class WebcamTimelapseCard extends LitElement {
           tabindex="0"
           aria-label=${this.t("actions.show_entity", name)}
           @click=${() => this.fireMoreInfo(row.entity)}
-          @keydown=${(event: KeyboardEvent) =>
-            this.onActivateKey(event, row.entity)}
+          @keydown=${(event: KeyboardEvent) => this.onActivateKey(event, row.entity)}
         >
           ${icon}
           <span class="readout-name" style="color:${color}">${name}</span>
           <span class="readout-value">${value}</span>
-          ${reading !== null
-            ? html`<span class="readout-at"
-                >${formatClock(
-                  Math.round(reading.at / 1000),
-                  this.timeZone,
-                  this.language,
-                )}</span
+          ${
+            reading !== null
+              ? html`<span class="readout-at"
+                >${formatClock(Math.round(reading.at / 1000), this.timeZone, this.language)}</span
               >`
-            : nothing}
+              : nothing
+          }
         </div>
-        ${graph
-          ? html`<div class="spark-wrap">${graph}${scale}</div>`
-          : nothing}
+        ${graph ? html`<div class="spark-wrap">${graph}${scale}</div>` : nothing}
       `;
     });
 
@@ -1190,9 +1138,7 @@ export class WebcamTimelapseCard extends LitElement {
     // telling a reading apart from the picture behind it.
     return html`<div class=${classes}>
       <div class="readout-head">
-        ${group.title
-          ? html`<div class="readout-title">${group.title}</div>`
-          : nothing}
+        ${group.title ? html`<div class="readout-title">${group.title}</div>` : nothing}
         ${this.renderFoldToggle(group.side, false)}
       </div>
       ${rendered}
@@ -1409,16 +1355,14 @@ export class WebcamTimelapseCard extends LitElement {
     // said anything about wanting the dark stretches unmarked.
     const nights =
       this.config?.show_sun === true && this.index.t0 !== null
-        ? this.nightsBetween(
-            this.index.t0 * 1000,
-            (this.index.t0 + last * this.index.step) * 1000,
-          )
+        ? this.nightsBetween(this.index.t0 * 1000, (this.index.t0 + last * this.index.step) * 1000)
         : [];
 
     return html`
       <div class="timeline">
-        ${ticks
-          ? html`<div class="band dates" aria-hidden="true">
+        ${
+          ticks
+            ? html`<div class="band dates" aria-hidden="true">
               ${days.map((tick) =>
                 tick.label
                   ? html`<span class="lab date" style="left:${tick.left}%"
@@ -1427,11 +1371,13 @@ export class WebcamTimelapseCard extends LitElement {
                   : nothing,
               )}
             </div>`
-          : nothing}
+            : nothing
+        }
 
         <div class="track">
-          ${nights.length > 0
-            ? html`<div class="nights" aria-hidden="true">
+          ${
+            nights.length > 0
+              ? html`<div class="nights" aria-hidden="true">
                 ${nights.map(
                   (band) =>
                     html`<span
@@ -1442,13 +1388,12 @@ export class WebcamTimelapseCard extends LitElement {
                     ></span>`,
                 )}
               </div>`
-            : nothing}
-          ${ticks
-            ? html`<div class="marks" aria-hidden="true">
-                ${times.map(
-                  (tick) =>
-                    html`<span class="mark" style="left:${tick.left}%"></span>`,
-                )}
+              : nothing
+          }
+          ${
+            ticks
+              ? html`<div class="marks" aria-hidden="true">
+                ${times.map((tick) => html`<span class="mark" style="left:${tick.left}%"></span>`)}
                 ${days.map(
                   (tick) =>
                     html`<span
@@ -1457,7 +1402,8 @@ export class WebcamTimelapseCard extends LitElement {
                     ></span>`,
                 )}
               </div>`
-            : nothing}
+              : nothing
+          }
           <div class="rail"></div>
         <div class="fill" style="width:${fill}%"></div>
         ${this.index.gaps.map(([start, length]) => {
@@ -1475,16 +1421,15 @@ export class WebcamTimelapseCard extends LitElement {
           step="1"
           .value=${String(this.position)}
           aria-label=${this.t("track.label")}
-          aria-valuetext=${slot !== null
-            ? formatStamp(slot, this.timeZone, this.language)
-            : ""}
+          aria-valuetext=${slot !== null ? formatStamp(slot, this.timeZone, this.language) : ""}
           @input=${this.onScrub}
           @change=${this.onScrubCommit}
           />
         </div>
 
-        ${ticks
-          ? html`<div class="band times" aria-hidden="true">
+        ${
+          ticks
+            ? html`<div class="band times" aria-hidden="true">
               ${times.map((tick) =>
                 tick.label
                   ? html`<span class="lab time" style="left:${tick.left}%"
@@ -1493,7 +1438,8 @@ export class WebcamTimelapseCard extends LitElement {
                   : nothing,
               )}
             </div>`
-          : nothing}
+            : nothing
+        }
       </div>
     `;
   }
@@ -1526,7 +1472,6 @@ export class WebcamTimelapseCard extends LitElement {
     }
     return this.rulerCache;
   }
-
 }
 
 const windowWithCards = window as WindowWithCustomCards;

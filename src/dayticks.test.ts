@@ -144,7 +144,7 @@ describe("tick structure", () => {
       expect(tick.left).toBeGreaterThan(0);
       expect(tick.left).toBeLessThan(100);
     }
-    expect(ticks.map((t) => t.left)).toEqual([...ticks.map((t) => t.left)].sort((a, b) => a - b));
+    expect(ticks.map((t) => t.left)).toEqual(ticks.map((t) => t.left).sort((a, b) => a - b));
   });
 
   it("always keeps the label on a month boundary", () => {

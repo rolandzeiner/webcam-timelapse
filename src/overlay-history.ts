@@ -54,10 +54,7 @@ function parseTime(entry: RawHistoryEntry): number {
   return raw ? new Date(raw).getTime() : 0;
 }
 
-function parseAttributeTime(
-  entry: RawHistoryEntry,
-  attribute: string,
-): number | null {
+function parseAttributeTime(entry: RawHistoryEntry, attribute: string): number | null {
   const attrs = entry.a ?? entry.attributes;
   const raw = attrs?.[attribute];
   if (typeof raw !== "string" && typeof raw !== "number") return null;
@@ -133,12 +130,9 @@ export async function fetchOverlayHistory(
         const points = (result?.[entityId] ?? [])
           .map((entry): HistoryPoint => {
             const raw = String(entry.s ?? entry.state ?? "").trim();
-            const value = NON_VALUES.has(raw.toLowerCase())
-              ? Number.NaN
-              : parseFloat(raw);
+            const value = NON_VALUES.has(raw.toLowerCase()) ? Number.NaN : parseFloat(raw);
             const at =
-              (attribute ? parseAttributeTime(entry, attribute) : null) ??
-              parseTime(entry);
+              (attribute ? parseAttributeTime(entry, attribute) : null) ?? parseTime(entry);
             return { at, value };
           })
           // `unknown` / `unavailable` are filtered rather than coerced.
@@ -309,11 +303,7 @@ export function stalenessThreshold(points: HistoryPoint[], floorMs = 5_400_000):
  * applies. Keeping the true time would also push it off-canvas, since the
  * sparkline scales x to the window.
  */
-export function windowAround(
-  points: HistoryPoint[],
-  at: number,
-  hours: number,
-): HistoryPoint[] {
+export function windowAround(points: HistoryPoint[], at: number, hours: number): HistoryPoint[] {
   const half = (hours * 3_600_000) / 2;
   const from = at - half;
   const to = at + half;
