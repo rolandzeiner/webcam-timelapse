@@ -52,6 +52,20 @@ describe("localize", () => {
 });
 
 describe("dictionaries", () => {
+  it("resolve every key they carry", () => {
+    // A top-level key that is a reserved word (`export`) cannot be a named
+    // export of the JSON module, so a namespace import silently drops it
+    // and every key under it echoes back untranslated.
+    for (const [lang, dictionary] of [
+      ["en", en],
+      ["de", de],
+    ] as const) {
+      for (const key of keysOf(dictionary)) {
+        expect(localize(key, lang), `${lang}: ${key}`).not.toBe(key);
+      }
+    }
+  });
+
   it("carry the same keys in every language", () => {
     // A key missing from one dictionary falls back to English without a
     // trace, so a German user sees one English label and nothing fails.

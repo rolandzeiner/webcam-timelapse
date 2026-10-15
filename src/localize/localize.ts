@@ -1,5 +1,8 @@
-import * as en from "./languages/en.json";
-import * as de from "./languages/de.json";
+// Default imports, not `import * as`: a namespace import exposes each
+// top-level key as a named export, and a key that is a reserved word
+// (`export`) cannot be one, so it went missing without an error.
+import de from "./languages/de.json";
+import en from "./languages/en.json";
 
 const languages: Record<string, Record<string, unknown>> = {
   en: en,
