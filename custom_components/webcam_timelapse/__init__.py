@@ -12,6 +12,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import CoreState, Event, HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 
 from .card_registration import JSModuleRegistration, async_register_frames_path
 from .const import DOMAIN, INTEGRATION_VERSION, STORAGE_SUBDIR
@@ -125,7 +126,12 @@ async def async_remove_entry(
     Exported videos are left where they are. They sit in the media folder
     precisely because they are meant to outlast the archive they were cut
     from, and removing a camera is not a request to delete them.
+
+    The entry's own Repairs issue goes every time, before the last-entry
+    guard: nothing else clears it once the coordinator is gone, and it would
+    keep warning about a camera nobody records any more.
     """
+    ir.async_delete_issue(hass, DOMAIN, f"camera_offline_{entry.entry_id}")
     async_forget_exporter(hass, entry.entry_id)
     entry_frames = frames_root(hass) / entry.entry_id
     await hass.async_add_executor_job(

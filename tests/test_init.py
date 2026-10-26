@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_NAME, CONF_URL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 
 from custom_components.webcam_timelapse import frame_store
 from custom_components.webcam_timelapse.const import DOMAIN, INTEGRATION_VERSION
@@ -92,6 +93,36 @@ async def test_remove_entry_deletes_only_its_own_frames(
 
     assert not first_dir.exists()
     assert frame_store.scan_slots(second_dir) == [1_754_050_200]
+
+
+async def test_remove_entry_deletes_its_repair_issue(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    """The removed entry's issue goes, even while other entries remain."""
+    first = make_entry(entry_id="01AAA", **{CONF_NAME: "First"})
+    second = make_entry(
+        entry_id="01BBB",
+        **{CONF_NAME: "Second", CONF_URL: "https://other.invalid/cam.jpg"},
+    )
+    assert await setup_entry(hass, first)
+    assert await setup_entry(hass, second)
+    for entry in (first, second):
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            f"camera_offline_{entry.entry_id}",
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="camera_offline",
+            translation_placeholders={"entry_title": entry.title, "ticks": "3"},
+        )
+
+    await hass.config_entries.async_remove(first.entry_id)
+    await hass.async_block_till_done()
+
+    registry = ir.async_get(hass)
+    assert registry.async_get_issue(DOMAIN, f"camera_offline_{first.entry_id}") is None
+    assert registry.async_get_issue(DOMAIN, f"camera_offline_{second.entry_id}")
 
 
 async def test_card_resource_survives_removing_one_of_two_entries(
