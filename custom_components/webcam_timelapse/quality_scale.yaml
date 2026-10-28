@@ -18,7 +18,7 @@ rules:
     status: done
     comment: >-
       Assets in custom_components/webcam_timelapse/brand/ (icon, icon@2x, logo,
-      logo@2x plus dark_ variants). HA 2026.3+ prefers local files; the
+      plus the icon.svg source). HA 2026.3+ prefers local files; the
       home-assistant/brands repo does not accept custom-integration PRs.
   common-modules:
     status: done
