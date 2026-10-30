@@ -51,6 +51,38 @@ function declarationsFor(selector: string): string {
     .join("\n");
 }
 
+/**
+ * The card fills its sections-view grid cell instead of painting over the
+ * card below it, and only there, so the add-card picker preview keeps its
+ * own height. The pair is gated on the layout attribute HA sets; the
+ * selectors only match while the card reflects that property.
+ */
+describe("the grid cell", () => {
+  it("is a block on the host", () => {
+    expect(declarationsFor(":host")).toMatch(/display:\s*block/);
+  });
+
+  it("takes the cell's height on the host in grid and panel layouts", () => {
+    expect(declarationsFor(':host([layout="grid"])')).toMatch(/block-size:\s*100%/);
+    expect(declarationsFor(':host([layout="panel"])')).toMatch(/block-size:\s*100%/);
+  });
+
+  it("resolves ha-card against it there, and clips inside the card", () => {
+    expect(declarationsFor(':host([layout="grid"]) ha-card')).toMatch(/block-size:\s*100%/);
+    expect(declarationsFor(':host([layout="panel"]) ha-card')).toMatch(/block-size:\s*100%/);
+    expect(declarationsFor("ha-card")).toMatch(/overflow:\s*hidden/);
+  });
+
+  it("never fills ungated, so the picker preview keeps its own height", () => {
+    expect(declarationsFor(":host")).not.toMatch(/block-size|height:\s*100%/);
+    expect(declarationsFor("ha-card")).not.toMatch(/block-size|height:\s*100%/);
+  });
+
+  it("reflects the layout property the selectors match on", () => {
+    expect(cardSource).toMatch(/@property\(\{\s*reflect:\s*true\s*\}\)\s*public layout\?/);
+  });
+});
+
 describe("stage stacking", () => {
   it("gives .layers its own stacking context", () => {
     // revealFrame() writes z-index onto the two <img> layers so the

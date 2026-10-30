@@ -1,31 +1,15 @@
-# Minimum-version floors so a transitive minor release can't break
-# green-on-main without a commit on our side. Bump when the project
-# intentionally adopts behaviour from a newer release. The next-major
-# upper bound (`,<N`) protects against API breaks at the major boundary.
-# When scaffolding: replace each floor with the version you actually
-# develop against — `pip show <pkg>` on a working dev install gives you
-# the right starting point.
-#
-# Floor ordering note: the `pytest-homeassistant-custom-component`
-# floor MUST stay compatible with the CI Python pin in
-# `.github/workflows/validate.yml`. PHACC 0.13.317+ requires Python
-# ≥3.14 and wraps HA core 2026.5+ (which itself requires Python
-# ≥3.14.2). The earlier pyo3 0.24 build blocker on 3.14 is gone:
-# orjson 3.11.8, Pillow 12.2.0, and pydantic-core 2.46.2 all ship
-# cp314 wheels (verified 2026-05-07). Floors below track PHACC
-# 0.13.348's transitive `==` pins (pytest-cov==7.1.0,
-# pytest-asyncio==1.4.0) — they move with the PHACC floor.
-pytest-homeassistant-custom-component>=0.13.371,<0.14
-pytest-asyncio>=1.4.0,<2
-pytest-cov>=7.1.0,<8
-# Backs the `timeout` setting in pytest.ini — a hung async fixture must
-# fail the job, not idle until the runner's 6-hour cap.
-pytest-timeout>=2.4,<3
-# syrupy floor intentionally omitted: PHACC pins syrupy with `==`, so any
-# floor here either matches PHACC (redundant) or contradicts it. A `<6`
-# cap in particular becomes UNRESOLVABLE the moment PHACC moves to
-# syrupy 6. Let PHACC's transitive pin govern; Dependabot bumps of
-# syrupy can't apply anyway.
+# PHACC governs the test stack. It pins Home Assistant core and the whole
+# pytest toolchain with `==`, so anything it already pins is listed here
+# only if we need a constraint PHACC does not impose.
+pytest-homeassistant-custom-component>=0.13.375,<0.14
+# PHACC requires Python >=3.14, so validate.yml's tests job tracks 3.14 in
+# lockstep; keep the two together when raising the PHACC floor.
+# No floors for pytest-asyncio / pytest-cov / pytest-timeout / syrupy.
+# PHACC pins all four with `==` (1.4.0 / 7.1.0 / 2.4.0 / 6.1.1 as of
+# 0.13.373), so a floor here can never bind: it either matches PHACC and
+# does nothing, or contradicts it and makes the install unresolvable.
+# pytest.ini's `timeout` setting and `--cov` still work: both plugins
+# arrive transitively via PHACC.
 # Linters/type-checkers are pinned EXACT (== not >=). ruff and mypy add or change
 # rules between releases, so a floating range lets an upstream release turn CI red
 # with no code change on your side — brutal on a nightly `schedule` run. Pin them,
@@ -38,8 +22,8 @@ pytest-timeout>=2.4,<3
 # outage — 0.16.0 was then adopted deliberately on 2026-07-25, on a branch, with
 # its ~80 findings reviewed and fixed. That is the whole point of the `==`: not
 # to stay old, but to choose when you move.
-mypy==2.4.0
-ruff==0.17.0
+mypy==2.4.1
+ruff==0.17.3
 # pycares is no longer relevant: PHACC 0.13.329 pulls in HA core
 # 2026.5.0, which pins aiodns 4.x; aiodns 4 uses the pycares 5 API
 # natively (no more `ares_query_a_result` reference), so the

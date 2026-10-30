@@ -63,7 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Login to ghcr.io
-        uses: docker/login-action@v4.6.0
+        uses: docker/login-action@v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -98,7 +98,7 @@ jobs:
         # Pin the EXACT version. setup-uv stopped publishing rolling
         # major tags after v7 — `@v8` / `@v9` do not resolve and fail the
         # job with "unable to find version". Only `vX.Y.Z` tags exist.
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - name: Install dependencies
@@ -139,7 +139,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: voidzero-dev/setup-vp@v1.21.2
+      - uses: voidzero-dev/setup-vp@v1.22.0
         # Installs the global vp CLI, Node and npm (from devEngines), and
         # caches npm's store. Install runs as its own step below so the
         # lockfile is enforced explicitly.

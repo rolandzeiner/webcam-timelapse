@@ -101,7 +101,7 @@ const ASPECT_RATIOS: Record<Exclude<ExportAspect, "native">, number> = {
  * `[a-z0-9-_]` in a selector option, which is what the action's form is
  * translated by, so the ratios themselves cannot be the values.
  */
-export const ASPECT_REQUEST: Record<ExportAspect, string> = {
+const ASPECT_REQUEST: Record<ExportAspect, string> = {
   native: "native",
   "16:9": "landscape",
   "9:16": "portrait",

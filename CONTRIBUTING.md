@@ -80,8 +80,8 @@ Card tests live next to the code as `src/**/*.test.ts` and run in plain node
 
 `tsconfig.json`'s `lib` is the card's browser floor. It is `es2023`, so the
 card may call ES2023 built-ins such as `toSorted()`, which the bundle does not
-polyfill. Raising it raises the browser requirement in the README's Install
-section; change both together.
+polyfill. Raising it raises the browser requirement in the README's
+Requirements section; change both together.
 
 Note the bundle is excluded from the `end-of-file-fixer` / `trailing-whitespace`
 pre-commit hooks: Rolldown emits no trailing newline, and a hook that "fixes"

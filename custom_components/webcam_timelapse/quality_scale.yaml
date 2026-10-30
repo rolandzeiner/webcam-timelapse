@@ -18,7 +18,7 @@ rules:
     status: done
     comment: >-
       Assets in custom_components/webcam_timelapse/brand/ (icon, icon@2x, logo,
-      logo@2x plus dark_ variants). HA 2026.3+ prefers local files; the
+      plus the icon.svg source). HA 2026.3+ prefers local files; the
       home-assistant/brands repo does not accept custom-integration PRs.
   common-modules:
     status: done
@@ -48,7 +48,7 @@ rules:
     status: done
   docs-removal-instructions:
     status: done
-    comment: README "Remove the integration" covers per-entry frame deletion and HACS removal.
+    comment: README "Removal" covers per-entry frame deletion and the Marketplace uninstall.
   docs-triggers:
     status: exempt
     comment: This integration does not have any triggers.
@@ -84,10 +84,10 @@ rules:
     comment: async_teardown cancels the capture schedule.
   docs-configuration-parameters:
     status: done
-    comment: README "Settings" documents every config-flow field.
+    comment: README "Setup" tables every config-flow field; "Options" names the ones the options flow offers.
   docs-installation-parameters:
     status: done
-    comment: README "Set up a camera" walks the flow step by step.
+    comment: README "Setup" walks the flow step by step.
   entity-unavailable:
     status: done
   integration-owner:
@@ -133,12 +133,12 @@ rules:
     comment: No discovery.
   docs-data-update:
     status: done
-    comment: README "How data updates" covers the wall-clock grid, freeze detection and pruning.
+    comment: README "Data updates" covers the wall-clock grid, freeze detection and pruning.
   docs-examples:
     status: done
     comment: >-
-      README shows minimal and full card YAML, an automation calling
-      capture_now, and one exporting the past week as a video.
+      README shows the minimal card YAML with its options table, an action
+      calling capture_now, and an automation exporting the past week as a video.
   docs-known-limitations:
     status: done
     comment: >-
@@ -147,8 +147,8 @@ rules:
   docs-supported-devices:
     status: done
     comment: >-
-      Any camera publishing a still image over http(s). Stated in the README
-      intro and the "Set up a camera" note about using the direct image link.
+      Any camera publishing a still image over http(s). Stated in README
+      "Requirements" and the "Setup" note about using the direct image link.
   docs-supported-functions:
     status: done
     comment: README "Entities" and "Actions" list everything exposed.
@@ -157,7 +157,7 @@ rules:
     comment: README "Troubleshooting" covers the failure modes seen in practice.
   docs-use-cases:
     status: done
-    comment: README "What you can do with it".
+    comment: README "Examples".
   dynamic-devices:
     status: exempt
     comment: One device per entry, fixed at setup; nothing appears at runtime.
