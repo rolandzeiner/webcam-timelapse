@@ -65,20 +65,6 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
     --wtl-aspect: 4 / 3;
 
     display: block;
-    /* Fill the grid cell the dashboard gave us.
-       A sections view puts a fixed pixel height on the cell WRAPPER whenever
-       the card's rows are numeric -- which a user also causes by dragging the
-       row handle, since a stored grid_options overrides what getGridOptions()
-       returns -- and styles nothing inside that wrapper.
-       This host is display: block, so IT is the containing block for the
-       ha-card below, and a percentage height against a containing block whose
-       own height is auto computes to auto. Without this line ha-card therefore
-       sizes to its content, overflows a cell too short for it, and is painted
-       over the card underneath. Taking the cell's height here is what gives
-       ha-card's 100% something to resolve against.
-       In an auto-height cell it resolves to auto -- the height it already had
-       -- so it costs nothing there. */
-    block-size: 100%;
     container-type: inline-size;
     /* Named, because .stage is a container too (for the crop's cq
        units): an unnamed @container query from inside the stage would
@@ -86,14 +72,31 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
     container-name: wtl-card;
   }
 
-  ha-card {
-    /* Resolves against the height :host just took from the cell, so
-       overflow: hidden clips inside the card rather than the card spilling
-       past its own cell. The two declarations only work as a pair: core cards
-       that set this one alone leave :host at its default inline display, where
-       the cell wrapper is ha-card's containing block instead. */
+  /* Fill the grid cell the dashboard gave us.
+     A sections view puts a fixed pixel height on the cell WRAPPER whenever
+     the card's rows are numeric -- which a user also causes by dragging the
+     row handle, since a stored grid_options overrides what getGridOptions()
+     returns -- and styles nothing inside that wrapper.
+     The host is display: block, so IT is the containing block for ha-card,
+     and a percentage height against a containing block whose own height is
+     auto computes to auto. The two declarations therefore only work as a
+     pair: without the host's, ha-card sizes to its content, overflows a cell
+     too short for it, and is painted over the card underneath.
+     Gated on the layout HA sets on the card ("grid" in a sections view and
+     its edit dialog, "panel" in a panel view), the way Mushroom and HA's tile
+     card gate it. The add-card picker sets none and centres each preview in
+     a tile as tall as the tallest preview in its row; an ungated 100%
+     resolves against that tile and stretches the card down to it. */
+  :host([layout="grid"]),
+  :host([layout="panel"]) {
     block-size: 100%;
+  }
+  :host([layout="grid"]) ha-card,
+  :host([layout="panel"]) ha-card {
+    block-size: 100%;
+  }
 
+  ha-card {
     overflow: hidden;
   }
 
@@ -2106,4 +2109,4 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
       <span class="export-error"
         >${this.exportErrorText(e.error??`unknown`,e.message)}</span
       >
-    </div>`}rulerFor(){let e=[this.index.t0,this.index.count,this.index.step,Math.round(this.trackWidth),this.timeZone,this.language].join(`|`);return this.rulerCache?.key!==e&&(this.rulerCache={key:e,days:xn(this.index,this.timeZone,this.language,this.trackWidth),times:En(this.index,this.timeZone,this.language,this.trackWidth)}),this.rulerCache}};G([Me({attribute:!1})],$.prototype,`hass`,void 0),G([z()],$.prototype,`config`,void 0),G([z()],$.prototype,`index`,void 0),G([z()],$.prototype,`position`,void 0),G([z()],$.prototype,`playing`,void 0),G([z()],$.prototype,`speed`,void 0),G([z()],$.prototype,`trackWidth`,void 0),G([z()],$.prototype,`versionMismatch`,void 0),G([z()],$.prototype,`indexError`,void 0),G([z()],$.prototype,`frameError`,void 0),G([z()],$.prototype,`history`,void 0),G([z()],$.prototype,`folded`,void 0),G([z()],$.prototype,`exportOpen`,void 0),G([z()],$.prototype,`exportRange`,void 0),G([z()],$.prototype,`exportFps`,void 0),G([z()],$.prototype,`exportStamp`,void 0),G([z()],$.prototype,`exportReadings`,void 0),G([z()],$.prototype,`exportAspect`,void 0),G([z()],$.prototype,`exportCrop`,void 0),G([z()],$.prototype,`exportEvery`,void 0),G([z()],$.prototype,`exportSizes`,void 0),G([z()],$.prototype,`frameSize`,void 0),G([z()],$.prototype,`exportPositions`,void 0),G([z()],$.prototype,`exportStatus`,void 0),G([z()],$.prototype,`exportError`,void 0),G([z()],$.prototype,`exportUrl`,void 0),G([Pe(`img.layer.a`)],$.prototype,`layerA`,void 0),G([Pe(`img.layer.b`)],$.prototype,`layerB`,void 0),$=G([ke(et)],$);var hr=window;hr.customCards=hr.customCards??[],hr.customCards.push({type:et,name:`Webcam Timelapse`,description:`Scrub and play back an archived still-image webcam.`,preview:!0,documentationURL:`https://github.com/rolandzeiner/webcam-timelapse`,getEntitySuggestion:(e,t)=>!t.startsWith(`camera.`)||e.entities?.[t]?.platform!==`webcam_timelapse`?null:{config:{type:`custom:${et}`,camera_entity:t}}});export{$ as WebcamTimelapseCard};
+    </div>`}rulerFor(){let e=[this.index.t0,this.index.count,this.index.step,Math.round(this.trackWidth),this.timeZone,this.language].join(`|`);return this.rulerCache?.key!==e&&(this.rulerCache={key:e,days:xn(this.index,this.timeZone,this.language,this.trackWidth),times:En(this.index,this.timeZone,this.language,this.trackWidth)}),this.rulerCache}};G([Me({attribute:!1})],$.prototype,`hass`,void 0),G([Me({reflect:!0})],$.prototype,`layout`,void 0),G([z()],$.prototype,`config`,void 0),G([z()],$.prototype,`index`,void 0),G([z()],$.prototype,`position`,void 0),G([z()],$.prototype,`playing`,void 0),G([z()],$.prototype,`speed`,void 0),G([z()],$.prototype,`trackWidth`,void 0),G([z()],$.prototype,`versionMismatch`,void 0),G([z()],$.prototype,`indexError`,void 0),G([z()],$.prototype,`frameError`,void 0),G([z()],$.prototype,`history`,void 0),G([z()],$.prototype,`folded`,void 0),G([z()],$.prototype,`exportOpen`,void 0),G([z()],$.prototype,`exportRange`,void 0),G([z()],$.prototype,`exportFps`,void 0),G([z()],$.prototype,`exportStamp`,void 0),G([z()],$.prototype,`exportReadings`,void 0),G([z()],$.prototype,`exportAspect`,void 0),G([z()],$.prototype,`exportCrop`,void 0),G([z()],$.prototype,`exportEvery`,void 0),G([z()],$.prototype,`exportSizes`,void 0),G([z()],$.prototype,`frameSize`,void 0),G([z()],$.prototype,`exportPositions`,void 0),G([z()],$.prototype,`exportStatus`,void 0),G([z()],$.prototype,`exportError`,void 0),G([z()],$.prototype,`exportUrl`,void 0),G([Pe(`img.layer.a`)],$.prototype,`layerA`,void 0),G([Pe(`img.layer.b`)],$.prototype,`layerB`,void 0),$=G([ke(et)],$);var hr=window;hr.customCards=hr.customCards??[],hr.customCards.push({type:et,name:`Webcam Timelapse`,description:`Scrub and play back an archived still-image webcam.`,preview:!0,documentationURL:`https://github.com/rolandzeiner/webcam-timelapse`,getEntitySuggestion:(e,t)=>!t.startsWith(`camera.`)||e.entities?.[t]?.platform!==`webcam_timelapse`?null:{config:{type:`custom:${et}`,camera_entity:t}}});export{$ as WebcamTimelapseCard};

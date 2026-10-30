@@ -146,6 +146,11 @@ export class WebcamTimelapseCard extends LitElement {
 
   @property({ attribute: false }) hass?: HomeAssistant;
 
+  // Set by HA: "grid" in a sections view, "panel" in a panel view, unset in
+  // the add-card picker and masonry. Reflected so the styles can fill the
+  // cell only when there is one -- see the grid-cell rules in card-styles.ts.
+  @property({ reflect: true }) public layout?: string;
+
   @state() private config?: NormalisedConfig;
   @state() private index: FrameIndex = EMPTY_INDEX;
   @state() private position = 0;
