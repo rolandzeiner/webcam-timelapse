@@ -260,12 +260,14 @@ describe("nextPlaybackPosition", () => {
     // behind the playhead would spin it forever on one frame.
     const present = full(50);
     for (const hole of [7, 8, 9, 30, 31]) present[hole] = 0;
+    const regressions: Array<[stride: number, position: number, next: number]> = [];
     for (const stride of [1, 2, 4, 8]) {
       for (let position = 0; position < 50; position++) {
         const next = nextPlaybackPosition(present, position, stride);
-        if (next !== null) expect(next).toBeGreaterThan(position);
+        if (next !== null && next <= position) regressions.push([stride, position, next]);
       }
     }
+    expect(regressions).toEqual([]);
   });
 
   it("terminates from every starting position at every stride", () => {
