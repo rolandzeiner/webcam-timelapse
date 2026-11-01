@@ -320,6 +320,18 @@ export class WebcamTimelapseCard extends LitElement {
     return { columns: "full", rows: "auto", min_columns: 6, min_rows: 6 };
   }
 
+  /**
+   * Whether the sections cell has a set height. The user sets it by
+   * dragging the row handle, which stores grid_options.rows over the
+   * "auto" above; outside a sections cell (masonry, a stack, the picker)
+   * the card takes its natural height.
+   */
+  private get _fixedHeight(): boolean {
+    if (this.layout !== "grid") return false;
+    const stored = (this.config?.grid_options as { rows?: unknown } | undefined)?.rows;
+    return typeof (stored ?? this.getGridOptions().rows) === "number";
+  }
+
   // --- lifecycle ---------------------------------------------------
 
   override connectedCallback(): void {
@@ -1343,7 +1355,10 @@ export class WebcamTimelapseCard extends LitElement {
     const slot = this.index.t0 === null ? null : this.index.t0 + this.position * this.index.step;
 
     return html`
-      <ha-card .header=${this.config.title ?? nothing}>
+      <ha-card
+        .header=${this.config.title ?? nothing}
+        class=${this._fixedHeight ? "fixed-height" : ""}
+      >
         ${this.preview ? nothing : renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
         ${this.renderStage(slot)}
         ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}

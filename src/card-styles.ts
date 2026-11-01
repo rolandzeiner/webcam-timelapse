@@ -54,6 +54,46 @@ export const cardStyles = css`
     block-size: 100%;
   }
 
+  /* A fixed-height cell (ha-card.fixed-height, set by the card from
+     _fixedHeight): the card becomes a column and its parts give way in a
+     fixed order. The picture is the one thing that has to stay whole, so
+     the stage shrinks last, the timeline never, and the export panel
+     first -- down to a floor, after which it is the card's one scroller.
+     Nothing here touches auto height: on a masonry view or in the picker
+     the card still takes its natural height. */
+  ha-card.fixed-height {
+    display: flex;
+    flex-direction: column;
+  }
+  /* min-block-size is what lets a flex item shrink below its content;
+     the floor keeps a picture on screen in a cell too short for the rest.
+     The frames are object-fit: contain, so a shorter stage letterboxes
+     them on the sides and the overlays keep their corners. */
+  ha-card.fixed-height .stage {
+    flex: 0 1 auto;
+    min-block-size: 96px;
+  }
+  ha-card.fixed-height .timeline,
+  ha-card.fixed-height .warning {
+    flex-shrink: 0;
+  }
+  /* flex-shrink 4 against the stage's 1: the export absorbs the squeeze
+     first, and only once it sits on its floor does the stage give up a
+     pixel. The wrapper takes the flex, the panel inside it scrolls, so the
+     panel's border stays put while its rows move; the panel's own 12 px
+     padding keeps the chips' focus rings inside the scroll clip. */
+  ha-card.fixed-height .export {
+    display: flex;
+    flex-direction: column;
+    flex: 0 4 auto;
+    min-block-size: 140px;
+  }
+  ha-card.fixed-height .export-panel {
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow-y: auto;
+  }
+
   ha-card {
     overflow: hidden;
   }

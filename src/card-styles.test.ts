@@ -83,6 +83,34 @@ describe("the grid cell", () => {
   });
 });
 
+describe("fixed-height cell", () => {
+  it("turns the card into a column", () => {
+    const body = declarationsFor("ha-card.fixed-height");
+    expect(body).toMatch(/display:\s*flex/);
+    expect(body).toMatch(/flex-direction:\s*column/);
+  });
+
+  it("lets the stage shrink, down to a floor", () => {
+    const body = declarationsFor("ha-card.fixed-height .stage");
+    expect(body).toMatch(/flex:\s*0 1 auto/);
+    expect(body).toMatch(/min-block-size:\s*\d+px/);
+  });
+
+  it("makes the export panel the one scroller, shrinking before the stage", () => {
+    const wrapper = declarationsFor("ha-card.fixed-height .export");
+    expect(wrapper).toMatch(/flex:\s*0 4 auto/);
+    expect(wrapper).toMatch(/min-block-size:\s*\d+px/);
+    const panel = declarationsFor("ha-card.fixed-height .export-panel");
+    expect(panel).toMatch(/overflow-y:\s*auto/);
+    expect(panel).toMatch(/min-block-size:\s*0/);
+    expect(declarationsFor(".timeline")).not.toMatch(/overflow/);
+  });
+
+  it("keeps the timeline at its height", () => {
+    expect(declarationsFor("ha-card.fixed-height .timeline")).toMatch(/flex-shrink:\s*0/);
+  });
+});
+
 describe("stage stacking", () => {
   it("gives .layers its own stacking context", () => {
     // revealFrame() writes z-index onto the two <img> layers so the
