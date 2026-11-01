@@ -22,7 +22,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-import os
 import shutil
 import time
 from collections import deque
@@ -398,13 +397,15 @@ def _plan(
             else None
             for index in range(count)
         ]
-        for slot, gain in zip(
-            (origin + index * step for index in range(count)),
-            deflicker_gains(dense, radius),
-            strict=True,
-        ):
-            if gain != 1.0:
-                gains[slot] = gain
+        gains = {
+            slot: gain
+            for slot, gain in zip(
+                (origin + index * step for index in range(count)),
+                deflicker_gains(dense, radius),
+                strict=True,
+            )
+            if gain != 1.0
+        }
 
     def _label(slot: int) -> str:
         return dt_util.as_local(dt_util.utc_from_timestamp(slot)).strftime(
@@ -1187,5 +1188,5 @@ def _folder_state(folder: Path) -> tuple[bool, int | None]:
 
 def _publish(partial_path: Path, target: Path) -> int:
     """Move a finished video into place; return its size. Blocking."""
-    os.replace(partial_path, target)
+    partial_path.replace(target)
     return target.stat().st_size

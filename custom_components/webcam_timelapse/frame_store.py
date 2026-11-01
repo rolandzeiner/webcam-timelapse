@@ -61,7 +61,7 @@ def write_frame(frames_dir: Path, slot: int, data: bytes) -> Path:
     tmp = target.with_suffix(FRAME_SUFFIX + _TMP_SUFFIX)
     try:
         tmp.write_bytes(data)
-        os.replace(tmp, target)
+        tmp.replace(target)
     except OSError:
         tmp.unlink(missing_ok=True)
         raise
@@ -233,7 +233,7 @@ def compact_luma(frames_dir: Path, keep: set[int]) -> None:
             "".join(f"{slot} {luma}\n" for slot, luma in sorted(entries.items())),
             encoding="utf-8",
         )
-        os.replace(tmp, path)
+        tmp.replace(path)
     except OSError:
         tmp.unlink(missing_ok=True)
 
