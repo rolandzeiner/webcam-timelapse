@@ -162,6 +162,49 @@ async def test_card_resource_survives_removing_one_of_two_entries(
         unregister.assert_called_once()
 
 
+async def test_migration_strips_the_connection_from_options(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    """1.1 → 1.2: an options record written by v0.8.1 or earlier loses its
+    URL and credentials, keeps its settings, and the stored password wins."""
+    from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, CONF_VERIFY_SSL
+
+    from custom_components.webcam_timelapse.const import CONF_RETENTION_DAYS
+
+    entry = make_entry(**{CONF_USERNAME: "cam", CONF_PASSWORD: "current"})
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        entry,
+        minor_version=1,
+        options={
+            CONF_URL: entry.data[CONF_URL],
+            CONF_VERIFY_SSL: True,
+            CONF_USERNAME: "cam",
+            CONF_PASSWORD: "stale",
+            CONF_RETENTION_DAYS: 30,
+        },
+    )
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.minor_version == 2
+    assert entry.options == {CONF_RETENTION_DAYS: 30}
+    assert entry.runtime_data.retention_days == 30
+    assert {**entry.data, **entry.options}[CONF_PASSWORD] == "current"
+
+
+async def test_migration_refuses_a_newer_major_version(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    entry = make_entry()
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(entry, version=2)
+
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert entry.state is ConfigEntryState.MIGRATION_ERROR
+
+
 async def test_options_update_reloads_the_entry(
     hass: HomeAssistant, mock_fetch: AsyncMock
 ) -> None:

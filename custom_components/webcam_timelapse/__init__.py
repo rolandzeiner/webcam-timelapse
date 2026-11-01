@@ -15,7 +15,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 
 from .card_registration import JSModuleRegistration, async_register_frames_path
-from .const import DOMAIN, INTEGRATION_VERSION, STORAGE_SUBDIR
+from .const import CONNECTION_KEYS, DOMAIN, INTEGRATION_VERSION, STORAGE_SUBDIR
 from .coordinator import WebcamTimelapseConfigEntry, WebcamTimelapseCoordinator
 from .export import async_forget_exporter
 from .services import async_setup_services
@@ -60,6 +60,32 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     else:
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _register_card)
 
+    return True
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant, entry: WebcamTimelapseConfigEntry
+) -> bool:
+    """Bring an entry's stored shape up to the current minor version.
+
+    1.1 → 1.2: the options flow used to write the whole validated record,
+    connection keys included, into `entry.options`. Readers merge options
+    over data, so the copy outranked every later reauth or reconfigure —
+    a rotated password was accepted and then ignored. Dropping those keys
+    from options is enough: `entry.data` has always held the current
+    values. Nothing else changed, so an older release can still read the
+    entry (that is what a minor bump promises).
+    """
+    if entry.version > 1:
+        # A newer major version: refuse rather than guess at its shape.
+        return False
+    if entry.minor_version < 2:
+        options = {
+            key: value
+            for key, value in entry.options.items()
+            if key not in CONNECTION_KEYS
+        }
+        hass.config_entries.async_update_entry(entry, options=options, minor_version=2)
     return True
 
 

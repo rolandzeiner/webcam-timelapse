@@ -6,6 +6,12 @@ import json
 from pathlib import Path
 from typing import Final
 
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_URL,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
+)
 from homeassistant.const import __version__ as _HA_VERSION
 
 DOMAIN: Final = "webcam_timelapse"
@@ -46,6 +52,13 @@ USER_AGENT: Final = (
 # CONF_USERNAME, CONF_PASSWORD, CONF_VERIFY_SSL) rather than redefined
 # here — a second spelling of "username" is exactly how an options dict
 # and a config flow drift apart.
+#
+# The four that describe how to reach the camera live in `entry.data`
+# only: reconfigure and reauth write them, the options flow never does.
+# Readers merge `{**entry.data, **entry.options}`, so a copy of these in
+# options would silently outrank a later reauth. `async_migrate_entry`
+# strips them from entries written before minor version 2.
+CONNECTION_KEYS: Final = (CONF_URL, CONF_VERIFY_SSL, CONF_USERNAME, CONF_PASSWORD)
 CONF_CAPTURE_INTERVAL: Final = "capture_interval"
 CONF_RETENTION_DAYS: Final = "retention_days"
 CONF_MAX_WIDTH: Final = "max_width"

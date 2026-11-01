@@ -141,10 +141,7 @@
               "max_width": "Verkleinern auf",
               "quality": "Bildqualität",
               "live_refresh": "Aktualisierung der Live-Ansicht",
-              "frames_path": "Speicherordner",
-              "verify_ssl": "SSL-Zertifikat prüfen",
-              "username": "Benutzer:in",
-              "password": "Passwort"
+              "frames_path": "Speicherordner"
             }
           },
           "lighting": {

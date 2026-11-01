@@ -191,8 +191,9 @@ rules:
     status: done
     comment: >-
       camera_offline is raised once when consecutive captures come back
-      identical and cleared on recovery. It is the only repair issue — the
-      condition is genuinely user-actionable.
+      identical and cleared on recovery; the raised flag is seeded from the
+      issue registry so a reload cannot orphan it. It is the only repair
+      issue — the condition is genuinely user-actionable.
   stale-devices:
     status: exempt
     comment: See dynamic-devices.

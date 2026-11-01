@@ -141,10 +141,7 @@
               "max_width": "Resize to",
               "quality": "Image quality",
               "live_refresh": "Live view refresh",
-              "frames_path": "Storage folder",
-              "verify_ssl": "Verify SSL certificate",
-              "username": "Username",
-              "password": "Password"
+              "frames_path": "Storage folder"
             }
           },
           "lighting": {
