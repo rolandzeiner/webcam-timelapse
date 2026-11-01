@@ -309,7 +309,11 @@ export class WebcamTimelapseCard extends LitElement {
   }
 
   getCardSize(): number {
-    return 8;
+    // Masonry balances its columns with this, and HA starts a card at
+    // this many rows (capped at 8) when "Fit height to content" is turned
+    // off. Measured in a 525 px column, 2026-11-01: the 4:3 stage plus
+    // the timeline is 478 px, 50 px to the unit; a title adds its header.
+    return this.config?.title ? 11 : 10;
   }
 
   getGridOptions(): Record<string, unknown> {
