@@ -223,7 +223,7 @@ export class WebcamTimelapseCard extends LitElement {
   /** Not @state: derived from the playhead, never a reason to re-render. */
   private nightCache?: { key: string; bands: NightBand[] };
 
-  private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+  private present: Uint8Array = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
   /**
    * Furthest grid position already handed to the prefetch ring.
@@ -557,7 +557,9 @@ export class WebcamTimelapseCard extends LitElement {
       // image took.
       const remaining = this.frameDelay - (performance.now() - started);
       if (remaining > 0) {
-        await new Promise((resolve) => window.setTimeout(resolve, remaining));
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, remaining);
+        });
       }
     }
   }
