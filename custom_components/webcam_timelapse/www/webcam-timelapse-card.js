@@ -152,6 +152,7 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
        in cq units. Safe as size containment: the stage's height comes
        from its width and aspect-ratio, never from what is inside it. */
     container-type: size;
+    container-name: wtl-stage;
   }
 
   /* The frame as object-fit: contain draws it inside the stage, so the
@@ -573,6 +574,7 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
 
   .speed {
     min-width: 40px;
+    min-block-size: 36px;
     padding: 6px 8px;
     border: 0;
     border-radius: 999px;
@@ -590,6 +592,36 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
   .speed:focus-visible {
     outline: 2px solid var(--wtl-accent);
     outline-offset: 2px;
+  }
+
+  /* Below 320 px the full pill (six 40 px controls and the 46 px play
+     button) would run past the stage's edges. The step buttons go first:
+     the scrubber and the arrow keys still step one frame, and what stays
+     keeps a 36 px target, the play button 40 px. Measured against the
+     stage, which is the pill's containing block, not the card. */
+  @container wtl-stage (inline-size < 320px) {
+    .controls {
+      gap: 0;
+      padding: 2px 4px;
+      --ha-icon-button-size: 36px;
+      --mdc-icon-button-size: 36px;
+      --mdc-icon-size: 18px;
+    }
+
+    .controls .step {
+      display: none;
+    }
+
+    .controls .play {
+      --ha-icon-button-size: 40px;
+      --mdc-icon-button-size: 40px;
+      --mdc-icon-size: 22px;
+    }
+
+    .speed {
+      min-width: 36px;
+      padding: 6px 4px;
+    }
   }
 
   /* --- scrubber ---------------------------------------------------- */
@@ -1814,7 +1846,11 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
       <ha-icon icon=${t?`mdi:eye-outline`:`mdi:eye-off-outline`}></ha-icon>
     </ha-icon-button>`}toggleFold(e){let t=new Set(this.folded);t.delete(e)||t.add(e),this.folded=t}fireMoreInfo(e){e&&this.dispatchEvent(new CustomEvent(`hass-more-info`,{detail:{entityId:e},bubbles:!0,composed:!0}))}onActivateKey(e,t){(e.key===`Enter`||e.key===` `)&&(e.preventDefault(),this.fireMoreInfo(t))}renderControls(){return M`
       <div class="controls">
-        <ha-icon-button .label=${this.t(`controls.previous`)} @click=${()=>this.stepBy(-1)}>
+        <ha-icon-button
+          class="step"
+          .label=${this.t(`controls.previous`)}
+          @click=${()=>this.stepBy(-1)}
+        >
           <ha-icon icon="mdi:skip-previous"></ha-icon>
         </ha-icon-button>
         <ha-icon-button
@@ -1824,7 +1860,7 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
         >
           <ha-icon .icon=${this.playing?`mdi:pause`:`mdi:play`}></ha-icon>
         </ha-icon-button>
-        <ha-icon-button .label=${this.t(`controls.next`)} @click=${()=>this.stepBy(1)}>
+        <ha-icon-button class="step" .label=${this.t(`controls.next`)} @click=${()=>this.stepBy(1)}>
           <ha-icon icon="mdi:skip-next"></ha-icon>
         </ha-icon-button>
 

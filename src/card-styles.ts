@@ -110,6 +110,7 @@ export const cardStyles = css`
        in cq units. Safe as size containment: the stage's height comes
        from its width and aspect-ratio, never from what is inside it. */
     container-type: size;
+    container-name: wtl-stage;
   }
 
   /* The frame as object-fit: contain draws it inside the stage, so the
@@ -531,6 +532,7 @@ export const cardStyles = css`
 
   .speed {
     min-width: 40px;
+    min-block-size: 36px;
     padding: 6px 8px;
     border: 0;
     border-radius: 999px;
@@ -548,6 +550,36 @@ export const cardStyles = css`
   .speed:focus-visible {
     outline: 2px solid var(--wtl-accent);
     outline-offset: 2px;
+  }
+
+  /* Below 320 px the full pill (six 40 px controls and the 46 px play
+     button) would run past the stage's edges. The step buttons go first:
+     the scrubber and the arrow keys still step one frame, and what stays
+     keeps a 36 px target, the play button 40 px. Measured against the
+     stage, which is the pill's containing block, not the card. */
+  @container wtl-stage (inline-size < 320px) {
+    .controls {
+      gap: 0;
+      padding: 2px 4px;
+      --ha-icon-button-size: 36px;
+      --mdc-icon-button-size: 36px;
+      --mdc-icon-size: 18px;
+    }
+
+    .controls .step {
+      display: none;
+    }
+
+    .controls .play {
+      --ha-icon-button-size: 40px;
+      --mdc-icon-button-size: 40px;
+      --mdc-icon-size: 22px;
+    }
+
+    .speed {
+      min-width: 36px;
+      padding: 6px 4px;
+    }
   }
 
   /* --- scrubber ---------------------------------------------------- */

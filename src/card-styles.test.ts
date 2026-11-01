@@ -282,14 +282,30 @@ const SINGLE_BREAKPOINT = Math.min(...BREAKPOINTS);
 const PAIR_BREAKPOINT = Math.max(...BREAKPOINTS);
 
 describe("container queries", () => {
-  // .stage is a size container for the export crop. An unnamed query
-  // resolves against the nearest container, so one written for the card
-  // would quietly start measuring the stage for everything inside it.
-  it("name the card's container on every query", () => {
+  // .stage is a size container for the export crop and the control pill.
+  // An unnamed query resolves against the nearest container, so one
+  // written for the card would quietly start measuring the stage for
+  // everything inside it.
+  it("name a container on every query", () => {
     const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
     const queries = [...css.matchAll(/@container\s+([^{]*)\{/g)].map((match) => match[1]!.trim());
     expect(queries.length).toBeGreaterThan(0);
-    for (const query of queries) expect(query.startsWith("wtl-card ")).toBe(true);
+    for (const query of queries) expect(query).toMatch(/^wtl-(card|stage) /);
+  });
+
+  // The pill is the one thing measured against the stage: in a narrow
+  // cell it drops the step buttons and tightens, so it never runs past
+  // the picture's edges, and every control left keeps a 36 px target.
+  it("tighten the control pill against the stage below 320 px", () => {
+    const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+    const start = css.indexOf("@container wtl-stage (inline-size < 320px)");
+    expect(start).toBeGreaterThan(-1);
+    const next = css.indexOf("@container", start + 1);
+    const block = css.slice(start, next === -1 ? undefined : next);
+    expect(block).toMatch(/\.controls \.step\s*\{[^}]*display:\s*none/);
+    expect(block).toMatch(/\.controls\s*\{[^}]*--ha-icon-button-size:\s*36px/);
+    expect(block).toMatch(/\.controls \.play\s*\{[^}]*--ha-icon-button-size:\s*40px/);
+    expect(block).not.toMatch(/--ha-icon-button-size:\s*(1\d|2\d|3[0-5])px/);
   });
 });
 

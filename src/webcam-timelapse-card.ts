@@ -1807,7 +1807,11 @@ export class WebcamTimelapseCard extends LitElement {
   private renderControls(): TemplateResult {
     return html`
       <div class="controls">
-        <ha-icon-button .label=${this.t("controls.previous")} @click=${() => this.stepBy(-1)}>
+        <ha-icon-button
+          class="step"
+          .label=${this.t("controls.previous")}
+          @click=${() => this.stepBy(-1)}
+        >
           <ha-icon icon="mdi:skip-previous"></ha-icon>
         </ha-icon-button>
         <ha-icon-button
@@ -1817,7 +1821,7 @@ export class WebcamTimelapseCard extends LitElement {
         >
           <ha-icon .icon=${this.playing ? "mdi:pause" : "mdi:play"}></ha-icon>
         </ha-icon-button>
-        <ha-icon-button .label=${this.t("controls.next")} @click=${() => this.stepBy(1)}>
+        <ha-icon-button class="step" .label=${this.t("controls.next")} @click=${() => this.stepBy(1)}>
           <ha-icon icon="mdi:skip-next"></ha-icon>
         </ha-icon-button>
 
