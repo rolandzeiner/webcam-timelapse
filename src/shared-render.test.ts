@@ -1,3 +1,11 @@
+/**
+ * @vitest-environment happy-dom
+ *
+ * The integration-upgrade plumbing: the WebSocket version probe and the
+ * reload banner it drives. The reload tests click the rendered button, so
+ * this file needs a DOM; the rest of the suite stays in node.
+ */
+import { render } from "lit";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { checkCardVersionWS, renderVersionBanner } from "./shared-render";
@@ -43,13 +51,11 @@ describe("checkCardVersionWS", () => {
 
 describe("the reload button", () => {
   // Started and left running, the cache deletes raced the unload and
-  // usually lost, so the reload was served the same cached bundle. The
-  // tests run in node, so the button's click handler is taken from the
-  // banner template and `window` is a stub.
+  // usually lost, so the reload was served the same cached bundle.
   it("reloads only once the cache wipe has finished", async () => {
     const order: string[] = [];
     let finishDelete!: () => void;
-    const caches = {
+    vi.stubGlobal("caches", {
       keys: async () => ["bundle"],
       delete: () =>
         new Promise<boolean>((resolve) => {
@@ -58,23 +64,24 @@ describe("the reload button", () => {
             resolve(true);
           };
         }),
-    };
-    const reload = vi.fn(() => {
+    });
+    const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {
       order.push("reload");
     });
-    vi.stubGlobal("window", { caches, location: { reload } });
     try {
-      const banner = renderVersionBanner("0.8.0", (key) => key);
-      const onClick = (banner as { values: unknown[] }).values.find(
-        (v): v is () => void => typeof v === "function",
+      const host = document.createElement("div");
+      render(
+        renderVersionBanner("0.8.0", (key) => key),
+        host,
       );
-      onClick!();
+      host.querySelector("button")!.click();
       await new Promise((r) => setTimeout(r, 0));
       expect(order).toEqual([]);
       finishDelete();
       await new Promise((r) => setTimeout(r, 0));
       expect(order).toEqual(["deleted", "reload"]);
     } finally {
+      reload.mockRestore();
       vi.unstubAllGlobals();
     }
   });

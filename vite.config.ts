@@ -60,6 +60,10 @@ export default defineConfig(({ mode }) => {
       // a dependency and still not catch the class of bug it looks like it
       // would. card-styles.test.ts asserts the stacking-context contract
       // instead, which is the mechanism those bugs actually turn on.
+      //
+      // A suite that does need a DOM (clicking a rendered button) opts in
+      // per file with an `@vitest-environment happy-dom` docblock, as
+      // shared-render.test.ts does; the default stays node.
       environment: "node",
     },
     fmt: {
