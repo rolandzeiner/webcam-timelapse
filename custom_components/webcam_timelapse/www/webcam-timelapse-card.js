@@ -842,6 +842,11 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
 
   .export-panel {
     display: grid;
+    /* minmax(0, …), not the implicit auto track: auto can't shrink below
+       the widest row's min-content, and the size slider's is wider than a
+       six-column cell, which would push every row past the panel's edge.
+       Capped, each row wraps inside the panel instead. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
     margin-top: 4px;
     padding: 12px;
@@ -928,6 +933,9 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
   /* Indented under its checkbox, so the size reads as belonging to it. */
   .export-size {
     display: inline-flex;
+    /* The slider and its value drop to a second line where the row is
+       narrower than the three of them (a six-column cell). */
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin-left: 8px;
