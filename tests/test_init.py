@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_NAME, CONF_URL
 from homeassistant.core import HomeAssistant
@@ -17,6 +18,12 @@ from custom_components.webcam_timelapse import frame_store
 from custom_components.webcam_timelapse.const import DOMAIN, INTEGRATION_VERSION
 
 from .conftest import make_entry, setup_entry
+
+# Five minutes from any slot of the default 10-minute capture grid. The
+# archive tests pin the clock here: on the real clock a test that straddles
+# a capture tick gets a frame of its own, and the prune that follows drops
+# the planted one, so an exact archive assertion fails a few times a day.
+OFF_GRID = "2026-11-01 12:05:00+00:00"
 
 
 async def test_setup_registers_device_and_platforms(
@@ -56,9 +63,10 @@ async def test_services_are_registered(
 
 
 async def test_unload_leaves_frames_on_disk(
-    hass: HomeAssistant, mock_fetch: AsyncMock
+    hass: HomeAssistant, mock_fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:
     """Unloading is a reload or a restart — history must survive it."""
+    freezer.move_to(OFF_GRID)
     entry = make_entry()
     assert await setup_entry(hass, entry)
     frames_dir = entry.runtime_data.frames_dir
@@ -72,9 +80,13 @@ async def test_unload_leaves_frames_on_disk(
 
 
 async def test_remove_entry_deletes_only_its_own_frames(
-    hass: HomeAssistant, mock_fetch: AsyncMock, isolate_frames_dir: Path
+    hass: HomeAssistant,
+    mock_fetch: AsyncMock,
+    isolate_frames_dir: Path,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
     """Two cameras, one removed — the survivor's archive must be untouched."""
+    freezer.move_to(OFF_GRID)
     first = make_entry(entry_id="01AAA", **{CONF_NAME: "First"})
     second = make_entry(
         entry_id="01BBB",
