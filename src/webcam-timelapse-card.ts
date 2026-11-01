@@ -151,6 +151,11 @@ export class WebcamTimelapseCard extends LitElement {
   // cell only when there is one -- see the grid-cell rules in card-styles.ts.
   @property({ reflect: true }) public layout?: string;
 
+  // Set by HA in the edit-card dialog. The preview there is for checking
+  // the config, so it neither starts playing on its own nor shows the
+  // stale-bundle banner, whose Reload would throw the open dialog away.
+  @property({ type: Boolean }) public preview = false;
+
   @state() private config?: NormalisedConfig;
   @state() private index: FrameIndex = EMPTY_INDEX;
   @state() private position = 0;
@@ -604,6 +609,7 @@ export class WebcamTimelapseCard extends LitElement {
     this.autoplayPending = false;
 
     if (
+      this.preview ||
       !shouldAutoplay({
         configured: this.config?.autoplay ?? DEFAULTS.autoplay,
         reducedMotion: prefersReducedMotion(),
@@ -1334,7 +1340,7 @@ export class WebcamTimelapseCard extends LitElement {
 
     return html`
       <ha-card .header=${this.config.title ?? nothing}>
-        ${renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
+        ${this.preview ? nothing : renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
         ${this.renderStage(slot)}
         ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}
         ${
