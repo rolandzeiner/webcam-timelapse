@@ -269,6 +269,38 @@ async def test_repeated_freeze_marks_offline_and_raises_one_issue(
     assert registry.async_get_issue(DOMAIN, issue_id) is None
 
 
+async def test_offline_issue_survives_a_reload_and_still_clears(
+    hass: HomeAssistant, mock_fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """A reload builds a new coordinator; it must adopt the open issue.
+
+    Every options save is a reload. A flag that started False would skip
+    the delete on recovery and leave the banner up for a camera that is
+    back.
+    """
+    freezer.move_to(BASE)
+    entry = make_entry()
+    assert await setup_entry(hass, entry)
+    mock_fetch.return_value = unchanged_result()
+    issue_id = f"camera_offline_{entry.entry_id}"
+    registry = ir.async_get(hass)
+
+    ticks = CAMERA_STALE_TICKS + 1
+    for n in range(1, ticks + 1):
+        await fire_tick(hass, freezer, 10 * n)
+    assert registry.async_get_issue(DOMAIN, issue_id) is not None
+
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get_issue(DOMAIN, issue_id) is not None
+
+    mock_fetch.return_value = fresh_result()
+    await fire_tick(hass, freezer, 10 * (ticks + 1))
+
+    assert entry.runtime_data.data["online"] is True
+    assert registry.async_get_issue(DOMAIN, issue_id) is None
+
+
 async def test_capture_failure_marks_the_coordinator_unsuccessful(
     hass: HomeAssistant, mock_fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:

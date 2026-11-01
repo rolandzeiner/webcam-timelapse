@@ -26,7 +26,7 @@ COMPONENT = REPO_ROOT / "custom_components" / "webcam_timelapse"
 
 def test_integration_version_comes_from_the_manifest() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
-    assert INTEGRATION_VERSION == manifest["version"]
+    assert manifest["version"] == INTEGRATION_VERSION
 
 
 def test_card_version_matches_the_typescript_bundle() -> None:

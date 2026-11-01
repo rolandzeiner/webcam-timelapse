@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_NAME, CONF_URL
 from homeassistant.core import HomeAssistant
@@ -17,6 +18,12 @@ from custom_components.webcam_timelapse import frame_store
 from custom_components.webcam_timelapse.const import DOMAIN, INTEGRATION_VERSION
 
 from .conftest import make_entry, setup_entry
+
+# Five minutes from any slot of the default 10-minute capture grid. The
+# archive tests pin the clock here: on the real clock a test that straddles
+# a capture tick gets a frame of its own, and the prune that follows drops
+# the planted one, so an exact archive assertion fails a few times a day.
+OFF_GRID = "2026-11-01 12:05:00+00:00"
 
 
 async def test_setup_registers_device_and_platforms(
@@ -56,9 +63,10 @@ async def test_services_are_registered(
 
 
 async def test_unload_leaves_frames_on_disk(
-    hass: HomeAssistant, mock_fetch: AsyncMock
+    hass: HomeAssistant, mock_fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:
     """Unloading is a reload or a restart — history must survive it."""
+    freezer.move_to(OFF_GRID)
     entry = make_entry()
     assert await setup_entry(hass, entry)
     frames_dir = entry.runtime_data.frames_dir
@@ -72,9 +80,13 @@ async def test_unload_leaves_frames_on_disk(
 
 
 async def test_remove_entry_deletes_only_its_own_frames(
-    hass: HomeAssistant, mock_fetch: AsyncMock, isolate_frames_dir: Path
+    hass: HomeAssistant,
+    mock_fetch: AsyncMock,
+    isolate_frames_dir: Path,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
     """Two cameras, one removed — the survivor's archive must be untouched."""
+    freezer.move_to(OFF_GRID)
     first = make_entry(entry_id="01AAA", **{CONF_NAME: "First"})
     second = make_entry(
         entry_id="01BBB",
@@ -148,6 +160,49 @@ async def test_card_resource_survives_removing_one_of_two_entries(
         await hass.config_entries.async_remove(second.entry_id)
         await hass.async_block_till_done()
         unregister.assert_called_once()
+
+
+async def test_migration_strips_the_connection_from_options(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    """1.1 → 1.2: an options record written by v0.8.1 or earlier loses its
+    URL and credentials, keeps its settings, and the stored password wins."""
+    from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, CONF_VERIFY_SSL
+
+    from custom_components.webcam_timelapse.const import CONF_RETENTION_DAYS
+
+    entry = make_entry(**{CONF_USERNAME: "cam", CONF_PASSWORD: "current"})
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        entry,
+        minor_version=1,
+        options={
+            CONF_URL: entry.data[CONF_URL],
+            CONF_VERIFY_SSL: True,
+            CONF_USERNAME: "cam",
+            CONF_PASSWORD: "stale",
+            CONF_RETENTION_DAYS: 30,
+        },
+    )
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.minor_version == 2
+    assert entry.options == {CONF_RETENTION_DAYS: 30}
+    assert entry.runtime_data.retention_days == 30
+    assert {**entry.data, **entry.options}[CONF_PASSWORD] == "current"
+
+
+async def test_migration_refuses_a_newer_major_version(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    entry = make_entry()
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(entry, version=2)
+
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert entry.state is ConfigEntryState.MIGRATION_ERROR
 
 
 async def test_options_update_reloads_the_entry(

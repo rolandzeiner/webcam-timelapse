@@ -79,7 +79,7 @@ Add as many cameras as you like. Each one is its own entry with its own archive.
 
 ## Options
 
-Select **Configure** on the camera's entry to change any field from the *Setup* table except **Image URL**. To change the URL, select **Reconfigure** instead. Neither loses captured frames.
+Select **Configure** on the camera's entry to change any field from the *Setup* table except the connection: **Image URL**, **Verify SSL certificate** and **Username / Password**. To change those, select **Reconfigure** instead; a camera that starts rejecting its credentials also asks for new ones on its own. Neither loses captured frames.
 
 **Lowering Keep frames for deletes older frames at the next capture.** They can't be recovered.
 

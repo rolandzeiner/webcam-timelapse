@@ -151,6 +151,11 @@ export class WebcamTimelapseCard extends LitElement {
   // cell only when there is one -- see the grid-cell rules in card-styles.ts.
   @property({ reflect: true }) public layout?: string;
 
+  // Set by HA in the edit-card dialog. The preview there is for checking
+  // the config, so it neither starts playing on its own nor shows the
+  // stale-bundle banner, whose Reload would throw the open dialog away.
+  @property({ type: Boolean }) public preview = false;
+
   @state() private config?: NormalisedConfig;
   @state() private index: FrameIndex = EMPTY_INDEX;
   @state() private position = 0;
@@ -223,7 +228,7 @@ export class WebcamTimelapseCard extends LitElement {
   /** Not @state: derived from the playhead, never a reason to re-render. */
   private nightCache?: { key: string; bands: NightBand[] };
 
-  private present: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+  private present: Uint8Array = new Uint8Array(0);
   private ring = new PrefetchRing(prefetchDepth(1));
   /**
    * Furthest grid position already handed to the prefetch ring.
@@ -304,11 +309,27 @@ export class WebcamTimelapseCard extends LitElement {
   }
 
   getCardSize(): number {
-    return 8;
+    // Masonry balances its columns with this, and HA starts a card at
+    // this many rows (capped at 8) when "Fit height to content" is turned
+    // off. Measured in a 525 px column, 2026-11-01: the 4:3 stage plus
+    // the timeline is 478 px, 50 px to the unit; a title adds its header.
+    return this.config?.title ? 11 : 10;
   }
 
   getGridOptions(): Record<string, unknown> {
     return { columns: "full", rows: "auto", min_columns: 6, min_rows: 6 };
+  }
+
+  /**
+   * Whether the sections cell has a set height. The user sets it by
+   * dragging the row handle, which stores grid_options.rows over the
+   * "auto" above; outside a sections cell (masonry, a stack, the picker)
+   * the card takes its natural height.
+   */
+  private get _fixedHeight(): boolean {
+    if (this.layout !== "grid") return false;
+    const stored = (this.config?.grid_options as { rows?: unknown } | undefined)?.rows;
+    return typeof (stored ?? this.getGridOptions().rows) === "number";
   }
 
   // --- lifecycle ---------------------------------------------------
@@ -329,6 +350,9 @@ export class WebcamTimelapseCard extends LitElement {
     // A dashboard view that is navigated away from and back re-attaches
     // the same element, with the panel still marked open.
     if (this.exportOpen) void this.subscribeExport();
+    // The disconnect cleared the index timer, and willUpdate only fetches
+    // into an empty index, so nothing else would start the poll again.
+    if (this.hasUpdated && this.hass && this.config) void this.refreshIndex();
   }
 
   override disconnectedCallback(): void {
@@ -412,7 +436,9 @@ export class WebcamTimelapseCard extends LitElement {
       this.indexError = error instanceof Error ? error.message : "Could not load the timeline.";
     }
 
-    this.scheduleIndexRefresh();
+    // Only while connected: an answer that lands after removal would
+    // otherwise start a poll nothing ever clears.
+    if (this.isConnected) this.scheduleIndexRefresh();
   }
 
   /**
@@ -552,7 +578,9 @@ export class WebcamTimelapseCard extends LitElement {
       // image took.
       const remaining = this.frameDelay - (performance.now() - started);
       if (remaining > 0) {
-        await new Promise((resolve) => window.setTimeout(resolve, remaining));
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, remaining);
+        });
       }
     }
   }
@@ -597,6 +625,7 @@ export class WebcamTimelapseCard extends LitElement {
     this.autoplayPending = false;
 
     if (
+      this.preview ||
       !shouldAutoplay({
         configured: this.config?.autoplay ?? DEFAULTS.autoplay,
         reducedMotion: prefersReducedMotion(),
@@ -1325,10 +1354,26 @@ export class WebcamTimelapseCard extends LitElement {
 
     const slot = this.index.t0 === null ? null : this.index.t0 + this.position * this.index.step;
 
+    // A camera that is not in hass.states (renamed, removed, integration
+    // not loaded) gets the portfolio's warning in place of the stage: the
+    // picture would only ever be the empty state, and the id in the alert
+    // is what the user needs to fix the config.
+    if (!(this.config.camera_entity in this.hass.states)) {
+      return html`
+        <ha-card .header=${this.config.title ?? nothing}>
+          ${this.renderMissing([this.config.camera_entity])}
+        </ha-card>
+      `;
+    }
+
     return html`
-      <ha-card .header=${this.config.title ?? nothing}>
-        ${renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
+      <ha-card
+        .header=${this.config.title ?? nothing}
+        class=${this._fixedHeight ? "fixed-height" : ""}
+      >
+        ${this.preview ? nothing : renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
         ${this.renderStage(slot)}
+        ${this.renderMissingReadouts()}
         ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}
         ${
           hasFrames(this.index) && this.config.show_export && this.exportOpen
@@ -1337,6 +1382,34 @@ export class WebcamTimelapseCard extends LitElement {
         }
       </ha-card>
     `;
+  }
+
+  /** The house warning for entities missing from `hass.states`. */
+  private renderMissing(ids: string[]): TemplateResult {
+    const text = localize("common.entity_unavailable", this.language, "{entity}", ids.join(", "));
+    return html`
+      <div class="warning">
+        <ha-alert alert-type="warning">${text}</ha-alert>
+      </div>
+    `;
+  }
+
+  /**
+   * One alert under the stage naming every readout entity that is not in
+   * hass.states. The overlay rows themselves stay as they are (id and a
+   * dash), so the picture keeps its layout; the alert says why the dash.
+   */
+  private renderMissingReadouts(): TemplateResult | typeof nothing {
+    if (!this.hass) return nothing;
+    const states = this.hass.states;
+    const missing = [
+      ...new Set(
+        overlayEntities(this.config)
+          .map((row) => row.entity)
+          .filter((id) => !(id in states)),
+      ),
+    ];
+    return missing.length === 0 ? nothing : this.renderMissing(missing);
   }
 
   private renderStage(slot: number | null): TemplateResult {
@@ -1734,7 +1807,11 @@ export class WebcamTimelapseCard extends LitElement {
   private renderControls(): TemplateResult {
     return html`
       <div class="controls">
-        <ha-icon-button .label=${this.t("controls.previous")} @click=${() => this.stepBy(-1)}>
+        <ha-icon-button
+          class="step"
+          .label=${this.t("controls.previous")}
+          @click=${() => this.stepBy(-1)}
+        >
           <ha-icon icon="mdi:skip-previous"></ha-icon>
         </ha-icon-button>
         <ha-icon-button
@@ -1744,7 +1821,7 @@ export class WebcamTimelapseCard extends LitElement {
         >
           <ha-icon .icon=${this.playing ? "mdi:pause" : "mdi:play"}></ha-icon>
         </ha-icon-button>
-        <ha-icon-button .label=${this.t("controls.next")} @click=${() => this.stepBy(1)}>
+        <ha-icon-button class="step" .label=${this.t("controls.next")} @click=${() => this.stepBy(1)}>
           <ha-icon icon="mdi:skip-next"></ha-icon>
         </ha-icon-button>
 

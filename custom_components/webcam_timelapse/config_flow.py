@@ -58,6 +58,7 @@ from .const import (
     CONF_MAX_WIDTH,
     CONF_QUALITY,
     CONF_RETENTION_DAYS,
+    CONNECTION_KEYS,
     DEFAULT_CAPTURE_INTERVAL,
     DEFAULT_LIGHT_SETTLE,
     DEFAULT_LIGHTS_WINDOW_END,
@@ -190,15 +191,21 @@ def submitted(user_input: dict[str, Any]) -> dict[str, Any]:
     return flat
 
 
-def _build_schema(defaults: dict[str, Any], *, include_url: bool = True) -> vol.Schema:
-    """Build the shared config / reconfigure / options schema."""
+def _build_schema(
+    defaults: dict[str, Any], *, include_connection: bool = True
+) -> vol.Schema:
+    """Build the shared config / reconfigure / options schema.
+
+    `include_connection=False` is the options form: it leaves out the URL,
+    SSL switch and credentials, which belong to reconfigure and reauth.
+    """
     fields: dict[Any, Any] = {
         vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, DEFAULT_NAME)): (
             TextSelector()
         )
     }
 
-    if include_url:
+    if include_connection:
         fields[vol.Required(CONF_URL, default=defaults.get(CONF_URL, ""))] = (
             TextSelector(TextSelectorConfig(type=TextSelectorType.URL))
         )
@@ -272,17 +279,22 @@ def _build_schema(defaults: dict[str, Any], *, include_url: bool = True) -> vol.
             vol.Optional(
                 CONF_FRAMES_PATH, default=defaults.get(CONF_FRAMES_PATH, "")
             ): TextSelector(),
-            vol.Required(
-                CONF_VERIFY_SSL, default=defaults.get(CONF_VERIFY_SSL, True)
-            ): BooleanSelector(),
-            vol.Optional(
-                CONF_USERNAME, default=defaults.get(CONF_USERNAME, "")
-            ): TextSelector(),
-            vol.Optional(
-                CONF_PASSWORD, default=defaults.get(CONF_PASSWORD, "")
-            ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
         }
     )
+    if include_connection:
+        advanced_schema = advanced_schema.extend(
+            {
+                vol.Required(
+                    CONF_VERIFY_SSL, default=defaults.get(CONF_VERIFY_SSL, True)
+                ): BooleanSelector(),
+                vol.Optional(
+                    CONF_USERNAME, default=defaults.get(CONF_USERNAME, "")
+                ): TextSelector(),
+                vol.Optional(
+                    CONF_PASSWORD, default=defaults.get(CONF_PASSWORD, "")
+                ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
+            }
+        )
     fields[vol.Required(_ADVANCED)] = section(advanced_schema, {"collapsed": True})
 
     lights: list[str] = list(defaults.get(CONF_CAPTURE_LIGHTS) or [])
@@ -424,14 +436,28 @@ async def _validate(
 
 
 def _defaults_from(entry: ConfigEntry) -> dict[str, Any]:
-    """Current values, flattened, for pre-filling a form."""
-    return {**entry.data, **entry.options}
+    """Current values, flattened, for pre-filling a form.
+
+    Options win for the settings they may hold; the connection keys are
+    taken from `entry.data` regardless, so a stale copy left in options
+    by a release before minor version 2 can never prefill a form or feed
+    a probe.
+    """
+    return {**entry.data, **entry.options, **_connection_from(entry)}
+
+
+def _connection_from(entry: ConfigEntry) -> dict[str, Any]:
+    """The connection keys as stored in `entry.data`."""
+    return {key: entry.data[key] for key in CONNECTION_KEYS if key in entry.data}
 
 
 class WebcamTimelapseConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Webcam Timelapse."""
 
     VERSION = 1
+    # Minor 2 (2026-11): the options flow stopped writing the connection
+    # keys, and `async_migrate_entry` strips them from older entries.
+    MINOR_VERSION = 2
 
     @staticmethod
     @callback
@@ -481,8 +507,12 @@ class WebcamTimelapseConfigFlow(ConfigFlow, domain=DOMAIN):
                 # async_update_and_abort, NOT async_update_reload_and_abort:
                 # __init__.py's update listener already reloads on this
                 # data change. One reload owner only.
+                #
+                # options={}: the form showed every setting merged, so what
+                # was submitted is the whole truth. Leaving options in place
+                # would let an earlier options save outrank this write.
                 return self.async_update_and_abort(
-                    entry, data=data, title=data[CONF_NAME]
+                    entry, data=data, options={}, title=data[CONF_NAME]
                 )
 
         return self.async_show_form(
@@ -509,7 +539,7 @@ class WebcamTimelapseConfigFlow(ConfigFlow, domain=DOMAIN):
         """Prompt for fresh camera credentials."""
         entry = self._get_reauth_entry()
         errors: dict[str, str] = {}
-        current = _defaults_from(entry)
+        current = entry.data
 
         if user_input is not None:
             probe_error = await async_probe_url(
@@ -554,18 +584,30 @@ class WebcamTimelapseOptionsFlow(OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Adjust cadence, retention and encoding for an existing camera."""
+        """Adjust cadence, retention, encoding and lighting for a camera.
+
+        The URL, SSL switch and credentials are not on this form and are
+        never written to `entry.options`: readers merge options over data,
+        so a copy here would shadow the next reauth or reconfigure.
+        """
+        entry = self.config_entry
         errors: dict[str, str] = {}
-        defaults = {**self.config_entry.data, **self.config_entry.options}
+        defaults = _defaults_from(entry)
 
         if user_input is not None:
-            merged = {**defaults, **submitted(user_input)}
+            # The probe needs the connection; it comes from entry.data only.
+            merged = {**defaults, **submitted(user_input), **_connection_from(entry)}
             data, errors = await _validate(self.hass, merged)
             if not errors:
-                return self.async_create_entry(data=data)
+                options = {
+                    key: value
+                    for key, value in data.items()
+                    if key not in CONNECTION_KEYS
+                }
+                return self.async_create_entry(data=options)
 
         return self.async_show_form(
             step_id="init",
-            data_schema=_build_schema(defaults, include_url=False),
+            data_schema=_build_schema(defaults, include_connection=False),
             errors=errors,
         )

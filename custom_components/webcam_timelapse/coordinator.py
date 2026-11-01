@@ -144,7 +144,16 @@ class WebcamTimelapseCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # two ticks in flight at once, and two concurrent encodes on a Pi
         # is exactly the wrong thing to allow.
         self._capture_lock = asyncio.Lock()
-        self._issue_raised = False
+        # Seeded from the registry, not False: a reload (every options
+        # save is one) builds a new coordinator, and a flag that started
+        # False would skip the delete on recovery and leave the Repairs
+        # banner up for a camera that is back.
+        self._issue_raised = (
+            ir.async_get(hass).async_get_issue(
+                DOMAIN, f"{_ISSUE_CAMERA_OFFLINE}_{entry.entry_id}"
+            )
+            is not None
+        )
         self._unsub: list[Callable[[], None]] = []
 
         super().__init__(

@@ -83,6 +83,34 @@ describe("the grid cell", () => {
   });
 });
 
+describe("fixed-height cell", () => {
+  it("turns the card into a column", () => {
+    const body = declarationsFor("ha-card.fixed-height");
+    expect(body).toMatch(/display:\s*flex/);
+    expect(body).toMatch(/flex-direction:\s*column/);
+  });
+
+  it("lets the stage shrink, down to a floor", () => {
+    const body = declarationsFor("ha-card.fixed-height .stage");
+    expect(body).toMatch(/flex:\s*0 1 auto/);
+    expect(body).toMatch(/min-block-size:\s*\d+px/);
+  });
+
+  it("makes the export panel the one scroller, shrinking before the stage", () => {
+    const wrapper = declarationsFor("ha-card.fixed-height .export");
+    expect(wrapper).toMatch(/flex:\s*0 4 auto/);
+    expect(wrapper).toMatch(/min-block-size:\s*\d+px/);
+    const panel = declarationsFor("ha-card.fixed-height .export-panel");
+    expect(panel).toMatch(/overflow-y:\s*auto/);
+    expect(panel).toMatch(/min-block-size:\s*0/);
+    expect(declarationsFor(".timeline")).not.toMatch(/overflow/);
+  });
+
+  it("keeps the timeline at its height", () => {
+    expect(declarationsFor("ha-card.fixed-height .timeline")).toMatch(/flex-shrink:\s*0/);
+  });
+});
+
 describe("stage stacking", () => {
   it("gives .layers its own stacking context", () => {
     // revealFrame() writes z-index onto the two <img> layers so the
@@ -254,14 +282,30 @@ const SINGLE_BREAKPOINT = Math.min(...BREAKPOINTS);
 const PAIR_BREAKPOINT = Math.max(...BREAKPOINTS);
 
 describe("container queries", () => {
-  // .stage is a size container for the export crop. An unnamed query
-  // resolves against the nearest container, so one written for the card
-  // would quietly start measuring the stage for everything inside it.
-  it("name the card's container on every query", () => {
+  // .stage is a size container for the export crop and the control pill.
+  // An unnamed query resolves against the nearest container, so one
+  // written for the card would quietly start measuring the stage for
+  // everything inside it.
+  it("name a container on every query", () => {
     const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
     const queries = [...css.matchAll(/@container\s+([^{]*)\{/g)].map((match) => match[1]!.trim());
     expect(queries.length).toBeGreaterThan(0);
-    for (const query of queries) expect(query.startsWith("wtl-card ")).toBe(true);
+    for (const query of queries) expect(query).toMatch(/^wtl-(card|stage) /);
+  });
+
+  // The pill is the one thing measured against the stage: in a narrow
+  // cell it drops the step buttons and tightens, so it never runs past
+  // the picture's edges, and every control left keeps a 36 px target.
+  it("tighten the control pill against the stage below 320 px", () => {
+    const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+    const start = css.indexOf("@container wtl-stage (inline-size < 320px)");
+    expect(start).toBeGreaterThan(-1);
+    const next = css.indexOf("@container", start + 1);
+    const block = css.slice(start, next === -1 ? undefined : next);
+    expect(block).toMatch(/\.controls \.step\s*\{[^}]*display:\s*none/);
+    expect(block).toMatch(/\.controls\s*\{[^}]*--ha-icon-button-size:\s*36px/);
+    expect(block).toMatch(/\.controls \.play\s*\{[^}]*--ha-icon-button-size:\s*40px/);
+    expect(block).not.toMatch(/--ha-icon-button-size:\s*(1\d|2\d|3[0-5])px/);
   });
 });
 

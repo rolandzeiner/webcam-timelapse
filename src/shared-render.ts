@@ -50,17 +50,18 @@ export async function checkCardVersionWS(
  * regardless.
  */
 function reloadAfterCacheWipe(): void {
-  try {
-    window.caches
-      ?.keys?.()
-      .then((keys) => {
-        keys.forEach((k) => window.caches?.delete?.(k));
-      })
-      .catch(() => {});
-  } catch {
-    // best-effort cache wipe
-  }
-  window.location.reload();
+  // Reload only once the deletes have finished: left running, they race
+  // the unload and usually lose, and the reload is served the bundle that
+  // was supposed to go. Still best-effort: a Cache API that throws or is
+  // missing skips the wipe, and one that hangs is given a second at most.
+  const wipe = (async () => {
+    const keys = (await window.caches?.keys?.()) ?? [];
+    await Promise.all(keys.map((k) => window.caches?.delete?.(k)));
+  })().catch(() => {});
+  const cap = new Promise<void>((resolve) => {
+    setTimeout(resolve, 1000);
+  });
+  void Promise.race([wipe, cap]).then(() => window.location.reload());
 }
 
 /**

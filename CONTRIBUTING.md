@@ -76,7 +76,11 @@ fails until both move together. The build does not type-check, so `vp check`
 is the only gate between a type error and a shipped bundle.
 
 Card tests live next to the code as `src/**/*.test.ts` and run in plain node
-(settings in `vite.config.ts`'s `test` block).
+(settings in `vite.config.ts`'s `test` block). The two that need a DOM opt
+into happy-dom with a `@vitest-environment happy-dom` line:
+`shared-render.test.ts` (the stale-cache reload banner) and
+`card-refresh.test.ts` (the frame-index poll stopping and restarting with the
+card).
 
 `tsconfig.json`'s `lib` is the card's browser floor. It is `es2023`, so the
 card may call ES2023 built-ins such as `toSorted()`, which the bundle does not

@@ -54,6 +54,46 @@ export const cardStyles = css`
     block-size: 100%;
   }
 
+  /* A fixed-height cell (ha-card.fixed-height, set by the card from
+     _fixedHeight): the card becomes a column and its parts give way in a
+     fixed order. The picture is the one thing that has to stay whole, so
+     the stage shrinks last, the timeline never, and the export panel
+     first -- down to a floor, after which it is the card's one scroller.
+     Nothing here touches auto height: on a masonry view or in the picker
+     the card still takes its natural height. */
+  ha-card.fixed-height {
+    display: flex;
+    flex-direction: column;
+  }
+  /* min-block-size is what lets a flex item shrink below its content;
+     the floor keeps a picture on screen in a cell too short for the rest.
+     The frames are object-fit: contain, so a shorter stage letterboxes
+     them on the sides and the overlays keep their corners. */
+  ha-card.fixed-height .stage {
+    flex: 0 1 auto;
+    min-block-size: 96px;
+  }
+  ha-card.fixed-height .timeline,
+  ha-card.fixed-height .warning {
+    flex-shrink: 0;
+  }
+  /* flex-shrink 4 against the stage's 1: the export absorbs the squeeze
+     first, and only once it sits on its floor does the stage give up a
+     pixel. The wrapper takes the flex, the panel inside it scrolls, so the
+     panel's border stays put while its rows move; the panel's own 12 px
+     padding keeps the chips' focus rings inside the scroll clip. */
+  ha-card.fixed-height .export {
+    display: flex;
+    flex-direction: column;
+    flex: 0 4 auto;
+    min-block-size: 140px;
+  }
+  ha-card.fixed-height .export-panel {
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow-y: auto;
+  }
+
   ha-card {
     overflow: hidden;
   }
@@ -70,6 +110,7 @@ export const cardStyles = css`
        in cq units. Safe as size containment: the stage's height comes
        from its width and aspect-ratio, never from what is inside it. */
     container-type: size;
+    container-name: wtl-stage;
   }
 
   /* The frame as object-fit: contain draws it inside the stage, so the
@@ -491,6 +532,7 @@ export const cardStyles = css`
 
   .speed {
     min-width: 40px;
+    min-block-size: 36px;
     padding: 6px 8px;
     border: 0;
     border-radius: 999px;
@@ -508,6 +550,36 @@ export const cardStyles = css`
   .speed:focus-visible {
     outline: 2px solid var(--wtl-accent);
     outline-offset: 2px;
+  }
+
+  /* Below 320 px the full pill (six 40 px controls and the 46 px play
+     button) would run past the stage's edges. The step buttons go first:
+     the scrubber and the arrow keys still step one frame, and what stays
+     keeps a 36 px target, the play button 40 px. Measured against the
+     stage, which is the pill's containing block, not the card. */
+  @container wtl-stage (inline-size < 320px) {
+    .controls {
+      gap: 0;
+      padding: 2px 4px;
+      --ha-icon-button-size: 36px;
+      --mdc-icon-button-size: 36px;
+      --mdc-icon-size: 18px;
+    }
+
+    .controls .step {
+      display: none;
+    }
+
+    .controls .play {
+      --ha-icon-button-size: 40px;
+      --mdc-icon-button-size: 40px;
+      --mdc-icon-size: 22px;
+    }
+
+    .speed {
+      min-width: 36px;
+      padding: 6px 4px;
+    }
   }
 
   /* --- scrubber ---------------------------------------------------- */
@@ -782,6 +854,15 @@ export const cardStyles = css`
     font-size: var(--ha-font-size-s, 12px);
   }
 
+  /* The missing-entity alert: under the stage it sits flush against the
+     timeline's own top margin; alone in the card it needs the bottom too. */
+  .warning {
+    padding: 12px 12px 0;
+  }
+  .warning:last-child {
+    padding-bottom: 12px;
+  }
+
   .export button,
   .export-download,
   .export-watch {
@@ -800,6 +881,11 @@ export const cardStyles = css`
 
   .export-panel {
     display: grid;
+    /* minmax(0, …), not the implicit auto track: auto can't shrink below
+       the widest row's min-content, and the size slider's is wider than a
+       six-column cell, which would push every row past the panel's edge.
+       Capped, each row wraps inside the panel instead. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
     margin-top: 4px;
     padding: 12px;
@@ -886,6 +972,9 @@ export const cardStyles = css`
   /* Indented under its checkbox, so the size reads as belonging to it. */
   .export-size {
     display: inline-flex;
+    /* The slider and its value drop to a second line where the row is
+       narrower than the three of them (a six-column cell). */
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin-left: 8px;

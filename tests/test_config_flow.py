@@ -113,6 +113,15 @@ def user_input(**overrides: Any) -> dict[str, Any]:
     }
 
 
+def options_input(**overrides: Any) -> dict[str, Any]:
+    """`user_input` minus the connection fields the options form leaves out."""
+    form = user_input(**overrides)
+    form.pop(CONF_URL)
+    for key in (CONF_VERIFY_SSL, CONF_USERNAME, CONF_PASSWORD):
+        form["advanced"].pop(key, None)
+    return form
+
+
 # --- pure helpers ---------------------------------------------------------
 
 
@@ -425,6 +434,29 @@ async def test_reconfigure_updates_the_entry(
     assert entry.title == "Renamed"
 
 
+async def test_reconfigure_clears_stale_options(
+    hass: HomeAssistant, mock_probe: AsyncMock, mock_fetch: AsyncMock
+) -> None:
+    """Reconfigure shows every setting merged, so its write is the whole truth.
+
+    Options left in place would outrank it: a retention saved through
+    Configure would silently win over the one just typed into Reconfigure.
+    """
+    entry = make_entry(**{CONF_URL: URL})
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(entry, options={CONF_RETENTION_DAYS: 30})
+
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input(**{CONF_RETENTION_DAYS: 7})
+    )
+    await hass.async_block_till_done()
+
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.options == {}
+    assert {**entry.data, **entry.options}[CONF_RETENTION_DAYS] == 7
+
+
 async def test_reconfigure_to_a_different_camera_aborts(
     hass: HomeAssistant, mock_probe: AsyncMock
 ) -> None:
@@ -444,24 +476,91 @@ async def test_reconfigure_to_a_different_camera_aborts(
 # --- options --------------------------------------------------------------
 
 
-async def test_options_flow_keeps_the_url(
+async def test_options_flow_stores_only_settings(
     hass: HomeAssistant, mock_probe: AsyncMock, mock_fetch: AsyncMock
 ) -> None:
-    """The options form omits the URL, so it must come from existing data."""
-    entry = make_entry(**{CONF_URL: URL})
+    """The connection stays in entry.data; options never get a copy.
+
+    Readers merge options over data, so a URL or password saved here would
+    outrank the next reconfigure or reauth.
+    """
+    entry = make_entry(**{CONF_URL: URL, CONF_USERNAME: "cam", CONF_PASSWORD: "pw"})
     entry.add_to_hass(hass)
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["step_id"] == "init"
+    advanced = next(
+        value
+        for key, value in result["data_schema"].schema.items()
+        if key == "advanced"
+    )
+    assert not {CONF_VERIFY_SSL, CONF_USERNAME, CONF_PASSWORD} & {
+        str(key) for key in advanced.schema.schema
+    }
 
-    form = user_input(**{CONF_RETENTION_DAYS: 30})
-    form.pop(CONF_URL)
-    result = await hass.config_entries.options.async_configure(result["flow_id"], form)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], options_input(**{CONF_RETENTION_DAYS: 30})
+    )
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_RETENTION_DAYS] == 30
-    assert result["data"][CONF_URL] == URL
+    assert not {CONF_URL, CONF_VERIFY_SSL, CONF_USERNAME, CONF_PASSWORD} & set(
+        entry.options
+    )
+    assert entry.data[CONF_URL] == URL
+    assert entry.data[CONF_PASSWORD] == "pw"
+
+
+async def test_options_flow_probes_with_the_stored_connection(
+    hass: HomeAssistant, mock_probe: AsyncMock, mock_fetch: AsyncMock
+) -> None:
+    """A stale credential copy in options (pre minor 2) must not reach the probe."""
+    entry = make_entry(**{CONF_URL: URL, CONF_USERNAME: "cam", CONF_PASSWORD: "new"})
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        entry, options={CONF_USERNAME: "cam", CONF_PASSWORD: "stale"}
+    )
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], options_input()
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert mock_probe.call_args.kwargs["password"] == "new"
+    assert CONF_PASSWORD not in entry.options
+
+
+async def test_reauth_after_options_change_uses_new_credentials(
+    hass: HomeAssistant, mock_probe: AsyncMock, mock_fetch: AsyncMock
+) -> None:
+    """The bug this guards: an options save, then a rotated password.
+
+    Before minor 2 the options flow stored the whole record, so the merged
+    config the coordinator reads kept the old password after reauth.
+    """
+    entry = make_entry(**{CONF_URL: URL, CONF_USERNAME: "cam", CONF_PASSWORD: "old"})
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], options_input(**{CONF_RETENTION_DAYS: 30})
+    )
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    result = await entry.start_reauth_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_USERNAME: "cam", CONF_PASSWORD: "rotated"}
+    )
+    await hass.async_block_till_done()
+    assert result["reason"] == "reauth_successful"
+
+    merged = {**entry.data, **entry.options}
+    assert merged[CONF_PASSWORD] == "rotated"
+    assert merged[CONF_RETENTION_DAYS] == 30
 
 
 async def test_options_flow_can_remove_the_last_light(
@@ -472,8 +571,7 @@ async def test_options_flow_can_remove_the_last_light(
     entry.add_to_hass(hass)
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    form = user_input()  # no CONF_CAPTURE_LIGHTS: the picker was emptied
-    form.pop(CONF_URL)
+    form = options_input()  # no CONF_CAPTURE_LIGHTS: the picker was emptied
     result = await hass.config_entries.options.async_configure(result["flow_id"], form)
     await hass.async_block_till_done()
 
@@ -512,9 +610,9 @@ async def test_options_flow_surfaces_probe_errors(
     mock_probe.return_value = "cannot_connect"
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    form = user_input()
-    form.pop(CONF_URL)
-    result = await hass.config_entries.options.async_configure(result["flow_id"], form)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], options_input()
+    )
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "cannot_connect"}
