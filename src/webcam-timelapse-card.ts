@@ -1354,6 +1354,18 @@ export class WebcamTimelapseCard extends LitElement {
 
     const slot = this.index.t0 === null ? null : this.index.t0 + this.position * this.index.step;
 
+    // A camera that is not in hass.states (renamed, removed, integration
+    // not loaded) gets the portfolio's warning in place of the stage: the
+    // picture would only ever be the empty state, and the id in the alert
+    // is what the user needs to fix the config.
+    if (!(this.config.camera_entity in this.hass.states)) {
+      return html`
+        <ha-card .header=${this.config.title ?? nothing}>
+          ${this.renderMissing([this.config.camera_entity])}
+        </ha-card>
+      `;
+    }
+
     return html`
       <ha-card
         .header=${this.config.title ?? nothing}
@@ -1361,6 +1373,7 @@ export class WebcamTimelapseCard extends LitElement {
       >
         ${this.preview ? nothing : renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
         ${this.renderStage(slot)}
+        ${this.renderMissingReadouts()}
         ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}
         ${
           hasFrames(this.index) && this.config.show_export && this.exportOpen
@@ -1369,6 +1382,34 @@ export class WebcamTimelapseCard extends LitElement {
         }
       </ha-card>
     `;
+  }
+
+  /** The house warning for entities missing from `hass.states`. */
+  private renderMissing(ids: string[]): TemplateResult {
+    const text = localize("common.entity_unavailable", this.language, "{entity}", ids.join(", "));
+    return html`
+      <div class="warning">
+        <ha-alert alert-type="warning">${text}</ha-alert>
+      </div>
+    `;
+  }
+
+  /**
+   * One alert under the stage naming every readout entity that is not in
+   * hass.states. The overlay rows themselves stay as they are (id and a
+   * dash), so the picture keeps its layout; the alert says why the dash.
+   */
+  private renderMissingReadouts(): TemplateResult | typeof nothing {
+    if (!this.hass) return nothing;
+    const states = this.hass.states;
+    const missing = [
+      ...new Set(
+        overlayEntities(this.config)
+          .map((row) => row.entity)
+          .filter((id) => !(id in states)),
+      ),
+    ];
+    return missing.length === 0 ? nothing : this.renderMissing(missing);
   }
 
   private renderStage(slot: number | null): TemplateResult {

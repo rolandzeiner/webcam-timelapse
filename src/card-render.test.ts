@@ -34,7 +34,7 @@ const INDEX: FrameIndex = {
   newest_slot: null,
 };
 
-function hass(states: string[]): HomeAssistant {
+function hass(states: string[], language = "en"): HomeAssistant {
   const callWS = vi.fn((msg: { type: string }) =>
     Promise.resolve(
       msg.type === WS_INDEX
@@ -48,7 +48,7 @@ function hass(states: string[]): HomeAssistant {
     states: Object.fromEntries(
       states.map((id) => [id, { entity_id: id, state: "idle", attributes: {} }]),
     ),
-    locale: { language: "en" },
+    locale: { language },
     callWS,
   } as unknown as HomeAssistant;
 }
@@ -91,5 +91,42 @@ describe("the fixed-height class", () => {
   it("is not set outside a sections cell, whatever is stored", async () => {
     const el = await mount(hass(["camera.garden"]), { grid_options: { rows: 6 } });
     expect(card(el).classList.contains("fixed-height")).toBe(false);
+  });
+});
+
+describe("the missing-entity warning", () => {
+  const alerts = (el: Card): HTMLElement[] =>
+    Array.from(el.shadowRoot!.querySelectorAll<HTMLElement>('ha-alert[alert-type="warning"]'));
+
+  it("replaces the stage when the camera is not in hass.states", async () => {
+    const el = await mount(hass([]));
+    expect(el.shadowRoot!.querySelector(".stage")).toBeNull();
+    expect(alerts(el)).toHaveLength(1);
+    expect(alerts(el)[0]!.textContent).toContain("Entity not available: camera.garden");
+  });
+
+  it("speaks the user's language", async () => {
+    const el = await mount(hass([], "de"));
+    expect(alerts(el)[0]!.textContent).toContain("Entität nicht verfügbar: camera.garden");
+  });
+
+  it("keeps the stage and lists every missing readout entity under it", async () => {
+    const el = await mount(hass(["camera.garden"]), {
+      entities: [{ entity: "sensor.temp" }, { entity: "sensor.hum" }, { entity: "sensor.temp" }],
+    });
+    expect(el.shadowRoot!.querySelector(".stage")).not.toBeNull();
+    expect(alerts(el)).toHaveLength(1);
+    expect(alerts(el)[0]!.textContent).toContain("Entity not available: sensor.temp, sensor.hum");
+    const stage = el.shadowRoot!.querySelector(".stage")!;
+    expect(
+      stage.compareDocumentPosition(alerts(el)[0]!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("stays silent while every entity is present", async () => {
+    const el = await mount(hass(["camera.garden", "sensor.temp"]), {
+      entities: [{ entity: "sensor.temp" }],
+    });
+    expect(alerts(el)).toHaveLength(0);
   });
 });

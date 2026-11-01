@@ -822,6 +822,15 @@ export const cardStyles = css`
     font-size: var(--ha-font-size-s, 12px);
   }
 
+  /* The missing-entity alert: under the stage it sits flush against the
+     timeline's own top margin; alone in the card it needs the bottom too. */
+  .warning {
+    padding: 12px 12px 0;
+  }
+  .warning:last-child {
+    padding-bottom: 12px;
+  }
+
   .export button,
   .export-download,
   .export-watch {

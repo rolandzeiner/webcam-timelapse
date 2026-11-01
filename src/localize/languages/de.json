@@ -1,4 +1,7 @@
 {
+  "common": {
+    "entity_unavailable": "Entität nicht verfügbar: {entity}"
+  },
   "empty": {
     "no_frames": "Noch keine Bilder gespeichert.",
     "first_soon": "Das erste erscheint bei der nächsten Aufnahme.",
