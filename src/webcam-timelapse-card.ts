@@ -329,6 +329,9 @@ export class WebcamTimelapseCard extends LitElement {
     // A dashboard view that is navigated away from and back re-attaches
     // the same element, with the panel still marked open.
     if (this.exportOpen) void this.subscribeExport();
+    // The disconnect cleared the index timer, and willUpdate only fetches
+    // into an empty index, so nothing else would start the poll again.
+    if (this.hasUpdated && this.hass && this.config) void this.refreshIndex();
   }
 
   override disconnectedCallback(): void {
@@ -412,7 +415,9 @@ export class WebcamTimelapseCard extends LitElement {
       this.indexError = error instanceof Error ? error.message : "Could not load the timeline.";
     }
 
-    this.scheduleIndexRefresh();
+    // Only while connected: an answer that lands after removal would
+    // otherwise start a poll nothing ever clears.
+    if (this.isConnected) this.scheduleIndexRefresh();
   }
 
   /**
