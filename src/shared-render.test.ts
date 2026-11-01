@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
-import { checkCardVersionWS } from "./shared-render";
+import { checkCardVersionWS, renderVersionBanner } from "./shared-render";
 import type { HomeAssistant } from "./types";
 
 function hassAnswering(callWS: () => Promise<unknown>): HomeAssistant {
@@ -38,5 +38,44 @@ describe("checkCardVersionWS", () => {
     expect(
       await checkCardVersionWS({ states: {} }, "webcam_timelapse/card_version", "0.6.1"),
     ).toBeNull();
+  });
+});
+
+describe("the reload button", () => {
+  // Started and left running, the cache deletes raced the unload and
+  // usually lost, so the reload was served the same cached bundle. The
+  // tests run in node, so the button's click handler is taken from the
+  // banner template and `window` is a stub.
+  it("reloads only once the cache wipe has finished", async () => {
+    const order: string[] = [];
+    let finishDelete!: () => void;
+    const caches = {
+      keys: async () => ["bundle"],
+      delete: () =>
+        new Promise<boolean>((resolve) => {
+          finishDelete = () => {
+            order.push("deleted");
+            resolve(true);
+          };
+        }),
+    };
+    const reload = vi.fn(() => {
+      order.push("reload");
+    });
+    vi.stubGlobal("window", { caches, location: { reload } });
+    try {
+      const banner = renderVersionBanner("0.8.0", (key) => key);
+      const onClick = (banner as { values: unknown[] }).values.find(
+        (v): v is () => void => typeof v === "function",
+      );
+      onClick!();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(order).toEqual([]);
+      finishDelete();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(order).toEqual(["deleted", "reload"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
