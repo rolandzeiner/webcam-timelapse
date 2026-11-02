@@ -35,7 +35,7 @@ ruff==0.17.3
 # collection.
 #
 # This pin MUST equal whatever `homeassistant/components/camera/manifest.json`
-# requires — currently PyTurboJPEG==1.8.3 on HA 2026.7. It tracks HA core, not
+# requires — currently PyTurboJPEG==1.8.3 on HA 2026.10. It tracks HA core, not
 # the newest release: testing against a decoder users never run defeats the
 # point of pinning it. Verify with:
 #   python -c "import json;print(json.load(open('.venv/lib/python3.14/site-packages/homeassistant/components/camera/manifest.json'))['requirements'])"
