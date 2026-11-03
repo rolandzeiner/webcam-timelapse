@@ -332,6 +332,20 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
     color: #fff;
     backdrop-filter: blur(2px);
     font-variant-numeric: tabular-nums;
+    /* Taller than the picture, the readings scroll inside it instead of
+       running off the stage, where the stage's clip cut them away. The
+       cap keeps the block clear of the badge row at the top, and does
+       nothing while the readings fit. Contained, so reaching the end does
+       not scroll the dashboard behind the card. Border-box, so the caps
+       and max-width here and below include the padding; under content-box
+       the block runs 16 px past its cap, onto the pill, and 20 px past its
+       max-width. */
+    box-sizing: border-box;
+    max-block-size: calc(100% - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
   }
 
   /* The second block takes the opposite corner. Nothing else changes:
@@ -347,6 +361,9 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
      the thing folding it away was meant to clear. */
   .readout.folded {
     padding: 2px;
+    /* The button alone never overflows, and a scroll clip 2 px out would
+       cut its focus ring. */
+    overflow: visible;
   }
 
   /* Heading and fold control on one line. The heading is optional, so
@@ -427,6 +444,10 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
        inherited line-height the row's height varies with the theme, and
        a centred icon drifts off the text by however much it differs. */
     line-height: 1.25;
+    /* In readings that scroll, focus brings the row in to this margin
+       rather than flush with the edge, so its 3 px ring (below) stays
+       inside the scroller's clip. */
+    scroll-margin-block: 4px;
   }
 
   /* display is explicit because a custom element is inline by default,
@@ -1503,21 +1524,37 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
       left: 8px;
       right: 8px;
       display: flex;
-      /* Reversed against DOM order so the right-hand block sits on top.
-         It is the block that was there first, and the one a single-block
-         card would have shown on its own. */
-      flex-direction: column-reverse;
+      flex-direction: column;
       align-items: center;
       gap: 8px;
+      /* The stack is the one scroller here, stopping above the control
+         pill (a 46 px play button in 2 px of padding, 8 px off the
+         bottom) with a gap. */
+      max-block-size: calc(100% - 74px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
     }
 
     /* Back into normal flow so the column can stack them. The corner pins
        are inert on a static box, but the centring transform below is not
-       — left unset it would drag both blocks half their width off centre. */
+       — left unset it would drag both blocks half their width off centre.
+       Uncapped, so a block never scrolls inside the scrolling stack. */
     .readouts.pair .readout {
       position: static;
       transform: none;
       max-width: 100%;
+      max-block-size: none;
+      overflow: visible;
+    }
+
+    /* Moved below the right-hand block, against DOM order. That block was
+       there first, and is the one a single-block card would have shown on
+       its own. By order, not column-reverse: a column-reverse scroller
+       starts scrolled to its end, which would hide the top block. */
+    .readouts.pair .readout.left {
+      order: 1;
     }
 
   }
@@ -1544,6 +1581,9 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
       left: 50%;
       transform: translateX(-50%);
       max-width: calc(100% - 16px);
+      /* Top-anchored now, so the cap stops it above the control pill
+         instead (see .readouts.pair). */
+      max-block-size: calc(100% - 74px);
     }
 
     /* A card configured with only the left block still gets one centred
