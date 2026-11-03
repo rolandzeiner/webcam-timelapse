@@ -1,9 +1,10 @@
 /**
- * Frame-index maths: slot ↔ time ↔ URL, gap handling, preloading.
+ * Frame-index maths: slot ↔ time ↔ URL, gap handling, fetching and
+ * preloading, playback cadence.
  *
- * Pure module — no DOM, no Lit, no `hass`. Everything the scrubber needs
- * to answer "which frame is at position i, and does it exist?" lives here
- * so it can be unit-tested without mounting a card.
+ * No Lit and no `hass` (`FrameCache` is handed its fetcher). Everything
+ * the scrubber needs to answer "which frame is at position i, and does it
+ * exist?" lives here so it can be unit-tested without mounting a card.
  *
  * The archive is addressed as a DENSE grid: frame `i` is always at
  * `t0 + i * step`, whether or not it exists. Holes are delivered
@@ -56,7 +57,10 @@ export function positionAt(index: FrameIndex, ms: number): number {
   return Math.min(Math.max(raw, 0), index.count - 1);
 }
 
-/** URL of the frame at grid position `i`. */
+/**
+ * Path of the frame at grid position `i` in the authenticated frame view.
+ * An `<img>` cannot send the token it needs; fetch it through `FrameCache`.
+ */
 export function urlAt(index: FrameIndex, i: number): string | null {
   const slot = slotAt(index, i);
   return slot === null ? null : `${index.base}${slot}${index.ext}`;
@@ -106,10 +110,10 @@ export function hasFrames(index: FrameIndex): boolean {
 /**
  * Object URLs the frame cache keeps alive at once.
  *
- * Only has to cover what can be in use together: the deepest prefetch
- * window (16), both layers, and a frame mid-swap. Three times that, so a
- * URL is never evicted, and revoked, while a layer is still loading it.
- * At ~50 KB a frame that is a few megabytes.
+ * Three times the deepest prefetch window (`prefetchDepth` caps it at
+ * 16), which leaves room for both layers and a frame mid-swap, so during
+ * playback a URL is not evicted, and revoked, while a layer is still
+ * loading it. At ~50 KB a frame that is a few megabytes.
  */
 const FRAME_CACHE_SIZE = 48;
 
@@ -123,9 +127,9 @@ const FRAME_CACHE_SIZE = 48;
  * the next time, across reloads too.
  *
  * Bounded, because every object URL pins its blob in memory until it is
- * revoked; the least recently used one goes first. A failed fetch is not
- * remembered, because a frame that was missing or slow a moment ago may be
- * there now.
+ * revoked; the least recently used one goes first. A failed fetch (a
+ * non-OK status or a network error) is not remembered, because a frame
+ * that was missing a moment ago may have been written since.
  */
 export class FrameCache {
   private readonly entries = new Map<string, Promise<string | null>>();
@@ -153,6 +157,7 @@ export class FrameCache {
     return pending;
   }
 
+  /** Revokes every URL, the ones the layers show included: for when the card leaves the page. */
   clear(): void {
     for (const url of this.entries.values()) revokeWhenSettled(url);
     this.entries.clear();
@@ -184,7 +189,7 @@ function revokeWhenSettled(url: Promise<string | null>): void {
 }
 
 /**
- * A bounded ring of in-flight `Image` objects.
+ * A bounded ring of `Image` objects decoding frames `FrameCache` has fetched.
  *
  * Deliberately a *ring*, not a cache. `FrameCache` holds the fetched
  * frames, over the browser's own HTTP cache — the integration serves
@@ -328,14 +333,11 @@ export function nextPlaybackPosition(
  * Returns only the positions that have just entered the window, never the
  * ones already asked for. That distinction is the whole point. Playback
  * calls this on every tick, and consecutive windows overlap almost
- * entirely — re-requesting the full depth each time meant building
- * `depth` throwaway `Image` objects per tick, which at 32x is ~485 a
- * second against a cold cache. They saturate the browser's per-origin
- * connection pool, and the frame playback is actually waiting on ends up
- * queued behind hundreds of speculative ones, so the picture freezes
- * until the HTTP cache warms up. Asking only for what is new costs one
- * request per tick in steady state, because the window slides forward by
- * exactly one stride.
+ * entirely, so re-requesting the full depth would hand the ring `depth`
+ * new `Image` objects per tick (~485 a second at 32x) for frames it
+ * already holds. Asking only for what is new costs one request per tick
+ * in steady state, because the window slides forward by exactly one
+ * stride.
  *
  * `through` is the furthest position already requested. It needs no reset
  * from the caller: a playhead that jumped backwards leaves it beyond the
@@ -375,8 +377,8 @@ export function prefetchWindow(
  * Whether an `<img>` is actually holding the frame that was just asked for.
  *
  * - `ready` — the element holds the requested frame, decoded.
- * - `failed` — the request finished and there is no image: a 404, a pruned
- *   frame, a proxy with nothing cached yet.
+ * - `failed` — the request finished and there is no image: a live proxy
+ *   with nothing cached yet, or an archived frame that would not decode.
  * - `pending` — the element is not holding the requested frame *yet*. It
  *   is still showing whatever it had before.
  */
@@ -428,7 +430,7 @@ export const FADE_MAX_SPEED = 4;
 /**
  * Whether a card configured to autoplay may actually start.
  *
- * Split out from the card so the one rule with a legal-ish flavour to it
+ * Lives here rather than in the card so the one rule with a legal-ish flavour to it
  * is testable: prefers-reduced-motion overrides the config outright. A
  * card that begins animating on its own is precisely what that setting
  * exists to prevent, and the option's help text promises the override.

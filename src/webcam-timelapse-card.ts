@@ -295,7 +295,7 @@ export class WebcamTimelapseCard extends LitElement {
     // Size the ring for the speed the card actually starts at. Left at the
     // 1x default it held four slots while the window asked for sixteen, so
     // three quarters of every prefetch was dropped the moment it was
-    // created and its fetch could be cancelled mid-flight.
+    // created, its decode thrown away.
     this.ring = new PrefetchRing(prefetchDepth(this.speed));
   }
 
