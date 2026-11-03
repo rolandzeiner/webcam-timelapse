@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
   BASE_FPS,
@@ -6,6 +6,7 @@ import {
   FADE_MAX_SPEED,
   FADE_MS,
   fadeDurationMs,
+  FrameCache,
   frameReadiness,
   type FrameIndex,
   hasFrames,
@@ -523,5 +524,85 @@ describe("fadeDurationMs", () => {
     for (const state of [playing, idle]) {
       expect(fadeDurationMs(1, budget(1), { ...state, reducedMotion: true })).toBe(0);
     }
+  });
+});
+
+describe("FrameCache", () => {
+  let created = 0;
+  const revoked: string[] = [];
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    created = 0;
+    revoked.length = 0;
+  });
+
+  function cache(fetchFrame: (path: string) => Promise<Response>, capacity?: number): FrameCache {
+    vi.spyOn(URL, "createObjectURL").mockImplementation(() => `blob:frame-${++created}`);
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation((href) => {
+      revoked.push(href);
+    });
+    return new FrameCache(fetchFrame, capacity);
+  }
+
+  const ok = (): Promise<Response> => Promise.resolve(new Response(new Blob(["webp"])));
+
+  it("fetches a frame once, however often it is asked for", async () => {
+    const fetchFrame = vi.fn(ok);
+    const frames = cache(fetchFrame);
+
+    const [first, second] = await Promise.all([frames.get("/f/1.webp"), frames.get("/f/1.webp")]);
+
+    expect(first).toBe("blob:frame-1");
+    expect(second).toBe(first);
+    expect(fetchFrame).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a missing frame as null and asks again next time", async () => {
+    // The frame may simply not have been written yet; a cached failure
+    // would leave the card showing an error for a frame that now exists.
+    const fetchFrame = vi
+      .fn<(path: string) => Promise<Response>>()
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockImplementation(ok);
+    const frames = cache(fetchFrame);
+
+    expect(await frames.get("/f/1.webp")).toBeNull();
+    expect(await frames.get("/f/1.webp")).toBe("blob:frame-1");
+    expect(fetchFrame).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a network failure as null", async () => {
+    const frames = cache(() => Promise.reject(new TypeError("offline")));
+
+    expect(await frames.get("/f/1.webp")).toBeNull();
+  });
+
+  it("evicts the least recently used frame and revokes its URL", async () => {
+    const fetchFrame = vi.fn(ok);
+    const frames = cache(fetchFrame, 2);
+
+    await frames.get("/f/a.webp");
+    await frames.get("/f/b.webp");
+    await frames.get("/f/a.webp"); // touched, so b is now the oldest
+    await frames.get("/f/c.webp");
+    await Promise.resolve();
+
+    expect(revoked).toEqual(["blob:frame-2"]);
+    await frames.get("/f/a.webp");
+    expect(fetchFrame).toHaveBeenCalledTimes(3);
+    await frames.get("/f/b.webp");
+    expect(fetchFrame).toHaveBeenCalledTimes(4);
+  });
+
+  it("revokes every URL on clear", async () => {
+    const frames = cache(ok);
+    await frames.get("/f/a.webp");
+    await frames.get("/f/b.webp");
+
+    frames.clear();
+    await Promise.resolve();
+
+    expect(revoked.toSorted()).toEqual(["blob:frame-1", "blob:frame-2"]);
   });
 });

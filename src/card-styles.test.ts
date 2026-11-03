@@ -281,6 +281,23 @@ const BREAKPOINTS = [
 const SINGLE_BREAKPOINT = Math.min(...BREAKPOINTS);
 const PAIR_BREAKPOINT = Math.max(...BREAKPOINTS);
 
+/** The `N` of a `max-block-size: calc(100% - Npx)` cap. */
+function capOf(body: string): number {
+  return Number(/max-block-size:\s*calc\(100% - (\d+)px\)/.exec(body)?.[1]);
+}
+
+/**
+ * What a top-anchored readout has to leave free so it ends above the
+ * control pill: its own top offset, the pill's bottom offset, its block
+ * padding and the play button, the tallest control in it. Read off the
+ * stylesheet, so resizing the pill without moving the cap fails here.
+ */
+const PILL_CLEARANCE =
+  Number(/top:\s*(\d+)px/.exec(narrowRule(".readout"))?.[1]) +
+  px(".controls", "bottom") +
+  2 * Number(/padding:\s*(\d+)px/.exec(declarationsFor(".controls"))?.[1]) +
+  px(".controls .play", "--ha-icon-button-size");
+
 describe("container queries", () => {
   // .stage is a size container for the export crop and the control pill.
   // An unnamed query resolves against the nearest container, so one
@@ -351,6 +368,10 @@ describe("narrow layout", () => {
     expect(SINGLE_BREAKPOINT).toBeGreaterThanOrEqual(620);
   });
 
+  it("stops the readout above the control pill", () => {
+    expect(capOf(narrowRule(".readout"))).toBeGreaterThanOrEqual(PILL_CLEARANCE);
+  });
+
   it("re-centres a lone left block", () => {
     // .readout.left pins the opposite edge and is more specific than the
     // centring rule, so without an override here it would sit at the
@@ -389,11 +410,31 @@ describe("two readout blocks", () => {
 
   it("stacks the pair with the right-hand block on top when narrow", () => {
     // Roland's call: the block that was there first stays on top. DOM
-    // order is left-then-right, so column-reverse is what delivers that.
-    // A plain `column` would silently invert it.
+    // order is left-then-right, so the left block is moved after it.
+    // Dropping the order would silently invert it; column-reverse would
+    // too, once the stack scrolls, by starting it scrolled to the end.
     const body = narrowRule(".readouts.pair", PAIR_BREAKPOINT);
-    expect(body).toMatch(/flex-direction:\s*column-reverse/);
+    expect(body).toMatch(/flex-direction:\s*column\s*;/);
     expect(body).toMatch(/align-items:\s*center/);
+    expect(narrowRule(".readouts.pair .readout.left", PAIR_BREAKPOINT)).toMatch(/order:\s*1/);
+  });
+
+  it("scrolls the stack as one when it outgrows the picture", () => {
+    // One scroller: the stack scrolls, the blocks in it never do.
+    const stack = narrowRule(".readouts.pair", PAIR_BREAKPOINT);
+    expect(stack).toMatch(/max-block-size:\s*calc\(100% - \d+px\)/);
+    expect(stack).toMatch(/overflow-y:\s*auto/);
+    expect(stack).toMatch(/overscroll-behavior:\s*contain/);
+
+    const block = narrowRule(".readouts.pair .readout", PAIR_BREAKPOINT);
+    expect(block).toMatch(/max-block-size:\s*none/);
+    expect(block).toMatch(/overflow:\s*visible/);
+  });
+
+  it("stops the stack above the control pill", () => {
+    expect(capOf(narrowRule(".readouts.pair", PAIR_BREAKPOINT))).toBeGreaterThanOrEqual(
+      PILL_CLEARANCE,
+    );
   });
 
   it("returns the stacked blocks to normal flow", () => {
@@ -424,6 +465,32 @@ describe("two readout blocks", () => {
     const top = (body: string): string | undefined => /top:\s*(\d+)px/.exec(body)?.[1];
 
     expect(top(narrowRule(".readouts.pair", PAIR_BREAKPOINT))).toBe(top(declarationsFor(".stamp")));
+  });
+});
+
+describe("readings taller than the picture", () => {
+  // The stage clips, so a block that outgrew it lost its bottom rows
+  // under the control pill with no way to reach them, and folding the
+  // only block hid all of them.
+  it("scroll inside the stage instead of running off it", () => {
+    const body = declarationsFor(".readout");
+    expect(body).toMatch(/max-block-size:\s*calc\(100% - \d+px\)/);
+    expect(body).toMatch(/overflow-y:\s*auto/);
+    expect(body).toMatch(/overscroll-behavior:\s*contain/);
+  });
+
+  it("bring a focused row in with its ring inside the scroller", () => {
+    const focus = declarationsFor(".readout-row:focus-visible");
+    const ring =
+      Number(/outline:\s*(\d+)px/.exec(focus)?.[1]) +
+      px(".readout-row:focus-visible", "outline-offset");
+    expect(px(".readout-row", "scroll-margin-block")).toBeGreaterThanOrEqual(ring);
+  });
+
+  it("leave a folded block unclipped", () => {
+    // The button alone in 2 px of padding: a scroll clip there cuts its
+    // focus ring.
+    expect(declarationsFor(".readout.folded")).toMatch(/overflow:\s*visible/);
   });
 });
 

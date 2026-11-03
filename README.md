@@ -110,7 +110,7 @@ Measured on a 1200×900 source scaled to 1024 px:
 
 **Quality costs more than frequency.** Going from 78 to 95 roughly triples the size, for detail a 1024 px timelapse frame won't show.
 
-Frames live in `config/.cache/webcam_timelapse/<entry_id>/`. Home Assistant skips that folder when it makes a backup, so a large archive won't bloat your backups.
+Unless you set a storage folder, frames live in `config/.cache/webcam_timelapse/<entry_id>/`. Home Assistant skips that folder when it makes a backup, so a large archive won't bloat your backups.
 
 ## Entities
 
@@ -256,6 +256,8 @@ entities_left:
   - entity: sensor.aussentemperatur
 ```
 
+**Readings that don't fit the picture scroll inside it**, above the playback controls, so on a phone or a short cell none of them is cut off.
+
 **The eye in each block's corner folds it away** to show the picture underneath, and brings it back. Each block folds on its own. Folding isn't saved: a reload shows both blocks again, so the next person at a wall tablet doesn't find a card that looks broken.
 
 ### Night shading
@@ -359,7 +361,6 @@ actions:
 ## Known limitations
 
 - **No backfill.** History starts when you add the camera. Most webcams publish only a current-image URL, so there's nothing earlier to fetch.
-- **Frames are served without authentication**, at the same level as Home Assistant's `/local/` folder. The source is a publicly published webcam, so storing it locally doesn't make it more private. Use the camera entity if you need an authenticated path.
 - **No video stream.** This fetches still images: no RTSP, HLS or MJPEG source.
 - **One image per camera.** Multi-view cameras need one entry per view.
 

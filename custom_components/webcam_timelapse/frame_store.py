@@ -51,8 +51,8 @@ def write_frame(frames_dir: Path, slot: int, data: bytes) -> Path:
     """Write one frame atomically and return its path.
 
     Writes to a sibling ``.tmp`` file and then ``os.replace``s it into
-    place, so a reader (the static-file handler serving the card) can
-    never observe a half-written frame. The temp file is in the same
+    place, so a reader (the frame view serving the card) can never observe
+    a half-written frame. The temp file is in the same
     directory, hence the same filesystem, which is what makes the replace
     atomic.
     """

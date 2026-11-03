@@ -1,9 +1,10 @@
 /**
- * Frame-index maths: slot ↔ time ↔ URL, gap handling, preloading.
+ * Frame-index maths: slot ↔ time ↔ URL, gap handling, fetching and
+ * preloading, playback cadence.
  *
- * Pure module — no DOM, no Lit, no `hass`. Everything the scrubber needs
- * to answer "which frame is at position i, and does it exist?" lives here
- * so it can be unit-tested without mounting a card.
+ * No Lit and no `hass` (`FrameCache` is handed its fetcher). Everything
+ * the scrubber needs to answer "which frame is at position i, and does it
+ * exist?" lives here so it can be unit-tested without mounting a card.
  *
  * The archive is addressed as a DENSE grid: frame `i` is always at
  * `t0 + i * step`, whether or not it exists. Holes are delivered
@@ -56,7 +57,10 @@ export function positionAt(index: FrameIndex, ms: number): number {
   return Math.min(Math.max(raw, 0), index.count - 1);
 }
 
-/** URL of the frame at grid position `i`. */
+/**
+ * Path of the frame at grid position `i` in the authenticated frame view.
+ * An `<img>` cannot send the token it needs; fetch it through `FrameCache`.
+ */
 export function urlAt(index: FrameIndex, i: number): string | null {
   const slot = slotAt(index, i);
   return slot === null ? null : `${index.base}${slot}${index.ext}`;
@@ -104,13 +108,94 @@ export function hasFrames(index: FrameIndex): boolean {
 }
 
 /**
- * A bounded ring of in-flight `Image` objects.
+ * Object URLs the frame cache keeps alive at once.
  *
- * Deliberately a *ring*, not a cache. The browser's own HTTP cache is the
- * real frame cache — the integration serves frames with long-lived
- * `Cache-Control` because they are immutable once written — so all this
- * has to do is keep a decode warm for the frames playback is about to
- * reach, and hold a reference long enough that the fetch is not cancelled.
+ * Three times the deepest prefetch window (`prefetchDepth` caps it at
+ * 16), which leaves room for both layers and a frame mid-swap, so during
+ * playback a URL is not evicted, and revoked, while a layer is still
+ * loading it. At ~50 KB a frame that is a few megabytes.
+ */
+const FRAME_CACHE_SIZE = 48;
+
+/**
+ * Archived frames as `blob:` URLs, fetched through the authenticated view.
+ *
+ * The frame view requires an access token and an `<img>` cannot send one,
+ * so each frame is fetched with `hass.fetchWithAuth` and handed to the
+ * layers as an object URL. The browser's HTTP cache still sits underneath:
+ * the request URL carries no token, so a frame fetched once comes from disk
+ * the next time, across reloads too.
+ *
+ * Bounded, because every object URL pins its blob in memory until it is
+ * revoked; the least recently used one goes first. A failed fetch (a
+ * non-OK status or a network error) is not remembered, because a frame
+ * that was missing a moment ago may have been written since.
+ */
+export class FrameCache {
+  private readonly entries = new Map<string, Promise<string | null>>();
+
+  constructor(
+    private readonly fetchFrame: (path: string) => Promise<Response>,
+    private readonly capacity = FRAME_CACHE_SIZE,
+  ) {}
+
+  /** Object URL for the frame at `path`, or `null` when it could not be fetched. */
+  get(path: string): Promise<string | null> {
+    const cached = this.entries.get(path);
+    if (cached) {
+      // Re-inserted, so the Map's order stays least recently used first.
+      this.entries.delete(path);
+      this.entries.set(path, cached);
+      return cached;
+    }
+    const pending: Promise<string | null> = this.load(path).then((url) => {
+      if (url === null && this.entries.get(path) === pending) this.entries.delete(path);
+      return url;
+    });
+    this.entries.set(path, pending);
+    this.evict();
+    return pending;
+  }
+
+  /** Revokes every URL, the ones the layers show included: for when the card leaves the page. */
+  clear(): void {
+    for (const url of this.entries.values()) revokeWhenSettled(url);
+    this.entries.clear();
+  }
+
+  private async load(path: string): Promise<string | null> {
+    try {
+      const response = await this.fetchFrame(path);
+      if (response.ok) return URL.createObjectURL(await response.blob());
+    } catch {
+      // A network failure reads the same as a 404 to the caller: no frame.
+    }
+    return null;
+  }
+
+  private evict(): void {
+    for (const [path, url] of this.entries) {
+      if (this.entries.size <= this.capacity) return;
+      this.entries.delete(path);
+      revokeWhenSettled(url);
+    }
+  }
+}
+
+function revokeWhenSettled(url: Promise<string | null>): void {
+  void url.then((href) => {
+    if (href) URL.revokeObjectURL(href);
+  });
+}
+
+/**
+ * A bounded ring of `Image` objects decoding frames `FrameCache` has fetched.
+ *
+ * Deliberately a *ring*, not a cache. `FrameCache` holds the fetched
+ * frames, over the browser's own HTTP cache — the integration serves
+ * frames with long-lived `Cache-Control` because they are immutable once
+ * written — so all this has to do is keep a decode warm for the frames
+ * playback is about to reach.
  *
  * Holding decoded bitmaps instead would be a mistake: a decoded 1024×768
  * frame is ~3 MB, so even a modest 24-frame cache is 75 MB of heap on a
@@ -248,14 +333,11 @@ export function nextPlaybackPosition(
  * Returns only the positions that have just entered the window, never the
  * ones already asked for. That distinction is the whole point. Playback
  * calls this on every tick, and consecutive windows overlap almost
- * entirely — re-requesting the full depth each time meant building
- * `depth` throwaway `Image` objects per tick, which at 32x is ~485 a
- * second against a cold cache. They saturate the browser's per-origin
- * connection pool, and the frame playback is actually waiting on ends up
- * queued behind hundreds of speculative ones, so the picture freezes
- * until the HTTP cache warms up. Asking only for what is new costs one
- * request per tick in steady state, because the window slides forward by
- * exactly one stride.
+ * entirely, so re-requesting the full depth would hand the ring `depth`
+ * new `Image` objects per tick (~485 a second at 32x) for frames it
+ * already holds. Asking only for what is new costs one request per tick
+ * in steady state, because the window slides forward by exactly one
+ * stride.
  *
  * `through` is the furthest position already requested. It needs no reset
  * from the caller: a playhead that jumped backwards leaves it beyond the
@@ -295,8 +377,8 @@ export function prefetchWindow(
  * Whether an `<img>` is actually holding the frame that was just asked for.
  *
  * - `ready` — the element holds the requested frame, decoded.
- * - `failed` — the request finished and there is no image: a 404, a pruned
- *   frame, a proxy with nothing cached yet.
+ * - `failed` — the request finished and there is no image: a live proxy
+ *   with nothing cached yet, or an archived frame that would not decode.
  * - `pending` — the element is not holding the requested frame *yet*. It
  *   is still showing whatever it had before.
  */
@@ -348,7 +430,7 @@ export const FADE_MAX_SPEED = 4;
 /**
  * Whether a card configured to autoplay may actually start.
  *
- * Split out from the card so the one rule with a legal-ish flavour to it
+ * Lives here rather than in the card so the one rule with a legal-ish flavour to it
  * is testable: prefers-reduced-motion overrides the config outright. A
  * card that begins animating on its own is precisely what that setting
  * exists to prevent, and the option's help text promises the override.
