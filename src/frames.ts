@@ -111,7 +111,7 @@ export function hasFrames(index: FrameIndex): boolean {
  * URL is never evicted, and revoked, while a layer is still loading it.
  * At ~50 KB a frame that is a few megabytes.
  */
-export const FRAME_CACHE_SIZE = 48;
+const FRAME_CACHE_SIZE = 48;
 
 /**
  * Archived frames as `blob:` URLs, fetched through the authenticated view.
