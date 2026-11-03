@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from http import HTTPStatus
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 
-from custom_components.webcam_timelapse import frame_store
+from custom_components.webcam_timelapse import card_registration, frame_store
 from custom_components.webcam_timelapse.const import CONF_FRAMES_PATH, FRAMES_URL_BASE
 
 from .conftest import make_entry, setup_entry
@@ -22,6 +22,52 @@ SLOT = 1_785_585_600
 async def http(hass: HomeAssistant) -> None:
     """Set up http first, so async_setup finds it and registers the view."""
     assert await async_setup_component(hass, "http", {})
+
+
+async def test_nothing_is_served_without_authentication_but_the_card(
+    hass: HomeAssistant, mock_fetch: AsyncMock
+) -> None:
+    """Static paths and auth-free views skip Home Assistant's login.
+
+    The frame archive used to be a static mount, readable by anyone who
+    could reach the instance (hacs/default#13131). This watches everything
+    setup registers, so a later change that serves stored files without
+    authentication fails here, whichever module it is added in: a static
+    path may only serve the card bundle in www/, and every view must keep
+    requires_auth on.
+    """
+    www = (Path(card_registration.__file__).parent / "www").resolve()
+    # Core's camera component registers its own views (the image proxy
+    # checks a rotating token instead of a login); set it up outside the
+    # watched window so only this integration's registrations are seen.
+    assert await async_setup_component(hass, "camera", {})
+    with (
+        patch.object(
+            hass.http,
+            "async_register_static_paths",
+            wraps=hass.http.async_register_static_paths,
+        ) as static_paths,
+        patch.object(
+            hass.http, "register_view", wraps=hass.http.register_view
+        ) as views,
+    ):
+        assert await setup_entry(hass, make_entry())
+
+    mounts = [config for call in static_paths.call_args_list for config in call.args[0]]
+    ours = [
+        call.args[0]
+        for call in views.call_args_list
+        if type(call.args[0]).__module__.startswith(
+            "custom_components.webcam_timelapse"
+        )
+    ]
+    # Without these, a spy that saw nothing would pass the checks below.
+    assert mounts, "the card bundle mount was not seen"
+    assert ours, "the frame view was not seen"
+    for config in mounts:
+        assert Path(config.path).resolve() == www, config
+    for view in ours:
+        assert view.requires_auth is True, view
 
 
 async def test_serves_a_frame_to_a_signed_in_user(
