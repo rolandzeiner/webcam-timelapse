@@ -256,6 +256,8 @@ entities_left:
   - entity: sensor.aussentemperatur
 ```
 
+**Readings that don't fit the picture scroll inside it**, above the playback controls, so on a phone or a short cell none of them is cut off.
+
 **The eye in each block's corner folds it away** to show the picture underneath, and brings it back. Each block folds on its own. Folding isn't saved: a reload shows both blocks again, so the next person at a wall tablet doesn't find a card that looks broken.
 
 ### Night shading
