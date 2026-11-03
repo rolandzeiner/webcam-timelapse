@@ -34,11 +34,11 @@ const INDEX: FrameIndex = {
   newest_slot: null,
 };
 
-function hass(states: string[], language = "en"): HomeAssistant {
+function hass(states: string[], language = "en", index: FrameIndex = INDEX): HomeAssistant {
   const callWS = vi.fn((msg: { type: string }) =>
     Promise.resolve(
       msg.type === WS_INDEX
-        ? INDEX
+        ? index
         : msg.type === WS_CARD_VERSION
           ? { version: CARD_VERSION }
           : { luma: [] },
@@ -128,5 +128,30 @@ describe("the missing-entity warning", () => {
       entities: [{ entity: "sensor.temp" }],
     });
     expect(alerts(el)).toHaveLength(0);
+  });
+});
+
+describe("archived frames", () => {
+  it("are fetched with the user's token and shown as object URLs", async () => {
+    // The frame view requires authentication and an <img> cannot send a
+    // token, so a bare path on a layer would only ever load a 401.
+    const slot = 1_785_585_600;
+    const h = hass(["camera.garden"], "en", {
+      ...INDEX,
+      base: "/api/webcam_timelapse/frames/x/",
+      t0: slot,
+      count: 1,
+    });
+    const fetchWithAuth = vi.fn(() => Promise.resolve(new Response(new Blob(["webp"]))));
+    h.fetchWithAuth = fetchWithAuth;
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:frame");
+
+    const el = await mount(h);
+
+    await vi.waitFor(() => {
+      const layers = Array.from(el.shadowRoot!.querySelectorAll<HTMLImageElement>("img.layer"));
+      expect(layers.some((img) => img.src === "blob:frame")).toBe(true);
+    });
+    expect(fetchWithAuth).toHaveBeenCalledWith(`/api/webcam_timelapse/frames/x/${slot}.webp`);
   });
 });

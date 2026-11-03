@@ -104,13 +104,93 @@ export function hasFrames(index: FrameIndex): boolean {
 }
 
 /**
+ * Object URLs the frame cache keeps alive at once.
+ *
+ * Only has to cover what can be in use together: the deepest prefetch
+ * window (16), both layers, and a frame mid-swap. Three times that, so a
+ * URL is never evicted, and revoked, while a layer is still loading it.
+ * At ~50 KB a frame that is a few megabytes.
+ */
+export const FRAME_CACHE_SIZE = 48;
+
+/**
+ * Archived frames as `blob:` URLs, fetched through the authenticated view.
+ *
+ * The frame view requires an access token and an `<img>` cannot send one,
+ * so each frame is fetched with `hass.fetchWithAuth` and handed to the
+ * layers as an object URL. The browser's HTTP cache still sits underneath:
+ * the request URL carries no token, so a frame fetched once comes from disk
+ * the next time, across reloads too.
+ *
+ * Bounded, because every object URL pins its blob in memory until it is
+ * revoked; the least recently used one goes first. A failed fetch is not
+ * remembered, because a frame that was missing or slow a moment ago may be
+ * there now.
+ */
+export class FrameCache {
+  private readonly entries = new Map<string, Promise<string | null>>();
+
+  constructor(
+    private readonly fetchFrame: (path: string) => Promise<Response>,
+    private readonly capacity = FRAME_CACHE_SIZE,
+  ) {}
+
+  /** Object URL for the frame at `path`, or `null` when it could not be fetched. */
+  get(path: string): Promise<string | null> {
+    const cached = this.entries.get(path);
+    if (cached) {
+      // Re-inserted, so the Map's order stays least recently used first.
+      this.entries.delete(path);
+      this.entries.set(path, cached);
+      return cached;
+    }
+    const pending: Promise<string | null> = this.load(path).then((url) => {
+      if (url === null && this.entries.get(path) === pending) this.entries.delete(path);
+      return url;
+    });
+    this.entries.set(path, pending);
+    this.evict();
+    return pending;
+  }
+
+  clear(): void {
+    for (const url of this.entries.values()) revokeWhenSettled(url);
+    this.entries.clear();
+  }
+
+  private async load(path: string): Promise<string | null> {
+    try {
+      const response = await this.fetchFrame(path);
+      if (response.ok) return URL.createObjectURL(await response.blob());
+    } catch {
+      // A network failure reads the same as a 404 to the caller: no frame.
+    }
+    return null;
+  }
+
+  private evict(): void {
+    for (const [path, url] of this.entries) {
+      if (this.entries.size <= this.capacity) return;
+      this.entries.delete(path);
+      revokeWhenSettled(url);
+    }
+  }
+}
+
+function revokeWhenSettled(url: Promise<string | null>): void {
+  void url.then((href) => {
+    if (href) URL.revokeObjectURL(href);
+  });
+}
+
+/**
  * A bounded ring of in-flight `Image` objects.
  *
- * Deliberately a *ring*, not a cache. The browser's own HTTP cache is the
- * real frame cache — the integration serves frames with long-lived
- * `Cache-Control` because they are immutable once written — so all this
- * has to do is keep a decode warm for the frames playback is about to
- * reach, and hold a reference long enough that the fetch is not cancelled.
+ * Deliberately a *ring*, not a cache. `FrameCache` holds the fetched
+ * frames, over the browser's own HTTP cache — the integration serves
+ * frames with long-lived `Cache-Control` because they are immutable once
+ * written — so all this has to do is keep a decode warm for the frames
+ * playback is about to reach.
  *
  * Holding decoded bitmaps instead would be a mistake: a decoded 1024×768
  * frame is ~3 MB, so even a modest 24-frame cache is 75 MB of heap on a

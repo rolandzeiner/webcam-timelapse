@@ -14,11 +14,12 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 
-from .card_registration import JSModuleRegistration, async_register_frames_path
+from .card_registration import JSModuleRegistration
 from .const import CONNECTION_KEYS, DOMAIN, INTEGRATION_VERSION, STORAGE_SUBDIR
 from .coordinator import WebcamTimelapseConfigEntry, WebcamTimelapseCoordinator
 from .export import async_forget_exporter
 from .services import async_setup_services
+from .views import async_register_frame_view
 from .websocket import async_register_websocket_commands
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -44,11 +45,11 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     async_register_websocket_commands(hass)
     async_setup_services(hass)
 
-    # Both static mounts are process-wide and registered exactly once.
-    # Registering per entry would re-push a `?v=` resource to every open
-    # browser session on each reload, which users experience as an
-    # infinite reload loop.
-    await async_register_frames_path(hass, frames_root(hass))
+    # The frame view and the card mount are process-wide and registered
+    # exactly once. Registering the card per entry would re-push a `?v=`
+    # resource to every open browser session on each reload, which users
+    # experience as an infinite reload loop.
+    async_register_frame_view(hass)
 
     registration = JSModuleRegistration(hass)
 

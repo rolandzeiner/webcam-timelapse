@@ -77,6 +77,7 @@ import {
 import {
   EMPTY_INDEX,
   fadeDurationMs,
+  FrameCache,
   type FrameIndex,
   frameReadiness,
   hasFrames,
@@ -229,6 +230,10 @@ export class WebcamTimelapseCard extends LitElement {
   private nightCache?: { key: string; bands: NightBand[] };
 
   private present: Uint8Array = new Uint8Array(0);
+  /** Archived frames, fetched with the user's token; see FrameCache. */
+  private readonly frames = new FrameCache(
+    (path) => this.hass?.fetchWithAuth?.(path) ?? Promise.reject(new Error("No hass")),
+  );
   private ring = new PrefetchRing(prefetchDepth(1));
   /**
    * Furthest grid position already handed to the prefetch ring.
@@ -364,6 +369,7 @@ export class WebcamTimelapseCard extends LitElement {
     if (this.indexTimer) window.clearTimeout(this.indexTimer);
     if (this.scrubSettle) window.clearTimeout(this.scrubSettle);
     this.ring.clear();
+    this.frames.clear();
     this.unsubscribeExport();
   }
 
@@ -715,7 +721,12 @@ export class WebcamTimelapseCard extends LitElement {
     // the next candidate matters because the archived frame is reliably
     // on disk even when the live proxy is not yet warm. Giving up after
     // the first failure is what renders as an unexplained black card.
-    for (const url of candidates) {
+    for (const source of candidates) {
+      // An archived frame needs the access token an <img> cannot send, so
+      // it arrives as an object URL. The live proxy carries its own token.
+      const url = source.archived ? await this.frames.get(source.url) : source.url;
+      // Not fetched: the same as a 404, so on to the next source.
+      if (url === null) continue;
       // Resolved against the same base the browser will use, so it can be
       // compared with currentSrc rather than with the relative form.
       const requested = new URL(url, document.baseURI).href;
@@ -801,7 +812,7 @@ export class WebcamTimelapseCard extends LitElement {
     // Every source failed. Say so — a silently black stage gives the user
     // nothing to act on and looks identical to a camera that is simply
     // dark at night.
-    this.frameError = candidates[0];
+    this.frameError = candidates[0]?.url;
     this.requestUpdate();
   }
 
@@ -885,16 +896,16 @@ export class WebcamTimelapseCard extends LitElement {
    * included as a fallback because it is the source this card actually
    * guarantees — it is on disk by definition.
    */
-  private frameSources(position: number): string[] {
-    const sources: string[] = [];
+  private frameSources(position: number): { url: string; archived: boolean }[] {
+    const sources: { url: string; archived: boolean }[] = [];
     const live = safeImageUri(
       this.hass?.states[this.config!.camera_entity]?.attributes.entity_picture as
         | string
         | undefined,
     );
-    if (position >= this.index.count - 1 && live) sources.push(live);
+    if (position >= this.index.count - 1 && live) sources.push({ url: live, archived: false });
     const archived = urlAt(this.index, position);
-    if (archived) sources.push(archived);
+    if (archived) sources.push({ url: archived, archived: true });
     return sources;
   }
 
@@ -911,7 +922,11 @@ export class WebcamTimelapseCard extends LitElement {
     );
     for (const target of targets) {
       const url = urlAt(this.index, target);
-      if (url) this.ring.prefetch(url);
+      if (url) {
+        void this.frames.get(url).then((src) => {
+          if (src) this.ring.prefetch(src);
+        });
+      }
       // Advance even when the URL could not be built, so a frame that
       // cannot be addressed is not retried on every tick forever.
       this.prefetchedThrough = target;

@@ -43,7 +43,7 @@ from homeassistant.components.http import (  # type: ignore[attr-defined,unused-
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_call_later
 
-from .const import CARD_URL_BASE, CARD_VERSION, FRAMES_URL_BASE
+from .const import CARD_URL_BASE, CARD_VERSION
 
 # Typed access to LovelaceData via the public HassKey HA exposes since
 # 2024.x. The string fallback covers HA versions that pre-date the key.
@@ -73,40 +73,6 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 URL_BASE = CARD_URL_BASE
-
-
-async def async_register_frames_path(hass: HomeAssistant, frames_root: Path) -> None:
-    """Serve the frame archive over HTTP.
-
-    One mount for the whole integration, covering every config entry's
-    subdirectory, registered once per process from ``async_setup``. A
-    per-entry mount would have to be re-registered on every reload, and
-    aiohttp raises on a duplicate path.
-
-    ``cache_headers=True`` is the single highest-leverage performance
-    decision in this integration and costs one boolean: frames are
-    immutable once written, so HA emits a long-lived ``Cache-Control`` and
-    the browser's own disk-backed HTTP cache becomes the card's frame
-    cache — which evicts under memory pressure without us managing
-    anything.
-
-    The directory must exist before registration; aiohttp's static
-    resource raises if it does not.
-    """
-    if getattr(hass, "http", None) is None:  # pragma: no cover - prod always has http
-        _LOGGER.debug("http component not available; skipping frames path")
-        return
-
-    await hass.async_add_executor_job(
-        lambda: frames_root.mkdir(parents=True, exist_ok=True)
-    )
-    try:
-        await hass.http.async_register_static_paths(
-            [StaticPathConfig(FRAMES_URL_BASE, str(frames_root), True)]
-        )
-        _LOGGER.debug("Frames path registered: %s -> %s", FRAMES_URL_BASE, frames_root)
-    except RuntimeError:
-        _LOGGER.debug("Frames path already registered: %s", FRAMES_URL_BASE)
 
 
 # Cap on _async_wait_for_lovelace_resources retry ticks. Each tick is 5s,

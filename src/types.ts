@@ -55,6 +55,8 @@ export interface HomeAssistant {
   };
   /** Absolute URL for a path on this Home Assistant instance. */
   hassUrl?: (path?: string) => string;
+  /** `fetch` with the current access token, refreshed first if it expired. */
+  fetchWithAuth?: (path: string, init?: RequestInit) => Promise<Response>;
 }
 
 /** Marker every card config extends. */

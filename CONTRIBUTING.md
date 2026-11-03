@@ -198,8 +198,9 @@ The card's strings live in `src/localize/languages/{de,en}.json`. `src/localize/
 | `export.py` | Rendering a stretch of the archive to an MP4 through ffmpeg: picking frames, the overlay, cleanup. |
 | `overlay.py`, `deflicker.py` | The Python ports of `src/overlay-history.ts`, `src/sparkline.ts` and `src/deflicker.ts`, so a reading burned into an exported frame matches what the card shows for it. HA-free. |
 | `websocket.py` | The WebSocket API: the frame index, the luma series, the export commands and the card-version probe. |
+| `views.py` | The authenticated HTTP view the card fetches frames from. Never a static path: those skip authentication. |
 | `camera.py`, `sensor.py`, `binary_sensor.py`, `entity.py` | The camera entity, the sensors, the connectivity flag and their shared base. |
-| `config_flow.py`, `services.py`, `diagnostics.py`, `card_registration.py`, `__init__.py` | The user, reconfigure, options and reauth flows; the capture-now, pause, resume, purge and export services; diagnostics; the Lovelace resource registration and the frames static mount; the domain setup. |
+| `config_flow.py`, `services.py`, `diagnostics.py`, `card_registration.py`, `__init__.py` | The user, reconfigure, options and reauth flows; the capture-now, pause, resume, purge and export services; diagnostics; the Lovelace resource registration; the domain setup. |
 | `src/webcam-timelapse-card.ts`, `src/card-styles.ts` | The card and its styles: scrubbing, playback, the overlay, the export panel. |
 | `src/editor.ts`, `src/editor-fields.ts` | The `ha-form` editor and, as plain data, what it shows. |
 | `src/config.ts` | One table of defaults, shared by the card and its editor. |

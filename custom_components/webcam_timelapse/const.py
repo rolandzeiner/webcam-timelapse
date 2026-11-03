@@ -176,9 +176,10 @@ STORAGE_SUBDIR: Final = ".cache/webcam_timelapse"
 
 FRAME_EXTENSION: Final = ".webp"
 
-# URL prefixes for the two static mounts registered in async_setup.
+# The card bundle's static mount, and the authenticated frame view. Frames
+# are never a static path: those skip authentication (see views.py).
 CARD_URL_BASE: Final = "/webcam_timelapse"
-FRAMES_URL_BASE: Final = "/webcam_timelapse_frames"
+FRAMES_URL_BASE: Final = "/api/webcam_timelapse/frames"
 
 # --- Video export ---------------------------------------------------------
 

@@ -359,7 +359,6 @@ actions:
 ## Known limitations
 
 - **No backfill.** History starts when you add the camera. Most webcams publish only a current-image URL, so there's nothing earlier to fetch.
-- **Frames are served without authentication**, at the same level as Home Assistant's `/local/` folder. The source is a publicly published webcam, so storing it locally doesn't make it more private. Use the camera entity if you need an authenticated path.
 - **No video stream.** This fetches still images: no RTSP, HLS or MJPEG source.
 - **One image per camera.** Multi-view cameras need one entry per view.
 

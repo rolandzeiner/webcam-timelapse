@@ -1,8 +1,7 @@
-"""Lovelace resource registration and the frames static mount."""
+"""Lovelace resource registration."""
 
 from __future__ import annotations
 
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -12,9 +11,8 @@ from homeassistant.core import HomeAssistant
 from custom_components.webcam_timelapse.card_registration import (
     URL_BASE,
     JSModuleRegistration,
-    async_register_frames_path,
 )
-from custom_components.webcam_timelapse.const import CARD_VERSION, FRAMES_URL_BASE
+from custom_components.webcam_timelapse.const import CARD_VERSION
 
 CARD_URL = f"{URL_BASE}/webcam-timelapse-card.js"
 
@@ -36,41 +34,6 @@ def http_hass(hass: HomeAssistant) -> HomeAssistant:
     hass.http = MagicMock()  # type: ignore[attr-defined]
     hass.http.async_register_static_paths = AsyncMock()
     return hass
-
-
-# --- frames mount ---------------------------------------------------------
-
-
-async def test_frames_path_is_mounted_with_cache_headers(
-    http_hass: HomeAssistant, tmp_path: Path
-) -> None:
-    """Frames are immutable, so the browser HTTP cache does the caching."""
-    root = tmp_path / "frames"
-
-    await async_register_frames_path(http_hass, root)
-
-    assert root.is_dir(), (
-        "directory must exist before mounting; aiohttp raises otherwise"
-    )
-    config = http_hass.http.async_register_static_paths.call_args[0][0][0]
-    assert config.url_path == FRAMES_URL_BASE
-    assert config.path == str(root)
-    assert config.cache_headers is True
-
-
-async def test_frames_path_tolerates_a_second_registration(
-    http_hass: HomeAssistant, tmp_path: Path
-) -> None:
-    """async_setup runs once per process, but a reload must not explode."""
-    http_hass.http.async_register_static_paths.side_effect = RuntimeError("dup")
-    await async_register_frames_path(http_hass, tmp_path / "frames")
-
-
-async def test_frames_path_skipped_without_http(
-    hass: HomeAssistant, tmp_path: Path
-) -> None:
-    hass.http = None  # type: ignore[attr-defined]
-    await async_register_frames_path(hass, tmp_path / "frames")
 
 
 # --- card resource --------------------------------------------------------
