@@ -204,7 +204,7 @@ The card's strings live in `src/localize/languages/{de,en}.json`. `src/localize/
 | `src/webcam-timelapse-card.ts`, `src/card-styles.ts` | The card and its styles: scrubbing, playback, the overlay, the export panel. |
 | `src/editor.ts`, `src/editor-fields.ts` | The `ha-form` editor and, as plain data, what it shows. |
 | `src/config.ts` | One table of defaults, shared by the card and its editor. |
-| `src/frames.ts`, `src/dayticks.ts`, `src/sun.ts` | Frame-index maths and the marks under the scrubber. |
+| `src/frames.ts`, `src/dayticks.ts`, `src/sun.ts` | Frame-index maths, fetching archived frames through `views.py` into object URLs, and the marks under the scrubber. |
 | `src/overlay-history.ts`, `src/overlay-groups.ts`, `src/sparkline.ts`, `src/deflicker.ts` | The readings overlay and the brightness smoothing. |
 | `src/export.ts` | Everything about the video export that needs no DOM. |
 | `src/coalesce.ts`, `src/shared-render.ts`, `src/utils.ts` | Latest-wins serialisation for the frame swap; the version banner and cache-wipe reload; small shared helpers. |
