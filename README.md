@@ -110,7 +110,7 @@ Measured on a 1200×900 source scaled to 1024 px:
 
 **Quality costs more than frequency.** Going from 78 to 95 roughly triples the size, for detail a 1024 px timelapse frame won't show.
 
-Frames live in `config/.cache/webcam_timelapse/<entry_id>/`. Home Assistant skips that folder when it makes a backup, so a large archive won't bloat your backups.
+Unless you set a storage folder, frames live in `config/.cache/webcam_timelapse/<entry_id>/`. Home Assistant skips that folder when it makes a backup, so a large archive won't bloat your backups.
 
 ## Entities
 
