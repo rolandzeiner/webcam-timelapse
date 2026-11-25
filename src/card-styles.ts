@@ -229,7 +229,14 @@ export const cardStyles = css`
 
   /* --- overlays ---------------------------------------------------- */
 
-  /* Passive labels, so they must not eat the click that opens the
+  /* The overlays' scrims are flat on purpose: no backdrop-filter. Five
+     blurred scrims over the picture cost a wall tablet (Galaxy Tab A8)
+     about 10 points of CPU whenever anything on screen animated, the
+     card's own playback and minute fade included, because the WebView
+     redraws the whole frame and re-blurs each one every time. A flat
+     60 % scrim keeps the text as legible at none of that cost.
+
+     Passive labels, so they must not eat the click that opens the
      camera's more-info dialog — they sit over the picture and would
      otherwise punch two dead rectangles into it. */
   .stamp,
@@ -238,12 +245,11 @@ export const cardStyles = css`
     position: absolute;
     padding: 4px 8px;
     border-radius: 6px;
-    background: rgba(0, 0, 0, 0.55);
+    background: rgba(0, 0, 0, 0.6);
     color: #fff;
     font-size: var(--ha-font-size-s, 12px);
     /* Digits must not shift width as the clock ticks. */
     font-variant-numeric: tabular-nums;
-    backdrop-filter: blur(2px);
   }
 
   /* Top-left, because the controls now own the bottom of the stage. */
@@ -286,9 +292,8 @@ export const cardStyles = css`
     gap: 2px;
     padding: 8px 10px;
     border-radius: 8px;
-    background: rgba(0, 0, 0, 0.55);
+    background: rgba(0, 0, 0, 0.6);
     color: #fff;
-    backdrop-filter: blur(2px);
     font-variant-numeric: tabular-nums;
     /* Taller than the picture, the readings scroll inside it instead of
        running off the stage, where the stage's clip cut them away. The
@@ -522,8 +527,7 @@ export const cardStyles = css`
     gap: 2px;
     padding: 2px 6px;
     border-radius: 999px;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.6);
     color: #fff;
     /* Smaller than the 48px default so the pill stays slim, still well
        over the 24px WCAG 2.5.8 minimum target. */

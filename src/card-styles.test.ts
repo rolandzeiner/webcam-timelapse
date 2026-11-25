@@ -250,6 +250,22 @@ describe("controls overlay", () => {
 });
 
 /**
+ * Blurred scrims cost a wall tablet ~10 points of CPU whenever anything
+ * on screen animated (measured on a Galaxy Tab A8, 2026-11-26), so the
+ * overlays carry a flat scrim instead.
+ */
+describe("overlay scrims", () => {
+  it("blurs nothing behind the overlays", () => {
+    const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(css).not.toMatch(/backdrop-filter/);
+  });
+
+  it.each([".stamp", ".readout", ".controls"])("gives %s the flat 60 %% scrim", (selector) => {
+    expect(declarationsFor(selector)).toMatch(/background:\s*rgba\(0,\s*0,\s*0,\s*0\.6\)/);
+  });
+});
+
+/**
  * Everything inside one @container block, comments stripped.
  *
  * There are two: the pair's earlier switch and the single block's. They
