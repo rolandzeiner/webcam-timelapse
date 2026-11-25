@@ -131,6 +131,114 @@ describe("DST correctness", () => {
   });
 });
 
+/**
+ * Every position whose local date differs from the one before it: the
+ * plain linear scan dayTicks used to run, kept here as the oracle for the
+ * sampled one.
+ */
+function linearBoundaries(index: FrameIndex, timeZone: string): number[] {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const positions: number[] = [];
+  let previous = fmt.format(new Date(index.t0! * 1000));
+  for (let i = 1; i < index.count; i++) {
+    const date = fmt.format(new Date((index.t0! + i * index.step) * 1000));
+    if (date !== previous) positions.push(i);
+    previous = date;
+  }
+  return positions;
+}
+
+function grid(startIso: string, step: number, days: number): FrameIndex {
+  return {
+    ...EMPTY_INDEX,
+    base: "/frames/",
+    t0: Math.floor(new Date(startIso).getTime() / 1000),
+    step,
+    count: Math.floor((days * 86400) / step),
+  };
+}
+
+describe("sampled day scan", () => {
+  // Zones whose clocks do something unusual: DST at midnight (Santiago,
+  // Beirut, Havana), half-hour DST (Lord Howe), a 45-minute offset
+  // (Chatham), DST suspended for Ramadan (Casablanca), a two-hour jump
+  // (Troll), the southern hemisphere, and none at all.
+  const ZONES = [
+    VIENNA,
+    "America/New_York",
+    "America/Santiago",
+    "America/Havana",
+    "Asia/Beirut",
+    "Australia/Lord_Howe",
+    "Pacific/Chatham",
+    "Africa/Casablanca",
+    "Antarctica/Troll",
+    "Asia/Tokyo",
+    "UTC",
+  ];
+
+  it.each(ZONES)("finds the same midnights as a linear scan through 2026 in %s", (zone) => {
+    // Off the hour on purpose, so no midnight falls on a slot exactly.
+    const index = grid("2026-01-01T00:17:13Z", 900, 365);
+    expect(dayTicks(index, zone, "de-AT", 800).map((tick) => tick.position)).toEqual(
+      linearBoundaries(index, zone),
+    );
+  });
+
+  it.each([60, 37, 300, 3600, 7200, 21600, 86400])(
+    "finds the same midnights at a %i s capture step",
+    (step) => {
+      // Across Vienna's fall-back day, at steps that do and do not divide
+      // the sampling stride.
+      const index = grid("2026-10-20T13:00:00Z", step, 10);
+      expect(dayTicks(index, VIENNA, "de-AT", 800).map((tick) => tick.position)).toEqual(
+        linearBoundaries(index, VIENNA),
+      );
+    },
+  );
+
+  it("counts a skipped calendar day as one boundary", () => {
+    // Samoa jumped from 2011-12-29 straight to 2011-12-31.
+    const index = grid("2011-12-26T00:00:00Z", 600, 10);
+    const ticks = dayTicks(index, "Pacific/Apia", "de-AT", 800);
+    expect(ticks.map((tick) => tick.position)).toEqual(linearBoundaries(index, "Pacific/Apia"));
+  });
+
+  it("formats a few hundred dates for a fortnight at one-minute capture, not every slot", () => {
+    const index = grid("2026-11-10T08:03:00Z", 60, 14);
+    // `format` is a getter that hands out a bound function, so wrap what
+    // it hands out. The original getter is parked on a scratch object and
+    // read through Reflect.get with the real formatter as receiver.
+    const proto = Intl.DateTimeFormat.prototype;
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "format")!;
+    const parked = Object.defineProperty({}, "format", descriptor);
+    let calls = 0;
+    Object.defineProperty(proto, "format", {
+      configurable: true,
+      get(this: Intl.DateTimeFormat) {
+        const bound = Reflect.get(parked, "format", this) as Intl.DateTimeFormat["format"];
+        return (date?: Date | number) => {
+          calls++;
+          return bound(date);
+        };
+      },
+    });
+    try {
+      dayTicks(index, VIENNA, "de-AT", 776);
+    } finally {
+      Object.defineProperty(proto, "format", descriptor);
+    }
+    // A linear scan formats all 20 160 slots.
+    expect(calls).toBeGreaterThan(0);
+    expect(calls).toBeLessThan(400);
+  });
+});
+
 describe("tick structure", () => {
   it("returns nothing for an empty archive", () => {
     expect(dayTicks(EMPTY_INDEX, VIENNA, "de-AT", 800)).toEqual([]);

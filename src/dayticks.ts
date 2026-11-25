@@ -7,7 +7,6 @@
  */
 
 import type { FrameIndex } from "./frames";
-import { slotAt } from "./frames";
 
 export interface DayTick {
   /** Grid position of the first frame on this day. */
@@ -26,11 +25,10 @@ type LabelWidth = "long" | "short" | "date";
  * Cache of Intl formatters, keyed by locale plus options.
  *
  * Constructing an Intl.DateTimeFormat is roughly two orders of magnitude
- * dearer than calling .format() on an existing one, and the day scan
- * below formats once per slot — up to 20 000 slots at one-minute capture
- * over a fortnight. Building the formatter inside that loop, as this
- * module first did, put tens of thousands of constructions on every
- * render, and the ruler re-renders on every frame swap during playback.
+ * dearer than calling .format() on an existing one. Building the
+ * formatter inside the day scan, as this module first did, put tens of
+ * thousands of constructions on every render, back when that scan still
+ * formatted every slot.
  */
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
@@ -120,16 +118,75 @@ export function labelEvery(dayCount: number, trackPx: number, minLabelPx: number
 }
 
 /**
+ * How far apart the day scan samples the archive, in seconds.
+ *
+ * Any spacing well under a day is exact. The local date only moves
+ * forward, and two changes of it are at least 22 hours apart (a 24-hour
+ * day shortened by the largest DST jump in use), so the wall clock
+ * crosses midnight at most once between two samples six hours apart. A
+ * day a timezone skips outright (Samoa, 2011-12-30) is still one change.
+ * Six hours keeps a fortnight at one-minute capture to about 60 samples.
+ */
+const DAY_SCAN_SAMPLE_SECONDS = 6 * 3600;
+
+/** Grid positions where the local date changes, with the new date. */
+function dateBoundaries(
+  t0: number,
+  step: number,
+  count: number,
+  timeZone: string,
+): { position: number; slot: number; date: string }[] {
+  const boundaries: { position: number; slot: number; date: string }[] = [];
+  const last = count - 1;
+  const dateAt = (position: number): string => localDate(t0 + position * step, timeZone);
+  const stride = Math.max(1, Math.floor(DAY_SCAN_SAMPLE_SECONDS / step));
+
+  let before = 0;
+  let beforeDate = dateAt(0);
+  while (before < last) {
+    const sample = Math.min(before + stride, last);
+    const sampleDate = dateAt(sample);
+    if (sampleDate !== beforeDate) {
+      // Exactly one change lies in (before, sample]: bisect for the first
+      // position that no longer carries the earlier date.
+      let low = before;
+      let high = sample;
+      let highDate = sampleDate;
+      while (high - low > 1) {
+        const middle = Math.floor((low + high) / 2);
+        const middleDate = dateAt(middle);
+        if (middleDate === beforeDate) {
+          low = middle;
+        } else {
+          high = middle;
+          highDate = middleDate;
+        }
+      }
+      boundaries.push({ position: high, slot: t0 + high * step, date: highDate });
+    }
+    before = sample;
+    beforeDate = sampleDate;
+  }
+  return boundaries;
+}
+
+/**
  * Ticks at every local midnight inside the archive window.
  *
- * Detects the day boundary by watching the formatted local date change
- * between consecutive slots, rather than by stepping 86400 seconds at a
- * time. That distinction is the entire reason this module exists: adding a
- * fixed 86400 assumes every day is 24 hours, which is false twice a year
- * in any DST timezone — Europe/Vienna has a 23-hour day on 2026-03-29 and
- * a 25-hour day on 2026-10-25 — and every tick after the transition would
- * silently drift by an hour. Comparing calendar dates is exact by
- * construction and needs no DST arithmetic at all.
+ * Detects the day boundary by watching the formatted local date change,
+ * rather than by stepping 86400 seconds at a time. That distinction is the
+ * entire reason this module exists: adding a fixed 86400 assumes every day
+ * is 24 hours, which is false twice a year in any DST timezone —
+ * Europe/Vienna has a 23-hour day on 2026-03-29 and a 25-hour day on
+ * 2026-10-25 — and every tick after the transition would silently drift
+ * by an hour. Comparing calendar dates is exact by construction and needs
+ * no DST arithmetic at all.
+ *
+ * The dates are sampled and bisected rather than read for every slot. A
+ * linear scan formatted all 20 000 slots of a one-minute fortnight, and
+ * every index refresh (once a minute there) moves the window and rebuilds
+ * the ruler: 170 ms of main thread on a Galaxy Tab A8, every minute, on a
+ * card that was otherwise idle.
  *
  * The timezone must be Home Assistant's (`hass.config.time_zone`), never
  * the browser's: a phone that has travelled should still show the
@@ -146,18 +203,7 @@ export function dayTicks(
   const width = labelWidthFor(trackPx);
   const minLabelPx = width === "long" ? 110 : width === "short" ? 78 : 58;
 
-  const boundaries: { position: number; slot: number; date: string }[] = [];
-  let previousDate = localDate(index.t0, timeZone);
-
-  for (let i = 1; i < index.count; i++) {
-    const slot = slotAt(index, i);
-    if (slot === null) continue;
-    const date = localDate(slot, timeZone);
-    if (date !== previousDate) {
-      boundaries.push({ position: i, slot, date });
-      previousDate = date;
-    }
-  }
+  const boundaries = dateBoundaries(index.t0, index.step, index.count, timeZone);
 
   const every = labelEvery(boundaries.length, trackPx, minLabelPx);
   const lastPosition = Math.max(1, index.count - 1);
