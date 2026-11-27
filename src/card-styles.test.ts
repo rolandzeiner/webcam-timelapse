@@ -396,6 +396,45 @@ describe("narrow layout", () => {
   });
 });
 
+/**
+ * The stage query that drops a top-anchored readout below the timestamp
+ * and badge row: `[width, declarations]`, comments stripped.
+ */
+function belowRowRule(): [number, string] {
+  const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+  const match =
+    /@container wtl-stage \(inline-size < (\d+)px\)\s*\{\s*\.readout,\s*\.readouts\.pair\s*\{([^}]*)\}/.exec(
+      css,
+    );
+  return match === null ? [0, ""] : [Number(match[1]), match[2]!];
+}
+
+describe("narrowest layout", () => {
+  // At 380 px, a phone's section, the centred block covered the end of the
+  // timestamp: the stamp runs ~104 px from the frame's edge and a typical
+  // block ~230 px, so the three stop fitting on one row near 466 px.
+  it("drops the readout below the timestamp row before the two meet", () => {
+    const [width] = belowRowRule();
+    expect(width).toBeGreaterThanOrEqual(466);
+    expect(width).toBeLessThan(SINGLE_BREAKPOINT);
+  });
+
+  it("starts the readout below the timestamp and the badge", () => {
+    // The pills: their top offset, 4 px of block padding on each side and
+    // one line of 12 px text, about 16 px tall.
+    const pad = Number(/padding:\s*(\d+)px/.exec(declarationsFor(".stamp"))?.[1]);
+    const pillBottom = px(".stamp", "top") + 2 * pad + 16;
+    const top = Number(/top:\s*(\d+)px/.exec(belowRowRule()[1])?.[1]);
+    expect(top).toBeGreaterThanOrEqual(pillBottom + 4);
+  });
+
+  it("still stops the readout above the control pill", () => {
+    const body = belowRowRule()[1];
+    const top = Number(/top:\s*(\d+)px/.exec(body)?.[1]);
+    expect(capOf(body)).toBeGreaterThanOrEqual(top - px(".stamp", "top") + PILL_CLEARANCE);
+  });
+});
+
 describe("two readout blocks", () => {
   it("leaves a single block's layout entirely alone", () => {
     // THE rule this feature is built around: one configured block must

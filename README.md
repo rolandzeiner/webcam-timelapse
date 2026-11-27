@@ -243,7 +243,7 @@ Without them a millimetre of groundwater and half a metre of river draw the same
 
 **The marker down the middle is the moment you're looking at**, and the dot on it is the value in effect then. A gauge that hasn't changed inside the window still draws: the recorder stores only changes, so the card carries the earlier reading in as a flat line. The timestamp beside the number tells you how old it is.
 
-**A second block goes on the left.** Put readings in `entities_left`, with `overlay_title_left` as its heading. It takes the same row options as `entities`. Adding it never moves `entities`, which keeps the bottom-right corner. A card with only `entities_left` shows one block on the left. On a narrow card both blocks stack at the top of the picture, right-hand block first, and keep their sparklines.
+**A second block goes on the left.** Put readings in `entities_left`, with `overlay_title_left` as its heading. It takes the same row options as `entities`. Adding it never moves `entities`, which keeps the bottom-right corner. A card with only `entities_left` shows one block on the left. On a narrow card both blocks stack at the top of the picture, below the date and time, right-hand block first, and keep their sparklines.
 
 ```yaml
 overlay_title: Kleine Erlauf      # bottom right

@@ -1613,6 +1613,23 @@ var Ne=(e,t,n)=>(n.configurable=!0,n.enumerable=!0,Reflect.decorate&&typeof t!=`
 
   }
 
+  /* Below this the timestamp, the readout and the badge no longer fit on
+     one row. The stamp runs ~104 px from the frame's edge and a typical
+     block ~230 px, so the centred block reaches the timestamp near
+     466 px; at 380 px, a phone's section, it covered the end of the time.
+     Measured on the stage, which is what the overlays sit in. The block
+     drops below the row instead: the pills end ~32 px down, so 40 px
+     leaves a gap, and the cap grows by the same 32 px so the block still
+     stops above the control pill. In the pair layout the stack moves; the
+     blocks inside it are static and ignore the top. */
+  @container wtl-stage (inline-size < 480px) {
+    .readout,
+    .readouts.pair {
+      top: 40px;
+      max-block-size: calc(100% - 106px);
+    }
+  }
+
   /* prefers-reduced-motion is handled entirely in TypeScript, not here.
 
      The frame fade's transition is an inline style, and inline beats a
