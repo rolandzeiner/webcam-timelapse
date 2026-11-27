@@ -80,8 +80,11 @@ export const cardStyles = css`
   /* flex-shrink 4 against the stage's 1: the export absorbs the squeeze
      first, and only once it sits on its floor does the stage give up a
      pixel. The wrapper takes the flex, the panel inside it scrolls, so the
-     panel's border stays put while its rows move; the panel's own 12 px
-     padding keeps the chips' focus rings inside the scroll clip. */
+     panel's border stays put while its rows move. The panel's 12 px
+     padding keeps the focus rings inside the clip at either end of the
+     scroll; scroll-padding does it in between, where Tab scrolls a chip
+     only until its border meets the edge and its ring (2 px at a 2 px
+     offset) was cut. */
   ha-card.fixed-height .export {
     display: flex;
     flex-direction: column;
@@ -92,6 +95,7 @@ export const cardStyles = css`
     flex: 1 1 auto;
     min-block-size: 0;
     overflow-y: auto;
+    scroll-padding-block: 6px;
   }
 
   ha-card {

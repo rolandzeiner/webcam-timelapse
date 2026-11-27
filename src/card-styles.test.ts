@@ -106,6 +106,20 @@ describe("fixed-height cell", () => {
     expect(declarationsFor(".timeline")).not.toMatch(/overflow/);
   });
 
+  it("scrolls a focused export control in with room for its ring", () => {
+    // Tab scrolls a control only until its border meets the scroller's
+    // edge; the ring sits outside the border (width plus offset), so
+    // without scroll-padding the clip cut it.
+    const ring = declarationsFor(".export button:focus-visible");
+    const extent =
+      Number(/outline:\s*(\d+)px/.exec(ring)?.[1]) +
+      Number(/outline-offset:\s*(\d+)px/.exec(ring)?.[1]);
+    expect(extent).toBeGreaterThan(0);
+    expect(px("ha-card.fixed-height .export-panel", "scroll-padding-block")).toBeGreaterThan(
+      extent,
+    );
+  });
+
   it("keeps the timeline at its height", () => {
     expect(declarationsFor("ha-card.fixed-height .timeline")).toMatch(/flex-shrink:\s*0/);
   });
