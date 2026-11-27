@@ -1,6 +1,6 @@
 # <sub><sub><img src="https://raw.githubusercontent.com/rolandzeiner/webcam-timelapse/main/custom_components/webcam_timelapse/brand/icon.png" width="40" height="40" alt=""></sub></sub> Webcam Timelapse
 
-[![Marketplace](https://img.shields.io/badge/Marketplace-Custom-41BDF5.svg)](https://www.home-assistant.io/integrations/marketplace/)
+[![Marketplace](https://img.shields.io/badge/Marketplace-Catalog-41BDF5.svg)](https://www.home-assistant.io/integrations/marketplace/)
 [![HA min version](https://img.shields.io/badge/Home%20Assistant-%3E%3D2025.5-blue.svg)](https://www.home-assistant.io/)
 [![Version](https://img.shields.io/github/v/release/rolandzeiner/webcam-timelapse?include_prereleases&label=version&color=blue)](https://github.com/rolandzeiner/webcam-timelapse/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -32,13 +32,12 @@ Keep a webcam's history and scroll back through it. Home Assistant fetches one i
 
 The Marketplace is HACS, built into Home Assistant since 2026.11.
 
+1. In Home Assistant, go to **Settings → Marketplace** and search for **Webcam Timelapse**.
+2. Select it, then select **Install**. The setup starts right away, no restart needed.
+
 [![Open this repository in the Marketplace of your Home Assistant.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rolandzeiner&repository=webcam-timelapse&category=integration)
 
-1. In **Settings → Marketplace**, select **Add from link**.
-2. Enter `rolandzeiner/webcam-timelapse` and select **Add**. The first time, the Marketplace asks you to connect GitHub.
-3. Open **Webcam Timelapse** and select **Install**.
-
-On Home Assistant older than 2026.11, add the repository in HACS under ⋮ → **Custom repositories** with type **Integration**, then download it and restart Home Assistant.
+On Home Assistant older than 2026.11, use HACS instead: search for **Webcam Timelapse**, select **Download**, then restart Home Assistant.
 
 ### Manual
 
