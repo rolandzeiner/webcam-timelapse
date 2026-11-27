@@ -1,6 +1,6 @@
 /**
- * Frame-index maths: slot ↔ time ↔ URL, gap handling, fetching and
- * preloading, playback cadence.
+ * Frame-index maths: grid position → epoch slot → URL, gap handling,
+ * fetching and preloading, playback cadence.
  *
  * No Lit and no `hass` (`FrameCache` is handed its fetcher). Everything
  * the scrubber needs to answer "which frame is at position i, and does it

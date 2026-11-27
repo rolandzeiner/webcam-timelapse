@@ -153,7 +153,7 @@ export class WebcamTimelapseCard extends LitElement {
 
   // Set by HA in the edit-card dialog. The preview there is for checking
   // the config, so it neither starts playing on its own nor shows the
-  // stale-bundle banner, whose Reload would throw the open dialog away.
+  // version banner, whose Reload would throw the open dialog away.
   @property({ type: Boolean }) public preview = false;
 
   @state() private config?: NormalisedConfig;

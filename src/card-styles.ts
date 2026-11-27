@@ -82,9 +82,9 @@ export const cardStyles = css`
      pixel. The wrapper takes the flex, the panel inside it scrolls, so the
      panel's border stays put while its rows move. The panel's 12 px
      padding keeps the focus rings inside the clip at either end of the
-     scroll; scroll-padding does it in between, where Tab scrolls a chip
-     only until its border meets the edge and its ring (2 px at a 2 px
-     offset) was cut. */
+     scroll. In between, Tab scrolls a control only until its border meets
+     the edge, which would cut its ring (2 px at a 2 px offset), so
+     scroll-padding-block keeps 6 px clear. */
   ha-card.fixed-height .export {
     display: flex;
     flex-direction: column;
@@ -1544,17 +1544,18 @@ export const cardStyles = css`
      two close on each other as the card narrows. The pill is ~212px, and
      a three-sensor readout runs ~230px, which puts the meeting point just
      past 600px — hence 620px, with a little margin because the readout's
-     width follows its content. Below that the readout moves to the top,
-     where nothing else is competing for the space. */
+     width follows its content. Below that the readout moves to the top
+     row, between the timestamp and the badge, and below them on the
+     narrowest stages (the wtl-stage query further down). */
   @container wtl-card (max-width: 620px) {
     /* Cleared explicitly: the base rule pins the bottom-right corner, and
        an unset side would leave the box anchored to both. */
     .readout {
       right: auto;
       bottom: auto;
-      /* Same top edge as the timestamp and the badge, so the three
-         overlays read as one row across the top of the frame instead of
-         three boxes at unrelated heights. Kept in step with .stamp and
+      /* Same top edge as the timestamp and the badge, down to a 480 px
+         stage, so the three overlays read as one row across the top of
+         the frame instead of three boxes at unrelated heights. Kept in step with .stamp and
          .badge by a test rather than by memory. */
       top: 8px;
       left: 50%;
@@ -1576,14 +1577,16 @@ export const cardStyles = css`
   }
 
   /* Below this the timestamp, the readout and the badge no longer fit on
-     one row. The stamp runs ~104 px from the frame's edge and a typical
-     block ~230 px, so the centred block reaches the timestamp near
-     466 px; at 380 px, a phone's section, it covered the end of the time.
+     one row. The stamp ends ~112 px into the stage (8 px offset, ~104 px
+     wide) and a typical block is ~230 px, so a centred block keeps 6 px
+     clear of it only on a stage of 2 x (112 + 6 + 115) = 466 px or more;
+     at 380 px, a phone's section, it would cover the end of the time.
      Measured on the stage, which is what the overlays sit in. The block
-     drops below the row instead: the pills end ~32 px down, so 40 px
-     leaves a gap, and the cap grows by the same 32 px so the block still
-     stops above the control pill. In the pair layout the stack moves; the
-     blocks inside it are static and ignore the top. */
+     drops below the row instead: the pills end ~34 px down (8 px offset,
+     4 px padding each side, an ~18 px line), so 40 px leaves a gap. The
+     cap grows by the 32 px the top moved, so the block still stops above
+     the control pill. In the pair layout the stack moves; the blocks
+     inside it are static and ignore the top. */
   @container wtl-stage (inline-size < 480px) {
     .readout,
     .readouts.pair {

@@ -109,7 +109,7 @@ describe("fixed-height cell", () => {
   it("scrolls a focused export control in with room for its ring", () => {
     // Tab scrolls a control only until its border meets the scroller's
     // edge; the ring sits outside the border (width plus offset), so
-    // without scroll-padding the clip cut it.
+    // without scroll-padding the clip would cut it.
     const ring = declarationsFor(".export button:focus-visible");
     const extent =
       Number(/outline:\s*(\d+)px/.exec(ring)?.[1]) +
@@ -329,7 +329,8 @@ const PILL_CLEARANCE =
   px(".controls .play", "--ha-icon-button-size");
 
 describe("container queries", () => {
-  // .stage is a size container for the export crop and the control pill.
+  // .stage is a size container for the export crop, the control pill and
+  // the readout's drop below the top row.
   // An unnamed query resolves against the nearest container, so one
   // written for the card would quietly start measuring the stage for
   // everything inside it.
@@ -340,7 +341,7 @@ describe("container queries", () => {
     for (const query of queries) expect(query).toMatch(/^wtl-(card|stage) /);
   });
 
-  // The pill is the one thing measured against the stage: in a narrow
+  // The pill is measured against the stage: in a narrow
   // cell it drops the step buttons and tightens, so it never runs past
   // the picture's edges, and every control left keeps a 36 px target.
   it("tighten the control pill against the stage below 320 px", () => {
@@ -424,9 +425,10 @@ function belowRowRule(): [number, string] {
 }
 
 describe("narrowest layout", () => {
-  // At 380 px, a phone's section, the centred block covered the end of the
-  // timestamp: the stamp runs ~104 px from the frame's edge and a typical
-  // block ~230 px, so the three stop fitting on one row near 466 px.
+  // The stamp ends ~112 px into the stage (8 px offset, ~104 px wide) and
+  // a typical block is ~230 px: a centred block keeps 6 px clear of it only
+  // from 2 x (112 + 6 + 115) = 466 px up. At 380 px, a phone's section, it
+  // would cover the end of the time.
   it("drops the readout below the timestamp row before the two meet", () => {
     const [width] = belowRowRule();
     expect(width).toBeGreaterThanOrEqual(466);
@@ -435,7 +437,8 @@ describe("narrowest layout", () => {
 
   it("starts the readout below the timestamp and the badge", () => {
     // The pills: their top offset, 4 px of block padding on each side and
-    // one line of 12 px text, about 16 px tall.
+    // one line of 12 px text: 16 px is the floor, ~18 at HA's 1.5, which
+    // the 4 px margin still covers.
     const pad = Number(/padding:\s*(\d+)px/.exec(declarationsFor(".stamp"))?.[1]);
     const pillBottom = px(".stamp", "top") + 2 * pad + 16;
     const top = Number(/top:\s*(\d+)px/.exec(belowRowRule()[1])?.[1]);

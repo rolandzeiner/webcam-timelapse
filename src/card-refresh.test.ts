@@ -145,7 +145,7 @@ async function mountPreview(
   el.setConfig({ type: `custom:${CARD_TAG}`, camera_entity: "camera.garden", ...config });
   el.hass = h;
   document.body.appendChild(el);
-  // Lets the index and version answers land and the card render them.
+  // Lets the index answer land and the card render it.
   await advance(el, 0);
   await advance(el, 0);
   return el;
@@ -156,11 +156,13 @@ const playLabel = (el: Card): string | undefined =>
     ?.label;
 
 describe("edit-dialog preview", () => {
+  // The element is there whatever the version; whether it shows is
+  // version-banner.test.ts's job.
   it("puts the version banner on a dashboard, not in the preview", async () => {
-    const dashboard = await mountPreview(hassWith(INDEX, "0.0.1"), false);
+    const dashboard = await mountPreview(hassWith(INDEX, CARD_VERSION), false);
     expect(dashboard.shadowRoot?.querySelector("ha-card > rz-version-banner-r1")).not.toBeNull();
 
-    const preview = await mountPreview(hassWith(INDEX, "0.0.1"), true);
+    const preview = await mountPreview(hassWith(INDEX, CARD_VERSION), true);
     expect(preview.shadowRoot?.querySelector("rz-version-banner-r1")).toBeNull();
   });
 
