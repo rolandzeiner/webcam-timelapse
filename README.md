@@ -309,6 +309,8 @@ Three things differ from the card on purpose:
 
 **Videos are saved in your media folder**, one folder per camera: `/media/webcam_timelapse/<camera>/` on Home Assistant OS. The panel shows the folder, and the full path of each video once it's written. After the first export, **Open in media browser** takes you to the folder in **Media → My media**, the easiest place to delete old ones. Videos aren't deleted with the frames they were made from.
 
+**In a Docker container, mount `/media` as a volume.** Home Assistant saves media there by default, and without a volume the videos are gone the next time the container is recreated, for example on an update.
+
 **Readings older than your recorder keeps are hourly averages.** Home Assistant keeps detailed history for ten days unless you changed `purge_keep_days`. For older frames the overlay falls back to long-term statistics, and a sensor without statistics shows a dash.
 
 **One export at a time per camera.** Encoding is the heaviest thing this integration does: a day of 1600 px frames captured every five minutes took about half a minute on a four-core mini PC, and a Raspberry Pi takes longer. Captures carry on meanwhile.
