@@ -1,6 +1,6 @@
 /**
- * Frame-index maths: slot ↔ time ↔ URL, gap handling, fetching and
- * preloading, playback cadence.
+ * Frame-index maths: grid position → epoch slot → URL, gap handling,
+ * fetching and preloading, playback cadence.
  *
  * No Lit and no `hass` (`FrameCache` is handed its fetcher). Everything
  * the scrubber needs to answer "which frame is at position i, and does it
@@ -42,19 +42,6 @@ export const EMPTY_INDEX: FrameIndex = {
 export function slotAt(index: FrameIndex, i: number): number | null {
   if (index.t0 === null || i < 0 || i >= index.count) return null;
   return index.t0 + i * index.step;
-}
-
-/** Milliseconds for grid position `i`, for Date/Intl formatting. */
-export function timeAt(index: FrameIndex, i: number): number | null {
-  const slot = slotAt(index, i);
-  return slot === null ? null : slot * 1000;
-}
-
-/** Grid position nearest to an epoch-millisecond timestamp, clamped. */
-export function positionAt(index: FrameIndex, ms: number): number {
-  if (index.t0 === null || index.count === 0) return 0;
-  const raw = Math.round((ms / 1000 - index.t0) / index.step);
-  return Math.min(Math.max(raw, 0), index.count - 1);
 }
 
 /**

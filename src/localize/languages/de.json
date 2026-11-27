@@ -30,8 +30,6 @@
   "error": {
     "no_camera": "Bitte wähle in der Kartenkonfiguration eine Kamera aus."
   },
-  "version_update": "Diese Karte wurde auf {v} aktualisiert. Lade neu, um die neue Version zu verwenden.",
-  "version_reload": "Neu laden",
   "editor": {
     "camera_entity": "Kamera",
     "title": "Titel",
@@ -124,6 +122,8 @@
     "saved": "Gespeichert als {v}",
     "watch": "Ansehen",
     "download": "Herunterladen",
+    "player": "Exportiertes Video",
+    "close_video": "Video schließen",
     "cancelled": "Export abgebrochen.",
     "band": "Für den Export gewählter Zeitraum",
     "error": {

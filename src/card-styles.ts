@@ -80,8 +80,11 @@ export const cardStyles = css`
   /* flex-shrink 4 against the stage's 1: the export absorbs the squeeze
      first, and only once it sits on its floor does the stage give up a
      pixel. The wrapper takes the flex, the panel inside it scrolls, so the
-     panel's border stays put while its rows move; the panel's own 12 px
-     padding keeps the chips' focus rings inside the scroll clip. */
+     panel's border stays put while its rows move. The panel's 12 px
+     padding keeps the focus rings inside the clip at either end of the
+     scroll. In between, Tab scrolls a control only until its border meets
+     the edge, which would cut its ring (2 px at a 2 px offset), so
+     scroll-padding-block keeps 6 px clear. */
   ha-card.fixed-height .export {
     display: flex;
     flex-direction: column;
@@ -92,6 +95,7 @@ export const cardStyles = css`
     flex: 1 1 auto;
     min-block-size: 0;
     overflow-y: auto;
+    scroll-padding-block: 6px;
   }
 
   ha-card {
@@ -229,7 +233,14 @@ export const cardStyles = css`
 
   /* --- overlays ---------------------------------------------------- */
 
-  /* Passive labels, so they must not eat the click that opens the
+  /* The overlays' scrims are flat on purpose: no backdrop-filter. Five
+     blurred scrims over the picture cost a wall tablet (Galaxy Tab A8)
+     about 10 points of CPU whenever anything on screen animated, the
+     card's own playback and minute fade included, because the WebView
+     redraws the whole frame and re-blurs each one every time. A flat
+     60 % scrim keeps the text as legible at none of that cost.
+
+     Passive labels, so they must not eat the click that opens the
      camera's more-info dialog — they sit over the picture and would
      otherwise punch two dead rectangles into it. */
   .stamp,
@@ -238,12 +249,11 @@ export const cardStyles = css`
     position: absolute;
     padding: 4px 8px;
     border-radius: 6px;
-    background: rgba(0, 0, 0, 0.55);
+    background: rgba(0, 0, 0, 0.6);
     color: #fff;
     font-size: var(--ha-font-size-s, 12px);
     /* Digits must not shift width as the clock ticks. */
     font-variant-numeric: tabular-nums;
-    backdrop-filter: blur(2px);
   }
 
   /* Top-left, because the controls now own the bottom of the stage. */
@@ -286,9 +296,8 @@ export const cardStyles = css`
     gap: 2px;
     padding: 8px 10px;
     border-radius: 8px;
-    background: rgba(0, 0, 0, 0.55);
+    background: rgba(0, 0, 0, 0.6);
     color: #fff;
-    backdrop-filter: blur(2px);
     font-variant-numeric: tabular-nums;
     /* Taller than the picture, the readings scroll inside it instead of
        running off the stage, where the stage's clip cut them away. The
@@ -522,8 +531,7 @@ export const cardStyles = css`
     gap: 2px;
     padding: 2px 6px;
     border-radius: 999px;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.6);
     color: #fff;
     /* Smaller than the 48px default so the pill stays slim, still well
        over the 24px WCAG 2.5.8 minimum target. */
@@ -601,6 +609,39 @@ export const cardStyles = css`
       min-width: 36px;
       padding: 6px 4px;
     }
+  }
+
+  /* --- exported video ---------------------------------------------- */
+
+  /* Over everything on the stage, the controls included. Last in DOM
+     order, so it paints on top without a z-index of its own (see
+     .layers). Black like the stage, so a video cropped to another shape
+     letterboxes into the same frame. */
+  .player {
+    position: absolute;
+    inset: 0;
+    background: #000;
+  }
+
+  .player video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* The badges' corner and scrim. Top right, where the video's own
+     controls never sit. */
+  .player-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    --ha-icon-button-size: 40px;
+    --mdc-icon-button-size: 40px;
+    --mdc-icon-size: 20px;
   }
 
   /* --- scrubber ---------------------------------------------------- */
@@ -1189,6 +1230,7 @@ export const cardStyles = css`
     padding: 6px 18px;
     border: 1px solid var(--wtl-accent);
     border-radius: 999px;
+    background: none;
     color: var(--wtl-accent);
     font-weight: var(--ha-font-weight-medium, 500);
     text-decoration: none;
@@ -1437,27 +1479,6 @@ export const cardStyles = css`
     font-weight: var(--ha-font-weight-medium, 500);
   }
 
-  /* --- version banner ---------------------------------------------- */
-
-  .banner {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    padding: 8px 12px;
-    background: var(--warning-color, #ffa726);
-    color: #000;
-    font-size: var(--ha-font-size-s, 12px);
-  }
-
-  .banner button {
-    margin-left: auto;
-    border: 0;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font: inherit;
-    cursor: pointer;
-  }
-
   /* --- responsive -------------------------------------------------- */
 
   /* Two blocks run out of room sooner than one, so the pair gets its own
@@ -1523,17 +1544,18 @@ export const cardStyles = css`
      two close on each other as the card narrows. The pill is ~212px, and
      a three-sensor readout runs ~230px, which puts the meeting point just
      past 600px — hence 620px, with a little margin because the readout's
-     width follows its content. Below that the readout moves to the top,
-     where nothing else is competing for the space. */
+     width follows its content. Below that the readout moves to the top
+     row, between the timestamp and the badge, and below them on the
+     narrowest stages (the wtl-stage query further down). */
   @container wtl-card (max-width: 620px) {
     /* Cleared explicitly: the base rule pins the bottom-right corner, and
        an unset side would leave the box anchored to both. */
     .readout {
       right: auto;
       bottom: auto;
-      /* Same top edge as the timestamp and the badge, so the three
-         overlays read as one row across the top of the frame instead of
-         three boxes at unrelated heights. Kept in step with .stamp and
+      /* Same top edge as the timestamp and the badge, down to a 480 px
+         stage, so the three overlays read as one row across the top of
+         the frame instead of three boxes at unrelated heights. Kept in step with .stamp and
          .badge by a test rather than by memory. */
       top: 8px;
       left: 50%;
@@ -1552,6 +1574,25 @@ export const cardStyles = css`
       left: 50%;
     }
 
+  }
+
+  /* Below this the timestamp, the readout and the badge no longer fit on
+     one row. The stamp ends ~112 px into the stage (8 px offset, ~104 px
+     wide) and a typical block is ~230 px, so a centred block keeps 6 px
+     clear of it only on a stage of 2 x (112 + 6 + 115) = 466 px or more;
+     at 380 px, a phone's section, it would cover the end of the time.
+     Measured on the stage, which is what the overlays sit in. The block
+     drops below the row instead: the pills end ~34 px down (8 px offset,
+     4 px padding each side, an ~18 px line), so 40 px leaves a gap. The
+     cap grows by the 32 px the top moved, so the block still stops above
+     the control pill. In the pair layout the stack moves; the blocks
+     inside it are static and ignore the top. */
+  @container wtl-stage (inline-size < 480px) {
+    .readout,
+    .readouts.pair {
+      top: 40px;
+      max-block-size: calc(100% - 106px);
+    }
   }
 
   /* prefers-reduced-motion is handled entirely in TypeScript, not here.

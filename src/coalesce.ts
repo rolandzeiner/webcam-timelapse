@@ -51,7 +51,7 @@ export class Coalescer {
     });
   }
 
-  /** Whether a run is in flight or queued. Diagnostics and tests. */
+  /** Whether a run is in flight. Only the tests read it. */
   get busy(): boolean {
     return this.running;
   }

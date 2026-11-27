@@ -13,7 +13,6 @@ import { Coalescer } from "./coalesce";
 import {
   CARD_TAG,
   CARD_VERSION,
-  WS_CARD_VERSION,
   WS_EXPORT_CANCEL,
   WS_EXPORT_START,
   WS_EXPORT_SUBSCRIBE,
@@ -99,11 +98,11 @@ import {
   seriesStats,
   windowAround,
 } from "./overlay-history";
-import { checkCardVersionWS, renderVersionBanner } from "./shared-render";
 import { extentOf, sparkline } from "./sparkline";
 import { type NightBand, nightBands } from "./sun";
 import type { HomeAssistant, LovelaceCardEditor, WebcamTimelapseCardConfig } from "./types";
 import { formatExtent, formatSpan, prefersReducedMotion, safeImageUri } from "./utils";
+import { versionBanner } from "./version-banner";
 
 /**
  * Playback multipliers.
@@ -154,7 +153,7 @@ export class WebcamTimelapseCard extends LitElement {
 
   // Set by HA in the edit-card dialog. The preview there is for checking
   // the config, so it neither starts playing on its own nor shows the
-  // stale-bundle banner, whose Reload would throw the open dialog away.
+  // version banner, whose Reload would throw the open dialog away.
   @property({ type: Boolean }) public preview = false;
 
   @state() private config?: NormalisedConfig;
@@ -163,7 +162,6 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private playing = false;
   @state() private speed = 1;
   @state() private trackWidth = 600;
-  @state() private versionMismatch: string | null = null;
   @state() private indexError: string | undefined;
   @state() private frameError: string | undefined;
   @state() private history = new Map<string, HistoryPoint[]>();
@@ -222,6 +220,14 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private exportUrl: string | undefined;
   /** Which video `exportUrl` belongs to, so it is resolved once. */
   private exportUrlFor: string | undefined;
+  /**
+   * The finished video is playing over the stage.
+   *
+   * In the card rather than behind a link: a wall tablet's kiosk
+   * WebView opens a link in place of the whole dashboard, and a raw MP4
+   * page has no way back to it.
+   */
+  @state() private watching = false;
   private exportUnsubscribe: (() => Promise<void> | void) | undefined;
   /** Counts subscriptions, so a stale one resolving late is dropped. */
   private exportSubscription = 0;
@@ -256,7 +262,6 @@ export class WebcamTimelapseCard extends LitElement {
    */
   private readonly swaps = new Coalescer(() => this.performSwap());
   private gains: Float32Array = new Float32Array(0);
-  private versionChecked = false;
   private rulerCache?: { key: string; days: DayTick[]; times: TimeTick[] };
   private autoplayPending = true;
 
@@ -371,18 +376,13 @@ export class WebcamTimelapseCard extends LitElement {
     this.ring.clear();
     this.frames.clear();
     this.unsubscribeExport();
+    this.watching = false;
   }
 
   protected override willUpdate(changed: PropertyValues): void {
     if (changed.has("hass") && this.hass && this.index === EMPTY_INDEX) {
       void this.refreshIndex();
       void this.refreshHistory();
-    }
-    if (changed.has("hass") && this.hass && !this.versionChecked) {
-      this.versionChecked = true;
-      void checkCardVersionWS(this.hass, WS_CARD_VERSION, CARD_VERSION).then((version) => {
-        this.versionMismatch = version;
-      });
     }
   }
 
@@ -1137,6 +1137,7 @@ export class WebcamTimelapseCard extends LitElement {
   private toggleExport = (): void => {
     this.exportOpen = !this.exportOpen;
     this.exportError = undefined;
+    this.watching = false;
     if (this.exportOpen) void this.subscribeExport();
     else this.unsubscribeExport();
   };
@@ -1188,6 +1189,7 @@ export class WebcamTimelapseCard extends LitElement {
     if (status.state !== "done" || !status.result) {
       this.exportUrl = undefined;
       this.exportUrlFor = undefined;
+      this.watching = false;
       return;
     }
     void this.resolveExportUrl(status.result.media_content_id);
@@ -1215,6 +1217,54 @@ export class WebcamTimelapseCard extends LitElement {
     } catch {
       // No media browser on this install; the saved-as line still applies.
     }
+  }
+
+  /**
+   * Play the finished video over the stage. The card's own playback
+   * stops: two moving pictures at once is one too many, and on a wall
+   * tablet the hidden one would still cost its frame swaps.
+   */
+  private openPlayer = (): void => {
+    this.playing = false;
+    this.stopPlayback();
+    this.watching = true;
+    void this.updateComplete.then(() =>
+      this.renderRoot.querySelector<HTMLElement>(".player-close")?.focus(),
+    );
+  };
+
+  /** Back to the frames, with focus where the video was opened from. */
+  private closePlayer = (): void => {
+    this.watching = false;
+    void this.updateComplete.then(() =>
+      this.renderRoot.querySelector<HTMLElement>(".export-watch")?.focus(),
+    );
+  };
+
+  private onPlayerKey = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape") return;
+    event.stopPropagation();
+    this.closePlayer();
+  };
+
+  private renderPlayer(): TemplateResult | typeof nothing {
+    if (!this.watching || !this.exportUrl) return nothing;
+    const label = this.t("export.player");
+    return html`<div class="player" role="group" aria-label=${label} @keydown=${this.onPlayerKey}>
+      <video
+        src=${this.exportUrl}
+        controls
+        autoplay
+        playsinline
+      ></video>
+      <ha-icon-button
+        class="player-close"
+        .label=${this.t("export.close_video")}
+        @click=${this.closePlayer}
+      >
+        <ha-icon icon="mdi:close"></ha-icon>
+      </ha-icon-button>
+    </div>`;
   }
 
   /**
@@ -1376,6 +1426,12 @@ export class WebcamTimelapseCard extends LitElement {
     if (!(this.config.camera_entity in this.hass.states)) {
       return html`
         <ha-card .header=${this.config.title ?? nothing}>
+          ${versionBanner(this.hass, {
+            domain: "webcam_timelapse",
+            version: CARD_VERSION,
+            name: "Webcam Timelapse",
+            preview: this.preview,
+          })}
           ${this.renderMissing([this.config.camera_entity])}
         </ha-card>
       `;
@@ -1386,7 +1442,12 @@ export class WebcamTimelapseCard extends LitElement {
         .header=${this.config.title ?? nothing}
         class=${this._fixedHeight ? "fixed-height" : ""}
       >
-        ${this.preview ? nothing : renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
+        ${versionBanner(this.hass, {
+          domain: "webcam_timelapse",
+          version: CARD_VERSION,
+          name: "Webcam Timelapse",
+          preview: this.preview,
+        })}
         ${this.renderStage(slot)}
         ${this.renderMissingReadouts()}
         ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}
@@ -1507,6 +1568,7 @@ export class WebcamTimelapseCard extends LitElement {
               : nothing
         }
         ${this.renderControls()}
+        ${this.renderPlayer()}
       </div>
     `;
   }
@@ -1811,6 +1873,7 @@ export class WebcamTimelapseCard extends LitElement {
       (node) =>
         node instanceof HTMLElement &&
         (node.classList.contains("controls") ||
+          node.classList.contains("player") ||
           node.classList.contains("crop-window") ||
           node.classList.contains("readout-row") ||
           node.classList.contains("readout-fold")),
@@ -2536,17 +2599,11 @@ export class WebcamTimelapseCard extends LitElement {
         ${
           this.exportUrl
             ? html`<span class="export-links">
-              <a class="export-watch" href=${this.exportUrl} target="_blank" rel="noopener">
+              <button class="export-watch" type="button" @click=${this.openPlayer}>
                 <ha-icon icon="mdi:play-circle-outline"></ha-icon>
                 ${this.t("export.watch")}
-              </a>
-              <a
-                class="export-download"
-                href=${this.exportUrl}
-                download=${result.file_name}
-                target="_blank"
-                rel="noopener"
-              >
+              </button>
+              <a class="export-download" href=${this.exportUrl} download=${result.file_name}>
                 <ha-icon icon="mdi:download"></ha-icon>
                 ${this.t("export.download")}
               </a>

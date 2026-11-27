@@ -243,7 +243,7 @@ Without them a millimetre of groundwater and half a metre of river draw the same
 
 **The marker down the middle is the moment you're looking at**, and the dot on it is the value in effect then. A gauge that hasn't changed inside the window still draws: the recorder stores only changes, so the card carries the earlier reading in as a flat line. The timestamp beside the number tells you how old it is.
 
-**A second block goes on the left.** Put readings in `entities_left`, with `overlay_title_left` as its heading. It takes the same row options as `entities`. Adding it never moves `entities`, which keeps the bottom-right corner. A card with only `entities_left` shows one block on the left. On a narrow card both blocks stack at the top of the picture, right-hand block first, and keep their sparklines.
+**A second block goes on the left.** Put readings in `entities_left`, with `overlay_title_left` as its heading. It takes the same row options as `entities`. Adding it never moves `entities`, which keeps the bottom-right corner. A card with only `entities_left` shows one block on the left. On a narrow card both blocks stack at the top of the picture, below the date and time, right-hand block first, and keep their sparklines.
 
 ```yaml
 overlay_title: Kleine Erlauf      # bottom right
@@ -280,6 +280,7 @@ Stored frames are never changed. The correction happens at playback, so `deflick
 1. Select the film button (**Export video**) in the player bar.
 2. Scrub to the first frame and select **Start at this frame**, then scrub to the last and select **End at this frame**. Or pick a shortcut: the last day, three days, week, or **Everything**.
 3. Set **Frames per second**, **Frames used**, **Format** and the overlays, then select **Export**.
+4. When it's done, select **Watch** to play the video in the card, or **Download** to save it.
 
 The chosen stretch is tinted on the bar, with a grip at each end. Drag one and the picture follows, so you see the frame the video opens or closes on.
 
@@ -307,6 +308,8 @@ Three things differ from the card on purpose:
 **Home Assistant encodes the video itself.** You can close the dashboard or lock your phone while it encodes. Open the panel again later and the finished video is there to watch or download.
 
 **Videos are saved in your media folder**, one folder per camera: `/media/webcam_timelapse/<camera>/` on Home Assistant OS. The panel shows the folder, and the full path of each video once it's written. After the first export, **Open in media browser** takes you to the folder in **Media → My media**, the easiest place to delete old ones. Videos aren't deleted with the frames they were made from.
+
+**In a Docker container, mount `/media` as a volume.** Home Assistant saves media there by default, and without a volume the videos are gone the next time the container is recreated, for example on an update.
 
 **Readings older than your recorder keeps are hourly averages.** Home Assistant keeps detailed history for ten days unless you changed `purge_keep_days`. For older frames the overlay falls back to long-term statistics, and a sensor without statistics shows a dash.
 

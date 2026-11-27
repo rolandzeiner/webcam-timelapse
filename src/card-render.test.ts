@@ -11,7 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import "./webcam-timelapse-card";
-import { CARD_TAG, CARD_VERSION, WS_CARD_VERSION, WS_INDEX } from "./const";
+import { CARD_TAG, CARD_VERSION, WS_INDEX } from "./const";
 import type { FrameIndex } from "./frames";
 import type { HomeAssistant, WebcamTimelapseCardConfig } from "./types";
 
@@ -39,7 +39,7 @@ function hass(states: string[], language = "en", index: FrameIndex = INDEX): Hom
     Promise.resolve(
       msg.type === WS_INDEX
         ? index
-        : msg.type === WS_CARD_VERSION
+        : msg.type === "webcam_timelapse/card_version"
           ? { version: CARD_VERSION }
           : { luma: [] },
     ),

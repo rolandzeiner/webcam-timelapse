@@ -8,7 +8,7 @@
 # not at all.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.3 # == requirements_test.txt
+    rev: v0.17.6 # == requirements_test.txt
     hooks:
       - id: ruff
         args: [--fix]

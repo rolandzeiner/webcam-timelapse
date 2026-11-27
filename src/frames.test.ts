@@ -15,13 +15,11 @@ import {
   nextPlaybackPosition,
   nextPresent,
   playbackCadence,
-  positionAt,
   prefetchDepth,
   prefetchWindow,
   presenceBitmap,
   shouldAutoplay,
   slotAt,
-  timeAt,
   urlAt,
 } from "./frames";
 
@@ -54,30 +52,6 @@ describe("slot addressing", () => {
 
   it("builds frame URLs the integration actually serves", () => {
     expect(urlAt(index(), 2)).toBe(`/webcam_timelapse_frames/abc/${T0 + 1200}.webp`);
-  });
-
-  it("exposes milliseconds for Intl formatting", () => {
-    expect(timeAt(index(), 1)).toBe((T0 + 600) * 1000);
-  });
-
-  it("round-trips a position through time and back", () => {
-    const i = index();
-    for (const position of [0, 1, 5, 9]) {
-      expect(positionAt(i, timeAt(i, position)!)).toBe(position);
-    }
-  });
-
-  it("clamps a timestamp outside the window onto the ends", () => {
-    const i = index();
-    expect(positionAt(i, (T0 - 99999) * 1000)).toBe(0);
-    expect(positionAt(i, (T0 + 99999) * 1000)).toBe(9);
-  });
-
-  it("snaps a timestamp between slots to the nearest one", () => {
-    const i = index();
-    // 100 s past slot 1 is still nearest slot 1; 400 s past is nearer slot 2.
-    expect(positionAt(i, (T0 + 600 + 100) * 1000)).toBe(1);
-    expect(positionAt(i, (T0 + 600 + 400) * 1000)).toBe(2);
   });
 
   it("knows when the archive is empty", () => {

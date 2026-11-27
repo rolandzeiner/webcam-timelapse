@@ -6,15 +6,14 @@
  * CARD_VERSION to that manifest, and tests/test_versions.py enforces the
  * remaining pair. Bump both in the same commit.
  */
-export const CARD_VERSION = "1.1.0";
+export const CARD_VERSION = "1.1.1";
 
 /** Custom element tag, and the `type:` users put in their card config. */
 export const CARD_TAG = "webcam-timelapse-card";
 
-/** WebSocket commands exposed by the Python side. */
+/** WebSocket commands the card sends. The version banner asks
+ *  `webcam_timelapse/card_version` itself. */
 export const WS_INDEX = "webcam_timelapse/index";
-export const WS_CARD_VERSION = "webcam_timelapse/card_version";
-
 export const WS_LUMA = "webcam_timelapse/luma";
 export const WS_EXPORT_START = "webcam_timelapse/export/start";
 export const WS_EXPORT_SUBSCRIBE = "webcam_timelapse/export/subscribe";
