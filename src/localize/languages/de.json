@@ -124,6 +124,8 @@
     "saved": "Gespeichert als {v}",
     "watch": "Ansehen",
     "download": "Herunterladen",
+    "player": "Exportiertes Video",
+    "close_video": "Video schließen",
     "cancelled": "Export abgebrochen.",
     "band": "Für den Export gewählter Zeitraum",
     "error": {

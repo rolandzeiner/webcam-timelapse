@@ -607,6 +607,39 @@ export const cardStyles = css`
     }
   }
 
+  /* --- exported video ---------------------------------------------- */
+
+  /* Over everything on the stage, the controls included. Last in DOM
+     order, so it paints on top without a z-index of its own (see
+     .layers). Black like the stage, so a video cropped to another shape
+     letterboxes into the same frame. */
+  .player {
+    position: absolute;
+    inset: 0;
+    background: #000;
+  }
+
+  .player video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* The badges' corner and scrim. Top right, where the video's own
+     controls never sit. */
+  .player-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    --ha-icon-button-size: 40px;
+    --mdc-icon-button-size: 40px;
+    --mdc-icon-size: 20px;
+  }
+
   /* --- scrubber ---------------------------------------------------- */
 
   /* Dates, bar and clock times as one block. The bands are in normal
@@ -1193,6 +1226,7 @@ export const cardStyles = css`
     padding: 6px 18px;
     border: 1px solid var(--wtl-accent);
     border-radius: 999px;
+    background: none;
     color: var(--wtl-accent);
     font-weight: var(--ha-font-weight-medium, 500);
     text-decoration: none;

@@ -281,6 +281,7 @@ Stored frames are never changed. The correction happens at playback, so `deflick
 1. Select the film button (**Export video**) in the player bar.
 2. Scrub to the first frame and select **Start at this frame**, then scrub to the last and select **End at this frame**. Or pick a shortcut: the last day, three days, week, or **Everything**.
 3. Set **Frames per second**, **Frames used**, **Format** and the overlays, then select **Export**.
+4. When it's done, select **Watch** to play the video in the card, or **Download** to save it.
 
 The chosen stretch is tinted on the bar, with a grip at each end. Drag one and the picture follows, so you see the frame the video opens or closes on.
 

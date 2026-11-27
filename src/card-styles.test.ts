@@ -857,7 +857,7 @@ describe("picture click target", () => {
     // DOM to window. Searching all of it for a class as common as
     // "controls" lets any ancestor above this card veto every click on
     // the picture — the whole feature dies silently.
-    const handler = /onStageClick = \([\s\S]{0,900}?\n  \};/.exec(cardSource)?.[0];
+    const handler = /onStageClick = \([\s\S]{0,1200}?\n  \};/.exec(cardSource)?.[0];
 
     expect(handler).toMatch(/currentTarget/);
     expect(handler).toMatch(/slice\(0, boundary\)/);

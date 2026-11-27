@@ -124,6 +124,8 @@
     "saved": "Saved as {v}",
     "watch": "Watch",
     "download": "Download",
+    "player": "Exported video",
+    "close_video": "Close video",
     "cancelled": "Export cancelled.",
     "band": "Range selected for export",
     "error": {
