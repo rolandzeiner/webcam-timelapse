@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from unittest.mock import AsyncMock, patch
 
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.camera import CameraEntityFeature
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
@@ -26,8 +27,11 @@ ONLINE = "binary_sensor.test_cam_camera_online"
 
 
 async def test_sensors_on_an_empty_archive(
-    hass: HomeAssistant, mock_fetch: AsyncMock
+    hass: HomeAssistant, mock_fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:
+    # Between two grid ticks: on the real clock, a run that straddled the
+    # entry's capture second recorded a frame and the archive wasn't empty.
+    freezer.move_to("2026-08-01 12:03:00+00:00")
     assert await setup_entry(hass, make_entry())
 
     assert hass.states.get(LAST_CAPTURE).state == STATE_UNKNOWN
