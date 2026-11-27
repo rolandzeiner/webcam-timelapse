@@ -30,8 +30,6 @@
   "error": {
     "no_camera": "You need to pick a camera in the card configuration."
   },
-  "version_update": "This card was updated to {v}. Reload to pick up the new version.",
-  "version_reload": "Reload",
   "editor": {
     "camera_entity": "Camera",
     "title": "Title",

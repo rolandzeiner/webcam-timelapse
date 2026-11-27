@@ -9,7 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import "./webcam-timelapse-card";
-import { CARD_TAG, CARD_VERSION, WS_CARD_VERSION, WS_INDEX } from "./const";
+import { CARD_TAG, CARD_VERSION, WS_INDEX } from "./const";
 import type { FrameIndex } from "./frames";
 import type { HomeAssistant } from "./types";
 
@@ -44,7 +44,7 @@ function hass(): HomeAssistant {
       new Promise((resolve) => {
         setTimeout(() => {
           if (msg.type === WS_INDEX) resolve(INDEX);
-          else if (msg.type === WS_CARD_VERSION) resolve({ version: CARD_VERSION });
+          else if (msg.type === "webcam_timelapse/card_version") resolve({ version: CARD_VERSION });
           else resolve({ luma: [] });
         }, 0);
       }),
@@ -123,7 +123,7 @@ function hassWith(index: FrameIndex, version: string): HomeAssistant {
       new Promise((resolve) => {
         setTimeout(() => {
           if (msg.type === WS_INDEX) resolve(index);
-          else if (msg.type === WS_CARD_VERSION) resolve({ version });
+          else if (msg.type === "webcam_timelapse/card_version") resolve({ version });
           else resolve({ luma: [] });
         }, 0);
       }),
@@ -156,12 +156,12 @@ const playLabel = (el: Card): string | undefined =>
     ?.label;
 
 describe("edit-dialog preview", () => {
-  it("shows the stale-bundle banner on a dashboard, not in the preview", async () => {
+  it("puts the version banner on a dashboard, not in the preview", async () => {
     const dashboard = await mountPreview(hassWith(INDEX, "0.0.1"), false);
-    expect(dashboard.shadowRoot?.querySelector(".banner")).not.toBeNull();
+    expect(dashboard.shadowRoot?.querySelector("ha-card > rz-version-banner-r1")).not.toBeNull();
 
     const preview = await mountPreview(hassWith(INDEX, "0.0.1"), true);
-    expect(preview.shadowRoot?.querySelector(".banner")).toBeNull();
+    expect(preview.shadowRoot?.querySelector("rz-version-banner-r1")).toBeNull();
   });
 
   it("honours autoplay on a dashboard, never in the preview", async () => {

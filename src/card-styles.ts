@@ -1475,27 +1475,6 @@ export const cardStyles = css`
     font-weight: var(--ha-font-weight-medium, 500);
   }
 
-  /* --- version banner ---------------------------------------------- */
-
-  .banner {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    padding: 8px 12px;
-    background: var(--warning-color, #ffa726);
-    color: #000;
-    font-size: var(--ha-font-size-s, 12px);
-  }
-
-  .banner button {
-    margin-left: auto;
-    border: 0;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font: inherit;
-    cursor: pointer;
-  }
-
   /* --- responsive -------------------------------------------------- */
 
   /* Two blocks run out of room sooner than one, so the pair gets its own

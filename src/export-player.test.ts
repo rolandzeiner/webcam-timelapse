@@ -13,7 +13,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import "./webcam-timelapse-card";
-import { CARD_TAG, CARD_VERSION, WS_CARD_VERSION, WS_INDEX, WS_RESOLVE_MEDIA } from "./const";
+import { CARD_TAG, CARD_VERSION, WS_INDEX, WS_RESOLVE_MEDIA } from "./const";
 import type { ExportStatus } from "./export";
 import type { FrameIndex } from "./frames";
 import type { HomeAssistant } from "./types";
@@ -66,7 +66,7 @@ function hass(): HomeAssistant {
     Promise.resolve(
       msg.type === WS_INDEX
         ? INDEX
-        : msg.type === WS_CARD_VERSION
+        : msg.type === "webcam_timelapse/card_version"
           ? { version: CARD_VERSION }
           : msg.type === WS_RESOLVE_MEDIA
             ? { url: URL_SIGNED }

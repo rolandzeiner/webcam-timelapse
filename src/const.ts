@@ -13,7 +13,6 @@ export const CARD_TAG = "webcam-timelapse-card";
 
 /** WebSocket commands exposed by the Python side. */
 export const WS_INDEX = "webcam_timelapse/index";
-export const WS_CARD_VERSION = "webcam_timelapse/card_version";
 
 export const WS_LUMA = "webcam_timelapse/luma";
 export const WS_EXPORT_START = "webcam_timelapse/export/start";

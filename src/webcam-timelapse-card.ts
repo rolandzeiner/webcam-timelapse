@@ -13,7 +13,6 @@ import { Coalescer } from "./coalesce";
 import {
   CARD_TAG,
   CARD_VERSION,
-  WS_CARD_VERSION,
   WS_EXPORT_CANCEL,
   WS_EXPORT_START,
   WS_EXPORT_SUBSCRIBE,
@@ -99,11 +98,11 @@ import {
   seriesStats,
   windowAround,
 } from "./overlay-history";
-import { checkCardVersionWS, renderVersionBanner } from "./shared-render";
 import { extentOf, sparkline } from "./sparkline";
 import { type NightBand, nightBands } from "./sun";
 import type { HomeAssistant, LovelaceCardEditor, WebcamTimelapseCardConfig } from "./types";
 import { formatExtent, formatSpan, prefersReducedMotion, safeImageUri } from "./utils";
+import { versionBanner } from "./version-banner";
 
 /**
  * Playback multipliers.
@@ -163,7 +162,6 @@ export class WebcamTimelapseCard extends LitElement {
   @state() private playing = false;
   @state() private speed = 1;
   @state() private trackWidth = 600;
-  @state() private versionMismatch: string | null = null;
   @state() private indexError: string | undefined;
   @state() private frameError: string | undefined;
   @state() private history = new Map<string, HistoryPoint[]>();
@@ -264,7 +262,6 @@ export class WebcamTimelapseCard extends LitElement {
    */
   private readonly swaps = new Coalescer(() => this.performSwap());
   private gains: Float32Array = new Float32Array(0);
-  private versionChecked = false;
   private rulerCache?: { key: string; days: DayTick[]; times: TimeTick[] };
   private autoplayPending = true;
 
@@ -386,12 +383,6 @@ export class WebcamTimelapseCard extends LitElement {
     if (changed.has("hass") && this.hass && this.index === EMPTY_INDEX) {
       void this.refreshIndex();
       void this.refreshHistory();
-    }
-    if (changed.has("hass") && this.hass && !this.versionChecked) {
-      this.versionChecked = true;
-      void checkCardVersionWS(this.hass, WS_CARD_VERSION, CARD_VERSION).then((version) => {
-        this.versionMismatch = version;
-      });
     }
   }
 
@@ -1435,6 +1426,12 @@ export class WebcamTimelapseCard extends LitElement {
     if (!(this.config.camera_entity in this.hass.states)) {
       return html`
         <ha-card .header=${this.config.title ?? nothing}>
+          ${versionBanner(this.hass, {
+            domain: "webcam_timelapse",
+            version: CARD_VERSION,
+            name: "Webcam Timelapse",
+            preview: this.preview,
+          })}
           ${this.renderMissing([this.config.camera_entity])}
         </ha-card>
       `;
@@ -1445,7 +1442,12 @@ export class WebcamTimelapseCard extends LitElement {
         .header=${this.config.title ?? nothing}
         class=${this._fixedHeight ? "fixed-height" : ""}
       >
-        ${this.preview ? nothing : renderVersionBanner(this.versionMismatch, (k) => this.t(k))}
+        ${versionBanner(this.hass, {
+          domain: "webcam_timelapse",
+          version: CARD_VERSION,
+          name: "Webcam Timelapse",
+          preview: this.preview,
+        })}
         ${this.renderStage(slot)}
         ${this.renderMissingReadouts()}
         ${hasFrames(this.index) ? this.renderTimeline(slot) : nothing}
