@@ -44,19 +44,6 @@ export function slotAt(index: FrameIndex, i: number): number | null {
   return index.t0 + i * index.step;
 }
 
-/** Milliseconds for grid position `i`, for Date/Intl formatting. */
-export function timeAt(index: FrameIndex, i: number): number | null {
-  const slot = slotAt(index, i);
-  return slot === null ? null : slot * 1000;
-}
-
-/** Grid position nearest to an epoch-millisecond timestamp, clamped. */
-export function positionAt(index: FrameIndex, ms: number): number {
-  if (index.t0 === null || index.count === 0) return 0;
-  const raw = Math.round((ms / 1000 - index.t0) / index.step);
-  return Math.min(Math.max(raw, 0), index.count - 1);
-}
-
 /**
  * Path of the frame at grid position `i` in the authenticated frame view.
  * An `<img>` cannot send the token it needs; fetch it through `FrameCache`.
